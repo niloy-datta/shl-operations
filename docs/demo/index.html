@@ -19,8 +19,9 @@
         <button class="nav-item selected" data-view="overview" aria-current="page"><span class="nav-symbol" aria-hidden="true">▦</span>Overview<span class="active-indicator"></span></button>
         <button class="nav-item" data-view="customers"><span class="nav-symbol" aria-hidden="true">♙</span>Customers</button>
         <button class="nav-item" data-view="suppliers"><span class="nav-symbol" aria-hidden="true">◇</span>Suppliers</button>
+        <p class="nav-heading future-heading">TRADING OPERATIONS</p>
+        <button class="nav-item" data-view="rfqs"><span class="nav-symbol" aria-hidden="true">▤</span>RFQ &amp; Sourcing<small class="live-chip">VIEW</small></button>
         <p class="nav-heading future-heading">COMING NEXT</p>
-        <div class="nav-item planned"><span class="nav-symbol" aria-hidden="true">▤</span>Sales &amp; RFQs<small>SOON</small></div>
         <div class="nav-item planned"><span class="nav-symbol" aria-hidden="true">⬡</span>Procurement<small>SOON</small></div>
         <div class="nav-item planned"><span class="nav-symbol" aria-hidden="true">♧</span>Shipments<small>SOON</small></div>
         <div class="nav-item planned"><span class="nav-symbol" aria-hidden="true">▥</span>Finance<small>SOON</small></div>
@@ -42,6 +43,7 @@
             <article class="metric"><div class="metric-head">TOTAL RELATIONSHIPS <span class="metric-icon">▤</span></div><strong>—</strong><small>Unavailable in static preview</small></article>
             <article class="metric"><div class="metric-head">CUSTOMERS <span class="metric-icon">♙</span></div><strong>—</strong><small>Requires live database</small></article>
             <article class="metric"><div class="metric-head">SUPPLIERS <span class="metric-icon">◇</span></div><strong>—</strong><small>Requires live database</small></article>
+            <article class="metric"><div class="metric-head">RFQ PIPELINE <span class="metric-icon">▤</span></div><strong>—</strong><small>Internal sourcing workspace</small></article>
           </div>
           <div class="overview-columns">
             <section class="surface mix-panel"><div class="surface-top"><div><p class="overline">RELATIONSHIP MIX</p><h2>Network composition</h2></div><span class="quiet-tag">NO SAMPLE DATA</span></div>
@@ -52,8 +54,34 @@
             <section class="surface quick-panel"><div class="surface-top"><div><p class="overline">QUICK ACTIONS</p><h2>Explore the workspace</h2></div></div>
               <button class="quick-action" data-go="customers"><span class="quick-icon blue">♙</span><span><strong>Customer directory</strong><small>Preview the customer module</small></span><span class="quick-arrow">→</span></button>
               <button class="quick-action" data-go="suppliers"><span class="quick-icon green">◇</span><span><strong>Supplier directory</strong><small>Preview the supplier module</small></span><span class="quick-arrow">→</span></button>
+              <button class="quick-action" data-go="rfqs"><span class="quick-icon green">▤</span><span><strong>RFQ sourcing desk</strong><small>Explore the supplier quotation workflow</small></span><span class="quick-arrow">→</span></button>
             </section>
           </div>
+        </div>
+
+        <div id="rfqs" class="screen" hidden>
+          <section class="rfq-hero">
+            <div class="rfq-hero-copy">
+              <p class="hero-kicker"><span></span> SHL INTERNATIONAL · TRADING DESK</p>
+              <h1>Source smarter.<br><em>Quote with confidence.</em></h1>
+              <p>Manage customer RFQs, collect supplier quotations and review offers within one structured sourcing pipeline.</p>
+              <div class="rfq-note">READ-ONLY WORKFLOW PREVIEW <span>•</span> No company records are displayed</div>
+            </div>
+            <div class="rfq-hero-art" aria-hidden="true"><div class="ring ring-one"></div><div class="ring ring-two"></div><div class="rfq-art-center">RFQ<small>CONTROL</small></div></div>
+          </section>
+          <div class="section-head"><div><p class="overline">TRADING OPERATIONS</p><h2>From inquiry to sourcing decision</h2></div><span class="quiet-label">Workflow available in private app</span></div>
+          <div class="rfq-flow">
+            <article><span class="rfq-step">01</span><strong>Customer inquiry</strong><p>Capture specifications, quantity, currency and target date.</p></article>
+            <article><span class="rfq-step">02</span><strong>Supplier sourcing</strong><p>Record supplier pricing, minimum order quantity and lead time.</p></article>
+            <article><span class="rfq-step">03</span><strong>Offer comparison</strong><p>Compare offers in one RFQ currency, with sourcing context.</p></article>
+            <article><span class="rfq-step">04</span><strong>Ready to quote</strong><p>Move the request through controlled workflow statuses.</p></article>
+          </div>
+          <div class="section-head"><div><p class="overline">INTERFACE PREVIEW</p><h2>RFQ pipeline</h2></div><span class="quiet-tag">NO SAMPLE DATA</span></div>
+          <section class="surface rfq-table"><div class="table-toolbar"><div><h2>Sourcing requests</h2><p class="muted">Customer-linked enquiries and supplier offers</p></div><span class="fake-search">⌕ &nbsp; Search within private application</span></div>
+            <div class="table-wrap"><table><thead><tr><th>REFERENCE</th><th>CUSTOMER / REQUEST</th><th>QUANTITY</th><th>SUPPLIER OFFERS</th><th>DEADLINE</th><th>STATUS</th></tr></thead></table></div>
+            <div class="empty"><div class="empty-icon">▤</div><h3>RFQ sourcing module</h3><p>Real customer inquiries, supplier prices, and business activities remain inside the authenticated SHL application. This preview does not connect to its database.</p></div>
+          </section>
+          <div class="rfq-next"><strong>Next modules</strong><span>Procurement &amp; POs</span><span>Shipment milestones</span><span>Invoicing &amp; approvals</span><span>Staff roles &amp; audit controls</span></div>
         </div>
         <div id="directory" class="screen" hidden>
           <div class="page-heading"><div><p class="overline">RELATIONSHIP MANAGEMENT / <span id="directory-category">CUSTOMERS</span></p><h1 id="directory-title">Customers<span>.</span></h1><p class="muted" id="directory-subtitle">Keep every customer relationship organized and accessible.</p></div>
