@@ -2,6 +2,12 @@
 
 Independent internal application. The existing `shl-global` website is untouched.
 
+## Static GitHub Pages preview
+
+The read-only visual demo is in [`docs/demo`](docs/demo) and is published from a separate, public static-only repository so this application repository can stay private. It does not run the Next.js app, authenticate users, connect to the API, or store records. It contains no sample customer or supplier data. The full application still requires its Docker services and database.
+
+GitHub Pages sites are publicly accessible. See [the preview](https://niloy-datta.github.io/shl-operations-preview/) for the static interface demo.
+
 ## Run locally
 
 1. Install Docker Desktop with Compose.

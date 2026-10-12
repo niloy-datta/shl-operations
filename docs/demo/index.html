@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#101e32" />
+    <meta name="description" content="A static visual preview of the SHL Operations workspace." />
+    <title>SHL Operations — Preview</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./demo.js" defer></script>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar" aria-label="Main navigation">
+        <a class="brand" href="#overview" aria-label="SHL Operations overview">SHL<span>.</span></a>
+        <div class="workspace-label">OPERATIONS OS <span>PREVIEW</span></div>
+        <p class="nav-heading">WORKSPACE</p>
+        <nav class="nav-list" aria-label="Workspace sections">
+          <button class="nav-item selected" data-view="overview"><span aria-hidden="true">▦</span>Overview</button>
+          <button class="nav-item" data-view="customers"><span aria-hidden="true">♙</span>Customers</button>
+          <button class="nav-item" data-view="suppliers"><span aria-hidden="true">◇</span>Suppliers</button>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="preview-avatar" aria-hidden="true">P</div>
+          <div><strong>Preview mode</strong><small>Static demo</small></div>
+        </div>
+      </aside>
+
+      <main class="main-area">
+        <header class="topbar">
+          <div><span>Workspace</span><b>/</b><span id="crumb">Overview</span></div>
+          <a class="repo-link" href="https://github.com/niloy-datta/shl-operations" target="_blank" rel="noreferrer">View source <span aria-hidden="true">↗</span></a>
+        </header>
+
+        <div class="content">
+          <div class="preview-banner"><span class="status-dot" aria-hidden="true"></span><span><strong>STATIC PREVIEW</strong> · Read only · No sign-in or data storage</span></div>
+          <section class="page-heading" aria-labelledby="page-title">
+            <div>
+              <p class="eyebrow">SHL INTERNATIONAL <span>·</span> OPERATIONS</p>
+              <h1 id="page-title">Overview</h1>
+              <p class="muted" id="page-subtitle">Your operations, in one place.</p>
+            </div>
+            <button class="primary" disabled title="Record management is available in the full application">+ Add record</button>
+          </section>
+
+          <section class="metric-grid" aria-label="Workspace record counts">
+            <article class="metric"><div class="metric-head">CUSTOMERS <span class="metric-icon" aria-hidden="true">♙</span></div><strong>0</strong><small>No records in this preview</small></article>
+            <article class="metric"><div class="metric-head">SUPPLIERS <span class="metric-icon" aria-hidden="true">◇</span></div><strong>0</strong><small>No records in this preview</small></article>
+          </section>
+
+          <section class="panel empty-panel" aria-live="polite">
+            <div class="panel-icon" aria-hidden="true">↗</div>
+            <div class="panel-copy">
+              <p class="eyebrow" id="panel-eyebrow">GET STARTED</p>
+              <h2 id="panel-title">Build your network</h2>
+              <p class="muted" id="panel-copy">Add customers and suppliers in the full application to organize SHL relationships. This GitHub Pages preview is not connected to the application database.</p>
+              <p class="empty-note"><span aria-hidden="true">◇</span> No sample records are shown.</p>
+            </div>
+          </section>
+
+          <footer class="site-footer">SHL Operations OS <span>·</span> Static interface preview. No API, authentication, or persistent storage is connected.</footer>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
