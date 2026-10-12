@@ -85,7 +85,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .section-head h2, .surface h2 { color: #192d46; font-size: 19px; font-weight: 800; letter-spacing: -.5px; margin: 0; }
 .subtle-button { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; padding: 9px 12px; color: #577087; background: #fff; border: 1px solid #e5ebf2; border-radius: 8px; }
 .subtle-button:hover, .outline-icon:hover { border-color: #b6dcd4; color: var(--accent-deep); }
-.metric-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
 .metric, .surface { background: var(--surface); border: 1px solid var(--line); box-shadow: 0 6px 28px #15324e05; border-radius: 14px; }
 .metric { padding: 23px 26px 22px; min-width: 0; position: relative; }
 .metric:before { content: ""; position: absolute; left: 26px; right: 26px; bottom: 0; height: 2px; background: linear-gradient(90deg, #46dcb7, transparent); }
@@ -273,3 +273,10 @@ body{background:radial-gradient(ellipse 65% 25% at 90% 0%,#e1f8f1 0%,transparent
 .data-link:focus-visible,.nav-item:focus-visible{outline:3px solid #3ed9bc;outline-offset:2px}
 @media(max-width:700px){.sidebar{border-right:0;border-bottom:1px solid #1a3a4f}.topbar{backdrop-filter:none}.metric:hover,.quick-action:hover,.primary:hover:not(:disabled),.hero-button:hover{transform:none}}
 @media(prefers-reduced-motion:reduce){.metric,.quick-action,.outline-icon,.primary,.hero-button{transition:none!important}}
+
+/* Trading desk entry in the main workspace */
+.nav-item.live { color: #fff; }
+.live-module { margin-left: auto; padding: 4px 6px; color: #42d5b2; background: #1d594e; border-radius: 4px; letter-spacing: .5px; font-size: 9px; font-weight: 800; }
+.quick-panel a.quick-action { text-decoration: none; }
+@media (max-width: 1180px) { .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .metric-grid { grid-template-columns: 1fr; } }
