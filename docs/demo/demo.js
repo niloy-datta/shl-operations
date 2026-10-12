@@ -5,6 +5,7 @@ const sections = {
     description: "Keep every customer relationship organized and accessible.",
     empty: "Customer records are stored only by the authenticated application. This public preview does not fetch or display them."
   },
+  rfqs: { label: "RFQ & Sourcing" },
   suppliers: {
     label: "Suppliers",
     description: "Keep every supplier relationship organized and accessible.",
@@ -14,6 +15,7 @@ const sections = {
 
 const overview = document.querySelector("#overview");
 const directory = document.querySelector("#directory");
+const rfqs = document.querySelector("#rfqs");
 const navItems = [...document.querySelectorAll("[data-view]")];
 
 function showView(name) {
@@ -35,11 +37,12 @@ function showView(name) {
   });
 
   overview.hidden = name !== "overview";
-  directory.hidden = name === "overview";
+  directory.hidden = name !== "customers" && name !== "suppliers";
+  rfqs.hidden = name !== "rfqs";
   document.querySelector("#crumb").textContent = target.label;
   document.title = "SHL Operations OS — " + target.label + " preview";
 
-  if (name !== "overview") {
+  if (name === "customers" || name === "suppliers") {
     document.querySelector("#directory-category").textContent = target.label.toUpperCase();
     document.querySelector("#directory-title").replaceChildren(document.createTextNode(target.label), (() => {
       const dot = document.createElement("span");
