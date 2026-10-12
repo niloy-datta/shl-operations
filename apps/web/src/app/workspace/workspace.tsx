@@ -96,7 +96,10 @@ export function Workspace() {
     }
   }, [page, router, search, view]);
 
-  useEffect(() => { void load(); return () => { requestCounter.current += 1; }; }, [load]);
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => { void load(); });
+    return () => { window.cancelAnimationFrame(frame); requestCounter.current += 1; };
+  }, [load]);
 
   useEffect(() => {
     if (!formOpen) return;
