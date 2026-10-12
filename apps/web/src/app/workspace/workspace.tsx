@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type Contact = {
   id: string;
@@ -12,7 +13,7 @@ type Contact = {
   createdAt: string;
 };
 type ContactPage = { content: Contact[]; totalElements: number; totalPages: number };
-type Totals = { customers: number; suppliers: number };
+type Totals = { customers: number; suppliers: number; rfqs: number };
 type View = "overview" | "customers" | "suppliers";
 type IconName = "grid" | "users" | "building" | "arrow" | "plus" | "search" | "refresh" |
   "logout" | "edit" | "download" | "check" | "lock" | "layers" | "package" | "ship" | "chart" | "close";
@@ -23,7 +24,6 @@ const primaryViews: { key: View; label: string; icon: IconName }[] = [
   { key: "suppliers", label: "Suppliers", icon: "building" }
 ];
 const futureViews: { label: string; icon: IconName }[] = [
-  { label: "Sales & RFQs", icon: "layers" },
   { label: "Procurement", icon: "package" },
   { label: "Shipments", icon: "ship" },
   { label: "Finance", icon: "chart" }
@@ -188,6 +188,8 @@ export function Workspace() {
         {primaryViews.map(item => <button key={item.key} type="button" aria-current={view === item.key ? "page" : undefined}
           className={["nav-item", view === item.key ? "selected" : ""].join(" ")} onClick={() => navigate(item.key)}>
           <Icon name={item.icon} /><span>{item.label}</span>{view === item.key && <span className="active-indicator" />}</button>)}
+        <p className="nav-heading future-heading">TRADING OPERATIONS</p>
+        <Link href="/workspace/rfqs" className="nav-item"><Icon name="layers" /><span>RFQ &amp; Sourcing</span><small className="live-module">LIVE</small></Link>
         <p className="nav-heading future-heading">COMING NEXT</p>
         {futureViews.map(item => <div key={item.label} className="nav-item nav-planned" title="Planned for a future release">
           <Icon name={item.icon} /><span>{item.label}</span><small>SOON</small></div>)}
@@ -221,6 +223,7 @@ export function Workspace() {
             <Metric label="Total relationships" value={totals ? totalRelationships : null} icon="layers" detail="Customers + suppliers" loading={loading} />
             <Metric label="Customers" value={totals?.customers ?? null} icon="users" detail="In your customer directory" loading={loading} />
             <Metric label="Suppliers" value={totals?.suppliers ?? null} icon="building" detail="In your supplier directory" loading={loading} />
+            <Metric label="RFQ pipeline" value={totals?.rfqs ?? null} icon="layers" detail="Saved sourcing requests" loading={loading} />
           </div>
           {error && <ErrorNotice message={error} retry={() => void load()} />}
           <div className="overview-columns">
@@ -236,6 +239,7 @@ export function Workspace() {
             <section className="surface quick-panel"><div className="surface-top"><div><p className="section-overline">QUICK ACTIONS</p><h2>Keep work moving</h2></div></div>
               <button className="quick-action" onClick={() => navigate("customers")}><div className="quick-icon"><Icon name="users" /></div><div><strong>Customer directory</strong><small>Search and manage customer records</small></div><Icon name="arrow" size={17} /></button>
               <button className="quick-action" onClick={() => navigate("suppliers")}><div className="quick-icon teal"><Icon name="building" /></div><div><strong>Supplier directory</strong><small>Maintain your trading network</small></div><Icon name="arrow" size={17} /></button>
+              <Link href="/workspace/rfqs" className="quick-action"><div className="quick-icon teal"><Icon name="layers" /></div><div><strong>RFQ &amp; sourcing desk</strong><small>Capture inquiries and compare supplier offers</small></div><Icon name="arrow" size={17} /></Link>
             </section>
           </div>
           <div className="footnote"><Icon name="check" size={15} /> Figures are sourced from the application database. No sample metrics are displayed.</div>
