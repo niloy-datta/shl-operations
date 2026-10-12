@@ -1,44 +1,59 @@
-const copy = {
-  overview: {
-    title: "Overview",
-    subtitle: "Your operations, in one place.",
-    eyebrow: "GET STARTED",
-    panelTitle: "Build your network",
-    panelCopy: "Add customers and suppliers in the full application to organize SHL relationships. This GitHub Pages preview is not connected to the application database."
-  },
+const sections = {
+  overview: { label: "Overview" },
   customers: {
-    title: "Customers",
-    subtitle: "A preview of the customer directory.",
-    eyebrow: "CUSTOMER DIRECTORY",
-    panelTitle: "No customer records",
-    panelCopy: "Customer records will appear here when the full application is connected to a database. This static preview does not load or save records."
+    label: "Customers",
+    description: "Keep every customer relationship organized and accessible.",
+    empty: "Customer records are stored only by the authenticated application. This public preview does not fetch or display them."
   },
   suppliers: {
-    title: "Suppliers",
-    subtitle: "A preview of the supplier directory.",
-    eyebrow: "SUPPLIER DIRECTORY",
-    panelTitle: "No supplier records",
-    panelCopy: "Supplier records will appear here when the full application is connected to a database. This static preview does not load or save records."
+    label: "Suppliers",
+    description: "Keep every supplier relationship organized and accessible.",
+    empty: "Supplier records are stored only by the authenticated application. This public preview does not fetch or display them."
   }
 };
 
+const overview = document.querySelector("#overview");
+const directory = document.querySelector("#directory");
 const navItems = [...document.querySelectorAll("[data-view]")];
-for (const item of navItems) {
-  item.addEventListener("click", () => {
-    const view = item.dataset.view;
-    const content = copy[view];
-    if (!content) return;
-    navItems.forEach((navItem) => {
-      const selected = navItem === item;
-      navItem.classList.toggle("selected", selected);
-      navItem.setAttribute("aria-current", selected ? "page" : "false");
-    });
-    document.title = `SHL Operations — ${content.title} preview`;
-    document.querySelector("#crumb").textContent = content.title;
-    document.querySelector("#page-title").textContent = content.title;
-    document.querySelector("#page-subtitle").textContent = content.subtitle;
-    document.querySelector("#panel-eyebrow").textContent = content.eyebrow;
-    document.querySelector("#panel-title").textContent = content.panelTitle;
-    document.querySelector("#panel-copy").textContent = content.panelCopy;
+
+function showView(name) {
+  const target = sections[name];
+  if (!target) return;
+
+  navItems.forEach((item) => {
+    const active = item.dataset.view === name;
+    item.classList.toggle("selected", active);
+    if (active) item.setAttribute("aria-current", "page");
+    else item.removeAttribute("aria-current");
+    const indicator = item.querySelector(".active-indicator");
+    if (indicator) indicator.remove();
+    if (active) {
+      const dot = document.createElement("span");
+      dot.className = "active-indicator";
+      item.append(dot);
+    }
   });
+
+  overview.hidden = name !== "overview";
+  directory.hidden = name === "overview";
+  document.querySelector("#crumb").textContent = target.label;
+  document.title = "SHL Operations OS — " + target.label + " preview";
+
+  if (name !== "overview") {
+    document.querySelector("#directory-category").textContent = target.label.toUpperCase();
+    document.querySelector("#directory-title").replaceChildren(document.createTextNode(target.label), (() => {
+      const dot = document.createElement("span");
+      dot.textContent = ".";
+      return dot;
+    })());
+    document.querySelector("#directory-subtitle").textContent = target.description;
+    document.querySelector("#table-heading").textContent = target.label + " directory";
+    document.querySelector("#directory-empty").textContent = target.empty;
+  }
+
+  window.scrollTo({ top: 0, behavior: "auto" });
 }
+
+document.querySelectorAll("[data-view], [data-go]").forEach((button) => {
+  button.addEventListener("click", () => showView(button.dataset.view || button.dataset.go));
+});

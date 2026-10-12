@@ -21,7 +21,12 @@ The PostgreSQL volume persists records between restarts. To rerun checks in an e
 
 - Admin sign in, encrypted HTTP only browser session, internal REST API authorization.
 - PostgreSQL migrations, customer and supplier create/list/search, pagination, live dashboard totals.
-- Responsive workspace and empty, loading, error states.
+- Responsive, redesigned Operations OS workspace with customer, supplier, and total relationship KPI cards sourced from the database.
+- Searchable, paginated customer and supplier directories with create **and edit** forms, loading, error, and empty states.
+- Contact editing uses authenticated same-origin `PUT /api/data/{resource}/{id}` proxy routes; the API enforces the existing ADMIN role and validates request data.
+- Export the **currently displayed directory page** to CSV (not a full-directory export); leading spreadsheet formula characters are neutralized.
+- Updated read-only static visual preview in `docs/demo` with no fictional counts, sample records, API calls, or storage.
+- Sales/RFQs, procurement, shipments, and finance are clearly labelled as planned, **not implemented**.
 - No fabricated business metrics or sample records.
 
 ## Boundaries
