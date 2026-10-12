@@ -1,10 +1,10 @@
-# SHL Operations OS — first development milestone
+# SHL Operations OS — private business operating system
 
 Independent internal application. The existing `shl-global` website is untouched.
 
 ## Static GitHub Pages preview
 
-The read-only visual demo is in [`docs/demo`](docs/demo) and is published from a separate, public static-only repository so this application repository can stay private. It does not run the Next.js app, authenticate users, connect to the API, or store records. It contains no sample customer or supplier data. The full application still requires its Docker services and database.
+The read-only visual demo is in [`docs/demo`](docs/demo) and is published from a separate, public static-only repository so this application repository can stay private. It does not run the Next.js app, authenticate users, connect to the API, or store records. It contains no customer, supplier, RFQ or pricing data. The full application still requires its Docker services and database.
 
 GitHub Pages sites are publicly accessible. See [the preview](https://niloy-datta.github.io/shl-operations-preview/) for the static interface demo.
 
@@ -17,20 +17,22 @@ GitHub Pages sites are publicly accessible. See [the preview](https://niloy-datt
 
 The PostgreSQL volume persists records between restarts. To rerun checks in an environment with Docker, run `docker compose run --rm api mvn test` only in a build image with Maven, or `cd apps/api && mvn test` with Java 25 and Maven installed. For the web, run `cd apps/web && npm install && npm run typecheck && npm run lint && npm run build`.
 
-## Implemented scope (runtime verification pending)
+## Implemented in the current development milestone
 
 - Admin sign in, encrypted HTTP only browser session, internal REST API authorization.
 - PostgreSQL migrations, customer and supplier create/list/search, pagination, live dashboard totals.
-- Responsive, redesigned Operations OS workspace with customer, supplier, and total relationship KPI cards sourced from the database.
+- Responsive operations dashboard with real customer, supplier, RFQ, and total relationship KPI cards sourced from PostgreSQL.
 - Searchable, paginated customer and supplier directories with create **and edit** forms, loading, error, and empty states.
 - Contact editing uses authenticated same-origin `PUT /api/data/{resource}/{id}` proxy routes; the API enforces the existing ADMIN role and validates request data.
 - Export the **currently displayed directory page** to CSV (not a full-directory export); leading spreadsheet formula characters are neutralized.
 - Updated read-only static visual preview in `docs/demo` with no fictional counts, sample records, API calls, or storage.
-- Sales/RFQs, procurement, shipments, and finance are clearly labelled as planned, **not implemented**.
+- RFQ sourcing desk at `/workspace/rfqs`: customer-linked inquiries, supplier offer comparison (price/MOQ/lead time), guarded RFQ status changes and RFQ activity history.
+- PostgreSQL Flyway V2 migration and transactional sourcing API; RFQ lifecycle tested using PostgreSQL Testcontainers.
+- Procurement, shipments, outgoing customer quotations, financial ledgers, commissions and staff-wide RBAC/MFA remain **planned, not implemented**.
 - No fabricated business metrics or sample records.
 
 ## Boundaries
 
 This is a **local first milestone**, not a production release. The initial account is bootstrapped only if `staff_users` is empty; changing the environment password later does not rotate the database password. A privileged operator must manage account rotation directly until staff management is implemented. The API is private inside Compose, while only the web interface is exposed on loopback. The app uses a short lived encrypted credential session; later replace this with full staff identity management, individual access roles, MFA, audit events, and secure production deployment. Do not use real company data yet.
 
-Current machine check: Node 24 and Java 21 are present; Java 25, Maven, Docker and package registry access were unavailable, so build/runtime validation was not possible here. See [architecture](docs/architecture.md) and [website integration](docs/website-integration.md).
+GitHub Actions checks run Node 24 with typecheck/lint/build, and Java 25 with Maven verify / PostgreSQL Testcontainers. This is CI verification, not a production deployment or complete security review. See [boudi-aligned execution blueprint](docs/operations-v3-roadmap.md), [architecture](docs/architecture.md) and [website integration](docs/website-integration.md).
