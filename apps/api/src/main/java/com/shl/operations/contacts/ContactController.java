@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -17,8 +18,9 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class ContactController {
     private final CustomerRepository customers;
     private final SupplierRepository suppliers;
-    public ContactController(CustomerRepository customers, SupplierRepository suppliers) {
-        this.customers = customers; this.suppliers = suppliers;
+    private final JdbcTemplate db;
+    public ContactController(CustomerRepository customers, SupplierRepository suppliers, JdbcTemplate db) {
+        this.customers = customers; this.suppliers = suppliers; this.db = db;
     }
     private PageRequest page(int index, int size) {
         return PageRequest.of(Math.max(0, index), Math.min(100, Math.max(1, size)), Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -48,6 +50,7 @@ public class ContactController {
         saved.update(input); return saved;
     }
     @GetMapping("/dashboard") public Map<String, Long> dashboard() {
-        return Map.of("customers", customers.count(), "suppliers", suppliers.count());
+        return Map.of("customers", customers.count(), "suppliers", suppliers.count(),
+            "rfqs", db.queryForObject("SELECT count(*) FROM rfqs", Long.class));
     }
 }
