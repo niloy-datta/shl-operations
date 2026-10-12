@@ -261,7 +261,7 @@ export function Workspace() {
                 <td>{new Date(item.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
                 <td><button className="edit-button" onClick={() => openEdit(item)}><Icon name="edit" size={14} /> Edit</button></td></tr>)}</tbody></table>
               {loading && <div className="table-state" role="status"><span className="loading-spinner" /> Loading records…</div>}
-              {!loading && data.content.length === 0 && <div className="empty"><div className="empty-illustration"><Icon name={view === "customers" ? "users" : "building"} size={30} /></div>
+              {!loading && !error && data.content.length === 0 && <div className="empty"><div className="empty-illustration"><Icon name={view === "customers" ? "users" : "building"} size={30} /></div>
                 <h3>{search ? "No matching records" : "Your directory starts here"}</h3>
                 <p>{search ? "Try another name or clear your search." : "Add your first " + (view === "customers" ? "customer" : "supplier") + " to begin building your network."}</p>
                 {!search && <button className="primary" onClick={openCreate}><Icon name="plus" size={16} /> Add first record</button>}</div>}</div>
@@ -280,7 +280,7 @@ export function Workspace() {
           <p className="muted">Keep your contact information up to date.</p></div>
           <button className="close" type="button" disabled={saving} onClick={() => setFormOpen(false)} aria-label="Close dialog"><Icon name="close" /></button></div>
         <form key={editing?.id ?? "new"} onSubmit={saveContact} className="stack">
-          <label>Name <span>*</span><input name="name" required maxLength={160} autoFocus defaultValue={editing?.name ?? ""} placeholder="Company or contact name" /></label>
+          <label>Name *<input name="name" required maxLength={160} autoFocus defaultValue={editing?.name ?? ""} placeholder="Company or contact name" /></label>
           <label>Email<input name="email" type="email" maxLength={254} defaultValue={editing?.email ?? ""} placeholder="name@company.com" /></label>
           <label>Phone<input name="phone" maxLength={60} defaultValue={editing?.phone ?? ""} placeholder="+1 555 000 0000" /></label>
           <label>Country<input name="country" maxLength={100} defaultValue={editing?.country ?? ""} placeholder="Country" /></label>
