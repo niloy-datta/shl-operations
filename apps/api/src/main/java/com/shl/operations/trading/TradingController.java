@@ -104,8 +104,9 @@ public class TradingController {
         Map<String, Long> counts = new LinkedHashMap<>();
         counts.put("total", db.queryForObject("SELECT count(*) FROM rfqs", Long.class));
         for (String state : List.of("NEW", "SOURCING", "READY_FOR_QUOTE", "CLOSED")) counts.put(state, 0L);
-        db.query("SELECT status, count(*) AS total FROM rfqs GROUP BY status",
-            rs -> counts.put(rs.getString("status"), rs.getLong("total")));
+        for (Map<String, Object> row : db.queryForList("SELECT status, count(*) AS total FROM rfqs GROUP BY status")) {
+            counts.put((String) row.get("status"), ((Number) row.get("total")).longValue());
+        }
         return counts;
     }
     @GetMapping("/{id}")
