@@ -102,9 +102,9 @@ async function api<T>(path: string, options?: RequestInit): Promise<T> {
 const send = <T,>(path:string, method:"POST"|"PATCH", payload:Row) => api<T>(path,{
   method,headers:{"content-type":"application/json"},body:JSON.stringify(payload)
 });
-function statuses(module:Module,row:Row,role:string): string[] {
+function statuses(currentModule:Module,row:Row,role:string): string[] {
   const state=String(row.status??"");
-  switch(module) {
+  switch(currentModule) {
     case "quotes": return state==="DRAFT"?["SUBMITTED"]:
       state==="SUBMITTED" && ["ADMIN","MANAGEMENT"].includes(role)?["APPROVED","REJECTED"]:[];
     case "orders": return state==="DRAFT"?["CONFIRMED","CANCELLED"]:
@@ -141,9 +141,9 @@ function Select({name,label,options,required=true,onChange,placeholder="Select r
       {options.map(item=><option key={item.id} value={item.id}>{item.text}</option>)}
     </select></FormField>;
 }
-export function EnterpriseDesk({module:moduleName}:{module:string}) {
-  const module = moduleName as Module;
-  const config=moduleConfig[module];
+export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}) {
+  const currentModule = moduleName as Module;
+  const config=moduleConfig[currentModule];
   const router=useRouter();
   const [user,setUser]=useState<User|null>(null);
   const [page,setPage]=useState(0);
@@ -178,14 +178,14 @@ export function EnterpriseDesk({module:moduleName}:{module:string}) {
     if(config.search) qp.set("q",term);
     Promise.all([
       api<Page>(config.endpoint+"?"+qp.toString()),
-      module==="invoices"?api<Row>("finance/summary"):Promise.resolve(null)
+      currentModule==="invoices"?api<Row>("finance/summary"):Promise.resolve(null)
     ]).then(([items,stats])=>{
       if(!live)return;
       setList(items);setSummary(stats);setError("");
     }).catch(e=>{if(live)setError(e instanceof Error?e.message:"Unable to load records");})
       .finally(()=>{if(live)setLoading(false);});
     return ()=>{live=false;cancelAnimationFrame(frame);};
-  },[user,config,module,page,term,tick]);
+  },[user,config,currentModule,page,term,tick]);
 
   async function logout() {
     await fetch("/api/auth/logout",{method:"POST"});
@@ -204,7 +204,7 @@ export function EnterpriseDesk({module:moduleName}:{module:string}) {
       shipments:"logistics/shipments?size=100",staff:"staff/options"
     };
     try {
-      const keys=requirements[module];
+      const keys=requirements[currentModule];
       const results=await Promise.all(keys.map(async key=>{
         const response=await api<Page|Row[]>(requests[key]);
         return [key,Array.isArray(response)?response:response.content] as const;
@@ -214,7 +214,7 @@ export function EnterpriseDesk({module:moduleName}:{module:string}) {
   }
   async function selectOrder(id:string) {
     setChosenOrder(id);
-    if (module!=="purchase-orders") return;
+    if (currentModule!=="purchase-orders") return;
     const order=refs.orders?.find(item=>asText(item.id)===id);
     if(!order)return;
     try {
@@ -228,8 +228,8 @@ export function EnterpriseDesk({module:moduleName}:{module:string}) {
   async function showDetails(row:Row) {
     setActive(row);setModal("details");setDetail([]);
     const id=String(row.id);
-    const route=module==="shipments"?"logistics/shipments/"+id+"/milestones":
-      module==="invoices"?"finance/invoices/"+id+"/payments":null;
+    const route=currentModule==="shipments"?"logistics/shipments/"+id+"/milestones":
+      currentModule==="invoices"?"finance/invoices/"+id+"/payments":null;
     if(route)try{setDetail(await api<Row[]>(route));}catch(e){setError(String(e));}
   }
   async function createRecord(event:FormEvent<HTMLFormElement>) {
@@ -237,18 +237,18 @@ export function EnterpriseDesk({module:moduleName}:{module:string}) {
     const form=new FormData(event.currentTarget);
     const val=(key:string)=>String(form.get(key)??"").trim();
     let payload:Row={};
-    if(module==="quotes") payload={rfqId:val("rfqId"),unitPrice:val("unitPrice"),validUntil:val("validUntil")||null};
-    if(module==="orders") payload={quoteId:val("quoteId")};
-    if(module==="purchase-orders") payload={salesOrderId:val("salesOrderId"),supplierOfferId:val("supplierOfferId"),quantity:val("quantity")};
-    if(module==="shipments") payload={salesOrderId:val("salesOrderId"),purchaseOrderId:val("purchaseOrderId")||null,
+    if(currentModule==="quotes") payload={rfqId:val("rfqId"),unitPrice:val("unitPrice"),validUntil:val("validUntil")||null};
+    if(currentModule==="orders") payload={quoteId:val("quoteId")};
+    if(currentModule==="purchase-orders") payload={salesOrderId:val("salesOrderId"),supplierOfferId:val("supplierOfferId"),quantity:val("quantity")};
+    if(currentModule==="shipments") payload={salesOrderId:val("salesOrderId"),purchaseOrderId:val("purchaseOrderId")||null,
       origin:val("origin"),destination:val("destination"),carrier:val("carrier")||null,
       trackingNumber:val("trackingNumber")||null,etd:val("etd")||null,eta:val("eta")||null};
-    if(module==="invoices") payload={salesOrderId:val("salesOrderId"),purchaseOrderId:val("purchaseOrderId")||null,
+    if(currentModule==="invoices") payload={salesOrderId:val("salesOrderId"),purchaseOrderId:val("purchaseOrderId")||null,
       invoiceType:val("invoiceType"),amount:val("amount"),dueDate:val("dueDate")||null};
-    if(module==="tasks") payload={title:val("title"),description:val("description")||null,assigneeId:val("assigneeId"),
+    if(currentModule==="tasks") payload={title:val("title"),description:val("description")||null,assigneeId:val("assigneeId"),
       rfqId:val("rfqId")||null,salesOrderId:val("salesOrderId")||null,shipmentId:val("shipmentId")||null,
       dueDate:val("dueDate")||null,priority:val("priority")};
-    if(module==="staff") payload={username:val("username"),password:val("password"),role:val("role")};
+    if(currentModule==="staff") payload={username:val("username"),password:val("password"),role:val("role")};
     try {
       await send<Row>(config.endpoint,"POST",payload);
       setModal(null);setNotice("Record created successfully.");setPage(0);refresh();
@@ -294,12 +294,12 @@ export function EnterpriseDesk({module:moduleName}:{module:string}) {
   const allowed=user && config.roles.includes(user.role);
   const total=list.totalElements;
   const orderChoices=(refs.orders??[]).filter(item=>!["DRAFT","CANCELLED"].includes(String(item.status)));
-  const poChoices=(refs["purchase-orders"]??[]).filter(item=>item.sales_order_id===chosenOrder || module==="invoices");
+  const poChoices=(refs["purchase-orders"]??[]).filter(item=>item.sales_order_id===chosenOrder || currentModule==="invoices");
   const selectOptions=(rows:Row[],field="reference",extra="")=>rows.map(row=>({
     id:String(row.id),text:String(row[field]??row.id)+(extra && row[extra]?" · "+row[extra]:"")
   }));
   const renderFields=()=>{
-    switch(module) {
+    switch(currentModule) {
       case "quotes":return <>
         <Select name="rfqId" label="RFQ ready for quotation" options={selectOptions((refs.rfqs??[]).filter(r=>r.status==="READY_FOR_QUOTE"),"reference","subject")} />
         <FormField name="unitPrice" label="Customer unit selling price" type="number" required />
@@ -374,9 +374,9 @@ export function EnterpriseDesk({module:moduleName}:{module:string}) {
       <div className="en-edition"><span className="en-dot" /> OPERATIONS OS <span>ENTERPRISE</span></div>
       <div className="en-nav-scroll"><p className="en-nav-label">OPERATIONS WORKSPACE</p>
         <nav aria-label="Business modules">{nav.filter(item=>!item.roles||!user||item.roles.includes(user.role)).map(item=>
-          <Link key={item.url} href={item.url} className={"en-nav-item "+(item.url.endsWith("/"+module)?"active":"")}>
+          <Link key={item.url} href={item.url} className={"en-nav-item "+(item.url.endsWith("/"+currentModule)?"active":"")}>
             <span className="en-nav-symbol">{item.symbol}</span><span>{item.label}</span>
-            {item.url.endsWith("/"+module)&&<span className="en-current-dot"/>}
+            {item.url.endsWith("/"+currentModule)&&<span className="en-current-dot"/>}
           </Link>)}</nav></div>
       <div className="en-sidebar-bottom">
         <div className="en-private">◈ &nbsp; Private business workspace</div>
@@ -392,11 +392,11 @@ export function EnterpriseDesk({module:moduleName}:{module:string}) {
       <main className="en-content">
         <div className="en-heading"><div><p className="en-eyebrow">SHL INTERNATIONAL <span>/</span> ENTERPRISE WORKFLOWS</p>
           <h1>{config.name}<span>.</span></h1><p>{config.subtitle}</p></div>
-          {allowed && config.create && (module!=="staff"||user?.role==="ADMIN") &&
+          {allowed && config.create && (currentModule!=="staff"||user?.role==="ADMIN") &&
             <button className="en-primary" onClick={()=>void openCreate()}><span>＋</span> {config.create}</button>}</div>
         {!user && !error ? <div className="en-panel en-loading">Checking workspace permissions…</div> :
         !allowed ? <div className="en-panel en-restricted"><span>◇</span><h2>Access restricted</h2>
-          <p>Your account does not have access to this module. Contact an administrator if your responsibilities require it.</p>
+          <p>Your account does not have access to this currentModule. Contact an administrator if your responsibilities require it.</p>
           <Link href="/workspace">Return to dashboard →</Link></div> :
         <>
           <div className="en-intro">
@@ -410,7 +410,7 @@ export function EnterpriseDesk({module:moduleName}:{module:string}) {
           <div className="en-metrics"><div className="en-metric"><span>RECORDS IN MODULE</span><strong>{loading?"—":total.toLocaleString()}</strong><small>From secure database</small></div>
             <div className="en-metric"><span>WORKFLOW</span><strong className="en-metric-label">Linked</strong><small>All writes are validated by the API</small></div>
             <div className="en-metric"><span>ACCESS LEVEL</span><strong className="en-metric-label">{user?.role}</strong><small>Server-enforced permissions</small></div></div>
-          {module==="invoices" && summary && <div className="en-finance-summary">
+          {currentModule==="invoices" && summary && <div className="en-finance-summary">
             <h2>Finance by currency</h2><p>Issued invoices only. No currencies are combined or converted.</p>
             {(["receivables","payables"] as const).map(type=><div key={type}><strong>{type==="receivables"?"Receivables":"Payables"}</strong>
               {((summary[type] as Row[])??[]).length===0?<span>No issued invoices</span>:
@@ -429,8 +429,8 @@ export function EnterpriseDesk({module:moduleName}:{module:string}) {
                   <RowBadge value={record[col.key]}/>:
                   <span className={["reference","title","username"].includes(col.key)?"en-strong":""}>{pretty(record[col.key],col.key)}</span>}</td>)}
                 <td><button className="en-action" onClick={()=>void showDetails(record)}>Details ↗</button>
-                  {module==="staff"&&<button className="en-action" onClick={()=>{setActive(record);setModal("access");}}>Access</button>}
-                  {module==="invoices"&&record.status==="ISSUED"&&<button className="en-action" onClick={()=>{setActive(record);setModal("payment");}}>Pay</button>}
+                  {currentModule==="staff"&&<button className="en-action" onClick={()=>{setActive(record);setModal("access");}}>Access</button>}
+                  {currentModule==="invoices"&&record.status==="ISSUED"&&<button className="en-action" onClick={()=>{setActive(record);setModal("payment");}}>Pay</button>}
                 </td></tr>)}</tbody></table>
               {loading&&<div className="en-table-empty">Loading your records…</div>}
               {!loading && list.content.length===0&&<div className="en-table-empty"><span>◇</span><h3>No records found</h3>
@@ -472,14 +472,14 @@ export function EnterpriseDesk({module:moduleName}:{module:string}) {
         {modal==="details"&&active&&<div className="en-details">
           <dl>{Object.entries(active).filter(([key])=>key!=="password_hash").map(([key,value])=><div key={key}>
             <dt>{key.replaceAll("_"," ")}</dt><dd>{pretty(value,key)}</dd></div>)}</dl>
-          {detail.length>0&&<section className="en-timeline"><h3>{module==="shipments"?"Shipment milestones":"Recorded payments"}</h3>
+          {detail.length>0&&<section className="en-timeline"><h3>{currentModule==="shipments"?"Shipment milestones":"Recorded payments"}</h3>
             {detail.map((item,i)=><div key={i}>{Object.entries(item).filter(([key])=>key!=="id").map(([key,value])=>
               <p key={key}><strong>{key.replaceAll("_"," ")}:</strong> {pretty(value,key)}</p>)}</div>)}</section>}
-          {statuses(module,active,user?.role??"").length>0&&<div className="en-transitions"><h3>Available actions</h3>
-            {statuses(module,active,user?.role??"").map(status=><button key={status} disabled={busy}
+          {statuses(currentModule,active,user?.role??"").length>0&&<div className="en-transitions"><h3>Available actions</h3>
+            {statuses(currentModule,active,user?.role??"").map(status=><button key={status} disabled={busy}
               onClick={()=>void changeStatus(active,status)}>{titles[status]??status} →</button>)}</div>}
-          {module==="invoices"&&active.status==="ISSUED"&&<button className="en-primary" onClick={()=>setModal("payment")}>Record payment →</button>}
-          {module==="staff"&&<button className="en-primary" onClick={()=>setModal("access")}>Edit staff access →</button>}
+          {currentModule==="invoices"&&active.status==="ISSUED"&&<button className="en-primary" onClick={()=>setModal("payment")}>Record payment →</button>}
+          {currentModule==="staff"&&<button className="en-primary" onClick={()=>setModal("access")}>Edit staff access →</button>}
           <button className="en-secondary en-detail-close" onClick={()=>setModal(null)}>Close</button>
         </div>}
       </div>
