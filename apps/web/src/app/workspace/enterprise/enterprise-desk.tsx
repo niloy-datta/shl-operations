@@ -64,6 +64,7 @@ const nav: { label: string; url: string; symbol: string; roles?: string[] }[] = 
   {label:"Purchase orders",url:"/workspace/enterprise/purchase-orders",symbol:"⬡",roles:moduleConfig["purchase-orders"].roles},
   {label:"Shipments",url:"/workspace/enterprise/shipments",symbol:"⇢",roles:moduleConfig.shipments.roles},
   {label:"Finance",url:"/workspace/enterprise/invoices",symbol:"▥",roles:moduleConfig.invoices.roles},
+  {label:"Expenses",url:"/workspace/costs/expenses",symbol:"◎",roles:moduleConfig.invoices.roles},
   {label:"Team tasks",url:"/workspace/enterprise/tasks",symbol:"☷",roles:moduleConfig.tasks.roles},
   {label:"Staff",url:"/workspace/enterprise/staff",symbol:"♧",roles:moduleConfig.staff.roles},
   {label:"Audit trail",url:"/workspace/enterprise/audit",symbol:"⊞",roles:moduleConfig.audit.roles},
@@ -154,6 +155,15 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
   const config=moduleConfig[currentModule];
   const router=useRouter();
   const [user,setUser]=useState<User|null>(null);
+  const [commissionAccess,setCommissionAccess]=useState(false);
+  useEffect(()=>{
+    let live=true;
+    fetch("/api/costs/commissions/access",{cache:"no-store"})
+      .then(res=>res.ok?res.json():{allowed:false})
+      .then((x:{allowed:boolean})=>{if(live)setCommissionAccess(x.allowed===true);})
+      .catch(()=>{});
+    return()=>{live=false;};
+  },[]);
   const [page,setPage]=useState(0);
   const [query,setQuery]=useState("");
   const [term,setTerm]=useState("");
@@ -381,7 +391,9 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
       <Link href="/workspace" className="en-brand"><span className="en-logo">S</span><span><strong>SHL<span>.</span></strong><small>INTERNATIONAL</small></span></Link>
       <div className="en-edition"><span className="en-dot" /> OPERATIONS OS <span>ENTERPRISE</span></div>
       <div className="en-nav-scroll"><p className="en-nav-label">OPERATIONS WORKSPACE</p>
-        <nav aria-label="Business modules">{nav.filter(item=>!item.roles||!user||item.roles.includes(user.role)).map(item=>
+        <nav aria-label="Business modules">{nav.filter(item=>!item.roles||!user||item.roles.includes(user.role)).concat(
+          commissionAccess?[{label:"Commission vault",url:"/workspace/costs/commissions",symbol:"◆"}]:[]
+        ).map(item=>
           <Link key={item.url} href={item.url} className={"en-nav-item "+(item.url.endsWith("/"+currentModule)?"active":"")}>
             <span className="en-nav-symbol">{item.symbol}</span><span>{item.label}</span>
             {item.url.endsWith("/"+currentModule)&&<span className="en-current-dot"/>}

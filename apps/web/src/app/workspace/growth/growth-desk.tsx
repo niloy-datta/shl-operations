@@ -180,6 +180,8 @@ export function GrowthDesk({module}:{module:Module}){
             {url:"/workspace/enterprise/orders",label:"Sales orders",symbol:"▣"},
             {url:"/workspace/enterprise/shipments",label:"Shipments",symbol:"⇢"},
             {url:"/workspace/enterprise/tasks",label:"Team tasks",symbol:"☷"},
+            {url:"/workspace/costs/expenses",label:"Expenses",symbol:"◎",
+              roles:["ADMIN","MANAGEMENT","FINANCE"]},
             {url:"/workspace/account",label:"Account security",symbol:"◌"}
           ].filter(x=>!x.roles||!me||x.roles.includes(me.role)).map(x=>
             <Link key={x.url} href={x.url} className={"en-nav-item "+

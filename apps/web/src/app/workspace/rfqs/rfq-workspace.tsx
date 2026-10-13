@@ -181,6 +181,7 @@ export function RfqWorkspace() {
         <Link href="/workspace/enterprise/purchase-orders"><span>⬡</span> Purchase orders</Link>
         <Link href="/workspace/enterprise/shipments"><span>⇢</span> Shipments</Link>
         <Link href="/workspace/enterprise/invoices"><span>▥</span> Finance</Link>
+        <Link href="/workspace/costs/expenses"><span>◎</span> Expenses</Link>
         <Link href="/workspace/enterprise/tasks"><span>☷</span> Team tasks</Link>
         <Link href="/workspace/account"><span>◌</span> My security</Link>
         <Link href="/workspace"><span>♙</span> Customers &amp; Suppliers</Link>
