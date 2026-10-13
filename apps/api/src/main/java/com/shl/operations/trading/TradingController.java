@@ -153,7 +153,7 @@ public class TradingController {
         String status = db.query("SELECT status FROM rfqs WHERE id = ? FOR UPDATE",
             (rs, row) -> rs.getString(1), id).stream().findFirst()
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "RFQ not found"));
-        if ("CLOSED".equals(status)) throw new ResponseStatusException(CONFLICT, "Closed RFQs cannot be modified");
+        if (!"SOURCING".equals(status)) throw new ResponseStatusException(CONFLICT, "Supplier offers can only be edited while sourcing; ready RFQs have frozen offers");
         if (!exists("suppliers", input.supplierId()))
             throw new ResponseStatusException(BAD_REQUEST, "Select an existing supplier");
         db.update("""
