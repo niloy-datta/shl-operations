@@ -254,8 +254,8 @@ export function RfqWorkspace() {
               <div><small>DEADLINE</small><strong>{date(selected.deadline)}</strong></div>
               <div><small>SUPPLIER OFFERS</small><strong>{offers.length}</strong></div></div>
             <div className="desk-offer-header"><div><p className="desk-eyebrow">COMPARISON MATRIX</p><h3>Supplier offers</h3></div>
-              {selected.status !== "CLOSED" && <button onClick={() => { setMessage(""); setShowOffer(true); }}>＋ Add offer</button>}</div>
-            {offers.length === 0 ? <p className="desk-panel-empty">No supplier quotations yet. Add an offer to compare prices, MOQs and lead times.</p> :
+              {selected.status === "SOURCING" && <button onClick={() => { setMessage(""); setShowOffer(true); }}>＋ Add offer</button>}</div>
+            {offers.length === 0 ? <p className="desk-panel-empty">No supplier quotations yet. Start sourcing to add offers; accepted offers are frozen when ready for quote.</p> :
               <div className="desk-offers">{offers.map((o, index) => <article className="desk-offer" key={o.id}>
                 <div><h4>{o.supplierName}</h4>{index === 0 && <span>LOWEST UNIT PRICE</span>}</div>
                 <strong>{money(o.unitPrice, selected.currency)} <small>/ {selected.unit}</small></strong>
