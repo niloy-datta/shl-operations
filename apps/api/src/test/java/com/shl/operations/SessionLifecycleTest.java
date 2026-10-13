@@ -65,11 +65,11 @@ class SessionLifecycleTest {
     void disablingOrChangingRolesRevokesPreviousSessions() {
         Person person=createPerson();
         var first=sessions.login(person.username(),PASSWORD);
-        staff.changeAccess(person.id(),"LOGISTICS",true);
+        staff.changeAccess(person.id(),new StaffController.ChangeAccess("LOGISTICS",true));
         assertThat(sessions.validate(first.token())).isNull();
         var second=sessions.login(person.username(),PASSWORD);
         assertThat(sessions.validate(second.token()).role()).isEqualTo("LOGISTICS");
-        staff.changeAccess(person.id(),"LOGISTICS",false);
+        staff.changeAccess(person.id(),new StaffController.ChangeAccess("LOGISTICS",false));
         assertThat(sessions.validate(second.token())).isNull();
         assertThatThrownBy(()->sessions.login(person.username(),PASSWORD))
             .isInstanceOf(ResponseStatusException.class);
