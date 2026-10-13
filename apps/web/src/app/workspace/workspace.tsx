@@ -158,9 +158,13 @@ export function Workspace() {
   }
 
   async function logout() {
-    try { await fetch("/api/auth/logout", { method: "POST" }); } finally {
+    try {
+      const response = await fetch("/api/auth/logout", { method: "POST" });
+      if (!response.ok) throw new Error("Sign out could not revoke your session. Try again.");
       router.replace("/login");
       router.refresh();
+    } catch {
+      setError("Sign out could not revoke your session. Try again.");
     }
   }
 

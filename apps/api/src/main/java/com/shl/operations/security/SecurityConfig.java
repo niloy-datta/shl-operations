@@ -7,7 +7,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.User;
@@ -16,6 +15,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.config.http.SessionCreationPolicy;
 
 @Configuration
@@ -45,11 +45,13 @@ public class SecurityConfig {
         };
     }
 
-    @Bean SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    @Bean SecurityFilterChain filterChain(HttpSecurity http, BearerSessionFilter sessionFilter) throws Exception {
         return http.csrf(csrf -> csrf.disable())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(a -> a
                 .requestMatchers("/actuator/health").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/sessions").permitAll()
+                .requestMatchers("/api/auth/sessions/**", "/api/auth/sessions", "/api/auth/mfa/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/me").authenticated()
                 
                 .requestMatchers("/api/staff/password", "/api/staff/options").authenticated()
@@ -68,7 +70,12 @@ public class SecurityConfig {
                     .hasAnyRole("ADMIN","MANAGEMENT","BD","SOURCING")
                 .requestMatchers("/api/**").denyAll()
                 .anyRequest().denyAll())
-            .httpBasic(Customizer.withDefaults()).build();
+            .httpBasic(b -> b.disable())
+            .formLogin(f -> f.disable())
+            .exceptionHandling(e -> e.authenticationEntryPoint(
+                (req, res, ex) -> res.sendError(401, "Authentication required")))
+            .addFilterBefore(sessionFilter, UsernamePasswordAuthenticationFilter.class)
+            .build();
     }
 }
 

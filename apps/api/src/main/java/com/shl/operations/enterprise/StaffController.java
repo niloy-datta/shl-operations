@@ -80,6 +80,8 @@ public class StaffController {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,"At least one active admin required");
         }
         db.update("UPDATE staff_users SET role=?,enabled=? WHERE id=?",input.role(),input.enabled(),id);
+        // Permissions change must not leave old role-bearing sessions active.
+        db.update("UPDATE auth_sessions SET revoked_at=now() WHERE staff_id=? AND revoked_at IS NULL",id);
         audit.log("ACCESS_CHANGED","STAFF",id,"Role "+input.role()+", enabled "+input.enabled());
         return db.queryForMap("SELECT id,username,role,enabled,created_at FROM staff_users WHERE id=?",id);
     }
@@ -95,6 +97,7 @@ public class StaffController {
         UUID id=(UUID)me.get("id");
         db.update("UPDATE staff_users SET password_hash=?,password_changed_at=now() WHERE id=?",
             passwords.encode(input.newPassword()),id);
+        db.update("UPDATE auth_sessions SET revoked_at=now() WHERE staff_id=? AND revoked_at IS NULL",id);
         audit.log("PASSWORD_CHANGED","STAFF",id,"Self-service password change");
         return Map.of("ok",true);
     }

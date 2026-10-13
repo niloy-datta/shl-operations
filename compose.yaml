@@ -20,6 +20,7 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD}
+      MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY:-}
     depends_on:
       db:
         condition: service_healthy
@@ -34,7 +35,6 @@ services:
       - "127.0.0.1:3000:3000"
     environment:
       API_INTERNAL_URL: http://api:8080
-      SESSION_KEY: ${SESSION_KEY}
     depends_on:
       api:
         condition: service_healthy
