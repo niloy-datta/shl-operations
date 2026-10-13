@@ -42,6 +42,7 @@ class EnterpriseWorkflowTest {
     @Autowired StaffController staff;
     @Autowired GrowthController growth;
     @Autowired OperationalAlertsController alerts;
+    @Autowired ProjectProfitabilityController profitability;
     @Autowired JdbcTemplate db;
 
     @Test
@@ -105,6 +106,18 @@ class EnterpriseWorkflowTest {
         assertThat((BigDecimal)commerce.getPurchase(poId).get("total_amount"))
             .isEqualByComparingTo(new BigDecimal("10000.00"));
         commerce.purchaseStatus(poId,new CommerceController.StatusInput("ISSUED"));
+        UUID ownerId=db.queryForObject(
+            "SELECT id FROM staff_users WHERE username='test-admin'",UUID.class);
+        UUID linkedProjectId=(UUID)growth.addProject(new GrowthController.ProjectInput(
+            buyer.id,null,salesId,"Linked trading project",null,ownerId,
+            LocalDate.now().plusDays(40))).getBody().get("id");
+        var profitRow=profitability.list("Linked trading project",0,10).content().stream()
+            .filter(record->linkedProjectId.equals(record.get("id")))
+            .findFirst().orElseThrow();
+        assertThat((BigDecimal)profitRow.get("provisional_contribution"))
+            .isEqualByComparingTo(new BigDecimal("5000.00"));
+        assertThat(((String)profitRow.get("currency")).trim()).isEqualTo("USD");
+
 
         UUID shipmentId=(UUID)logistics.create(new LogisticsController.ShipmentInput(
             salesId,poId,"Shanghai, CN","Rotterdam, NL","Carrier X","BILL-TEST",

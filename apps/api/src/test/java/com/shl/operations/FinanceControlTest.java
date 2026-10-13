@@ -38,6 +38,7 @@ class FinanceControlTest {
     @Autowired GrowthController growth;
     @Autowired ExpenseController expenses;
     @Autowired ConfidentialCommissionController commissions;
+    @Autowired ProjectProfitabilityController profitability;
     @Autowired JdbcTemplate db;
 
     private UUID project(){
@@ -66,6 +67,10 @@ class FinanceControlTest {
             projectId,"FREIGHT","Ocean freight",new BigDecimal("240.00"),
             "USD",LocalDate.now())).getBody().get("id");
         assertThat(expenses.get(id).get("status")).isEqualTo("DRAFT");
+        assertThat(profitability.list("Procurement and shipping project",0,20).content())
+            .anyMatch(row->projectId.equals(row.get("id"))
+                && row.get("provisional_contribution")==null);
+
         assertThatThrownBy(()->expenses.status(id,new ExpenseController.Status("APPROVED")))
             .isInstanceOf(ResponseStatusException.class);
         asApprover(()->expenses.status(id,new ExpenseController.Status("APPROVED")));
