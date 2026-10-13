@@ -9,5 +9,5 @@ export default async function EnterpriseModulePage({ params }: { params: Promise
   if (!await sessionAuthorization()) redirect("/login");
   const { module } = await params;
   if (!modules.has(module)) notFound();
-  return <EnterpriseDesk module={module} />;
+  return <EnterpriseDesk currentModule={module} />;
 }
