@@ -11,7 +11,7 @@ GitHub Pages sites are publicly accessible. See [the preview](https://niloy-datt
 ## Run locally
 
 1. Install Docker Desktop with Compose.
-2. Copy `.env.example` to `.env`. Set distinct random database and admin passwords. Sessions use 256-bit random opaque tokens hashed in PostgreSQL; SESSION_KEY is no longer needed. Generate a unique MFA_ENCRYPTION_KEY with `openssl rand -hex 32` before enabling authenticator MFA. Do not commit `.env`. Commission records are visible only to exact existing staff usernames in protected `COMMISSION_AUTHORIZED_USERS`; leave it empty to deny all. This list must be explicitly approved.
+2. Copy `.env.example` to `.env`. Set distinct random database and admin passwords. Sessions use 256-bit random opaque tokens hashed in PostgreSQL; SESSION_KEY is no longer needed. Generate a unique MFA_ENCRYPTION_KEY with `openssl rand -hex 32` before enabling authenticator MFA. Do not commit `.env`. Commission records are visible only to exact case-sensitive existing staff usernames in protected `COMMISSION_AUTHORIZED_USERS`; leave it empty to deny all. This list must be explicitly approved.
 3. Run `docker compose up --build` in this folder.
 4. Open `http://localhost:3000` and sign in with the bootstrap admin credentials.
 

@@ -34,7 +34,7 @@ public class ConfidentialCommissionController {
         this.db=db;this.audit=audit;
         Set<String> names=new HashSet<>();
         for(String member:members.split(",")){
-            String normalized=member.trim().toLowerCase(Locale.ROOT);
+            String normalized=member.trim();
             if(!normalized.isBlank())names.add(normalized);
         }
         this.authorized=Set.copyOf(names);
@@ -49,7 +49,7 @@ public class ConfidentialCommissionController {
     public record Status(@NotBlank String status) {}
 
     private void requireAccess(){
-        if(!authorized.contains(audit.actor().toLowerCase(Locale.ROOT)))
+        if(!authorized.contains(audit.actor()))
             throw new ResponseStatusException(FORBIDDEN,"Explicit commission authorization required");
     }
     private void require(boolean check,String message){
@@ -67,7 +67,7 @@ public class ConfidentialCommissionController {
     }
     @GetMapping("/access")
     public Map<String,Boolean> access(){
-        return Map.of("allowed",authorized.contains(audit.actor().toLowerCase(Locale.ROOT)));
+        return Map.of("allowed",authorized.contains(audit.actor()));
     }
     @GetMapping
     public Pages.Result list(@RequestParam(defaultValue="") String q,

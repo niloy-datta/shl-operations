@@ -39,7 +39,7 @@
   actions. The UI only shows the link when the access probe returns allowed=true.
 - **No role inherits commission access — not even ADMIN.** To authorize an employee,
   set `COMMISSION_AUTHORIZED_USERS` in a protected deployment environment to a
-  comma-separated list of exact existing staff usernames. Empty means NOBODY.
+  comma-separated list of exact, case-sensitive existing staff usernames. Empty means NOBODY.
   Example placeholder: `COMMISSION_AUTHORIZED_USERS=authorized.user1,authorized.user2`.
   Use real identity-approved usernames only, not example values.
 - Two different explicitly allowed accounts are needed to propose and approve a commission.

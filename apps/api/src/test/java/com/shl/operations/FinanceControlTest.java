@@ -110,6 +110,12 @@ class FinanceControlTest {
                     .isEqualTo(HttpStatus.FORBIDDEN));
             assertThatThrownBy(()->commissions.get(id))
                 .isInstanceOf(ResponseStatusException.class);
+            // SQL staff usernames are case sensitive. Similar casing must not inherit access.
+            ctx.setAuthentication(new UsernamePasswordAuthenticationToken(
+                "TEST-ADMIN",null,List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+            assertThat(commissions.access()).containsEntry("allowed",false);
+            assertThatThrownBy(()->commissions.get(id))
+                .isInstanceOf(ResponseStatusException.class);
         }finally{ctx.setAuthentication(original);}
     }
 }
