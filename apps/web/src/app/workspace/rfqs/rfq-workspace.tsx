@@ -174,6 +174,12 @@ export function RfqWorkspace() {
       <nav aria-label="Business modules" className="desk-nav">
         <Link href="/workspace"><span>▦</span> Overview</Link>
         <div className="desk-active"><span>◫</span> RFQ &amp; Sourcing <i>LIVE</i></div>
+        <Link href="/workspace/enterprise/quotes"><span>◈</span> Customer quotations</Link>
+        <Link href="/workspace/enterprise/orders"><span>▣</span> Sales orders</Link>
+        <Link href="/workspace/enterprise/purchase-orders"><span>⬡</span> Purchase orders</Link>
+        <Link href="/workspace/enterprise/shipments"><span>⇢</span> Shipments</Link>
+        <Link href="/workspace/enterprise/invoices"><span>▥</span> Finance</Link>
+        <Link href="/workspace/enterprise/tasks"><span>☷</span> Team tasks</Link>
         <Link href="/workspace"><span>♙</span> Customers &amp; Suppliers</Link>
       </nav>
       <p className="desk-side-label desk-planned-title">COMING NEXT</p>
@@ -230,7 +236,7 @@ export function RfqWorkspace() {
             <button disabled={page === 0 || loading} onClick={() => setPage(p => Math.max(0, p - 1))}>Previous</button>
             <button disabled={page + 1 >= list.totalPages || loading} onClick={() => setPage(p => p + 1)}>Next</button></div></footer>
         </section>
-        <div className="desk-notice"><span>◇</span> These metrics come from saved RFQ records. Procurement, freight, invoicing, and approvals remain separate planned modules.</div>
+        <div className="desk-notice"><span>◇</span> These figures come from saved RFQ records. Connected purchasing, logistics and finance modules are available to authorized staff.</div>
       </div>
     </main>
 
