@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.security.Principal;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -26,8 +27,15 @@ public class SessionController {
     }
 
     @GetMapping
-    public List<Map<String,Object>> list(Principal principal) {
-        return sessions.list(principal.getName());
+    public List<Map<String,Object>> list(Principal principal,
+        @RequestHeader("Authorization") String authorization) {
+        String token=authorization.startsWith("Bearer ") ? authorization.substring(7) : "";
+        var current=sessions.validate(token);
+        return sessions.list(principal.getName()).stream().map(row -> {
+            Map<String,Object> result=new HashMap<>(row);
+            result.put("current",current!=null && current.sessionId().equals(row.get("id")));
+            return result;
+        }).toList();
     }
 
     @DeleteMapping("/current")
