@@ -174,6 +174,8 @@ export function RfqWorkspace() {
       <nav aria-label="Business modules" className="desk-nav">
         <Link href="/workspace"><span>▦</span> Overview</Link>
         <div className="desk-active"><span>◫</span> RFQ &amp; Sourcing <i>LIVE</i></div>
+        <Link href="/workspace/growth/leads"><span>✧</span> Lead pipeline</Link>
+        <Link href="/workspace/growth/projects"><span>▱</span> Projects &amp; jobs</Link>
         <Link href="/workspace/enterprise/quotes"><span>◈</span> Customer quotations</Link>
         <Link href="/workspace/enterprise/orders"><span>▣</span> Sales orders</Link>
         <Link href="/workspace/enterprise/purchase-orders"><span>⬡</span> Purchase orders</Link>

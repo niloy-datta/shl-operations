@@ -57,6 +57,8 @@ const nav: { label: string; url: string; symbol: string; roles?: string[] }[] = 
   {label:"Customers",url:"/workspace?view=customers",symbol:"♙"},
   {label:"Suppliers",url:"/workspace?view=suppliers",symbol:"◇"},
   {label:"RFQ sourcing",url:"/workspace/rfqs",symbol:"▤"},
+  {label:"Lead pipeline",url:"/workspace/growth/leads",symbol:"✧",roles:["ADMIN","MANAGEMENT","BD"]},
+  {label:"Projects & jobs",url:"/workspace/growth/projects",symbol:"▱"},
   {label:"Quotations",url:"/workspace/enterprise/quotes",symbol:"◈",roles:moduleConfig.quotes.roles},
   {label:"Sales orders",url:"/workspace/enterprise/orders",symbol:"▣",roles:moduleConfig.orders.roles},
   {label:"Purchase orders",url:"/workspace/enterprise/purchase-orders",symbol:"⬡",roles:moduleConfig["purchase-orders"].roles},

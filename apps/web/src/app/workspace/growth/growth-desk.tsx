@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {useCallback,useEffect,useState,type FormEvent} from "react";
+import {useCallback,useEffect,useState,type FormEvent,type ReactNode} from "react";
 import {useRouter} from "next/navigation";
 
 type Module="leads"|"projects";
@@ -39,7 +39,7 @@ const post=<T,>(path:string,payload:unknown,method:"POST"|"PATCH"="POST")=>
   fetchJson<T>(path,{method,headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
 const api="/api/growth/";
 function Field({label,name,type="text",required=false,children,placeholder}:{
-  label:string;name:string;type?:string;required?:boolean;children?:React.ReactNode;placeholder?:string
+  label:string;name:string;type?:string;required?:boolean;children?:ReactNode;placeholder?:string
 }){
   return <label className="en-field"><span>{label}{required&&" *"}</span>
     {children??<input name={name} type={type} placeholder={placeholder} required={required} maxLength={240}/>}
