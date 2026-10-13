@@ -130,6 +130,7 @@ export function CostDesk({module}:{module:Module}){
           {[
             ["/workspace","▦","Overview"],
             ["/workspace/growth/projects","▱","Projects & jobs"],
+            ["/workspace/alerts","◉","Due dates & alerts"],
             ["/workspace/enterprise/invoices","▥","Invoices"],
             ["/workspace/costs/expenses","◎","Operational expenses"],
             ...(authorized?[["/workspace/costs/commissions","◆","Commission vault"]]:[]),

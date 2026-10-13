@@ -174,6 +174,7 @@ export function GrowthDesk({module}:{module:Module}){
             {url:"/workspace?view=customers",label:"Customers",symbol:"♙"},
             {url:"/workspace?view=suppliers",label:"Suppliers",symbol:"◇"},
             {url:"/workspace/rfqs",label:"RFQ sourcing",symbol:"▤"},
+            {url:"/workspace/alerts",label:"Due dates & alerts",symbol:"◉"},
             {url:"/workspace/growth/leads",label:"Lead pipeline",symbol:"✧",roles},
             {url:"/workspace/growth/projects",label:"Projects & jobs",symbol:"▱"},
             {url:"/workspace/enterprise/quotes",label:"Quotations",symbol:"◈"},
