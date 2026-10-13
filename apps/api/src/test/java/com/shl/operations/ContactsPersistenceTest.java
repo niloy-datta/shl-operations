@@ -61,6 +61,11 @@ class ContactsPersistenceTest {
         assertThat(trading.offers(id)).hasSize(1);
         assertThat(trading.offers(id).getFirst().supplierName()).contains("RFQ Supplier");
         trading.changeStatus(id, new TradingController.StatusInput("READY_FOR_QUOTE"));
+        assertThatThrownBy(() -> trading.saveOffer(id, new TradingController.OfferInput(supplier.id,
+            new BigDecimal("599.0000"), new BigDecimal("5.000"), 25, "Late revision")))
+            .isInstanceOf(ResponseStatusException.class);
+        assertThat(trading.offers(id).getFirst().unitPrice())
+            .isEqualByComparingTo(new BigDecimal("620.5000"));
         trading.changeStatus(id, new TradingController.StatusInput("CLOSED"));
         assertThat(trading.get(id).offerCount()).isEqualTo(1);
         assertThat(trading.history(id)).extracting(TradingController.ActivityRow::action)
