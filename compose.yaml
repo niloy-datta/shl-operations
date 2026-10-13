@@ -20,6 +20,7 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD}
+      MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY:-}
     depends_on:
       db:
         condition: service_healthy

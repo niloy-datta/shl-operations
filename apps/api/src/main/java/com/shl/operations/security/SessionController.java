@@ -18,12 +18,13 @@ public class SessionController {
     public SessionController(SessionService sessions) { this.sessions=sessions; }
 
     public record Login(@NotBlank @Size(max=80) String username,
-        @NotBlank @Size(max=256) String password) {}
+        @NotBlank @Size(max=256) String password,
+        @Size(max=40) String code) {}
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public SessionService.Granted login(@Valid @RequestBody Login input) {
-        return sessions.login(input.username(),input.password());
+        return sessions.login(input.username(),input.password(),input.code());
     }
 
     @GetMapping

@@ -51,7 +51,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(a -> a
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/sessions").permitAll()
-                .requestMatchers("/api/auth/sessions/**", "/api/auth/sessions").authenticated()
+                .requestMatchers("/api/auth/sessions/**", "/api/auth/sessions", "/api/auth/mfa/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/me").authenticated()
                 
                 .requestMatchers("/api/staff/password", "/api/staff/options").authenticated()

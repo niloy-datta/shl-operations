@@ -30,13 +30,15 @@ public class SessionService {
     private final JdbcTemplate db;
     private final PasswordEncoder passwords;
     private final AuditService audit;
+    private final MfaService mfa;
     private final SecureRandom rng = new SecureRandom();
     private final String dummyHash;
 
-    public SessionService(JdbcTemplate db, PasswordEncoder passwords, AuditService audit) {
+    public SessionService(JdbcTemplate db, PasswordEncoder passwords, AuditService audit, MfaService mfa) {
         this.db = db;
         this.passwords = passwords;
         this.audit = audit;
+        this.mfa = mfa;
         this.dummyHash = passwords.encode("deliberately-not-a-real-credential");
     }
 
@@ -66,6 +68,11 @@ public class SessionService {
     /** A failed login must commit its counter; ResponseStatusException does not roll it back. */
     @Transactional(noRollbackFor = ResponseStatusException.class)
     public Granted login(String username, String password) {
+        return login(username, password, null);
+    }
+
+    @Transactional(noRollbackFor = ResponseStatusException.class)
+    public Granted login(String username, String password, String verificationCode) {
         String name = username == null ? "" : username.trim();
         if (name.isBlank() || name.length() > 80 || password == null
             || password.isEmpty() || password.length() > 256) {
@@ -96,11 +103,19 @@ public class SessionService {
         }
 
         List<Map<String, Object>> found = db.queryForList(
-            "SELECT id,username,password_hash,role,enabled FROM staff_users WHERE username=?", name);
+            "SELECT id,username,password_hash,role,enabled,mfa_enabled FROM staff_users WHERE username=?", name);
         Map<String, Object> staff = found.isEmpty() ? null : found.getFirst();
         boolean match = passwords.matches(password,
             staff == null ? dummyHash : (String)staff.get("password_hash"));
-        if (!match || staff == null || !Boolean.TRUE.equals(staff.get("enabled"))) {
+        boolean accountValid = match && staff != null && Boolean.TRUE.equals(staff.get("enabled"));
+        if (accountValid && Boolean.TRUE.equals(staff.get("mfa_enabled"))
+            && (verificationCode == null || verificationCode.isBlank())) {
+            throw new ResponseStatusException(HttpStatus.PRECONDITION_REQUIRED,
+                "Authenticator or recovery code required");
+        }
+        boolean factorValid = accountValid && (!Boolean.TRUE.equals(staff.get("mfa_enabled"))
+            || mfa.verify((UUID)staff.get("id"), verificationCode));
+        if (!factorValid) {
             int updated = failures + 1;
             db.update("""
                 UPDATE auth_login_limits SET failures=?,
