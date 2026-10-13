@@ -1,0 +1,166 @@
+package com.shl.operations;
+
+import com.shl.operations.contacts.*;
+import com.shl.operations.enterprise.*;
+import com.shl.operations.trading.TradingController;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.web.server.ResponseStatusException;
+import org.testcontainers.postgresql.PostgreSQLContainer;
+import static org.assertj.core.api.Assertions.*;
+
+@SpringBootTest(properties = {
+    "BOOTSTRAP_ADMIN_USERNAME=test-admin",
+    "BOOTSTRAP_ADMIN_PASSWORD=unique-test-password-123456"
+})
+class EnterpriseWorkflowTest {
+    static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17.6");
+    static { postgres.start(); }
+    @DynamicPropertySource
+    static void database(DynamicPropertyRegistry registry) {
+        registry.add("DB_URL", postgres::getJdbcUrl);
+        registry.add("DB_USERNAME", postgres::getUsername);
+        registry.add("DB_PASSWORD", postgres::getPassword);
+    }
+
+    @Autowired CustomerRepository customers;
+    @Autowired SupplierRepository suppliers;
+    @Autowired TradingController trading;
+    @Autowired CommerceController commerce;
+    @Autowired LogisticsController logistics;
+    @Autowired FinanceController finance;
+    @Autowired TasksController tasks;
+    @Autowired StaffController staff;
+    @Autowired JdbcTemplate db;
+
+    @Test
+    @WithMockUser(username="test-admin",roles="ADMIN")
+    void fullCommercialLifecycleHonorsLinkagesTransitionsAndPaymentLimits() {
+        String suffix = UUID.randomUUID().toString();
+        Customer buyer = customers.save(new Customer(new ContactInput(
+            "Enterprise Buyer "+suffix,"buyer@example.test",null,"BD")));
+        Supplier seller = suppliers.save(new Supplier(new ContactInput(
+            "Enterprise Vendor "+suffix,"vendor@example.test",null,"CN")));
+
+        UUID rfqId = trading.create(new TradingController.RfqInput(
+            buyer.id,"Test container shipping", "Industrial parts",
+            new BigDecimal("20.000"),"PCS","USD",LocalDate.now().plusDays(10)
+        )).getBody().id();
+        assertThatThrownBy(() -> commerce.createQuote(new CommerceController.QuoteInput(
+            rfqId,new BigDecimal("750.0000"),null)))
+            .isInstanceOf(ResponseStatusException.class);
+
+        trading.changeStatus(rfqId,new TradingController.StatusInput("SOURCING"));
+        trading.saveOffer(rfqId,new TradingController.OfferInput(
+            seller.id,new BigDecimal("500.0000"),new BigDecimal("5.000"),21,"FOB"));
+        UUID offerId = trading.offers(rfqId).getFirst().id();
+        trading.changeStatus(rfqId,new TradingController.StatusInput("READY_FOR_QUOTE"));
+
+        UUID quoteId=(UUID)commerce.createQuote(new CommerceController.QuoteInput(
+            rfqId,new BigDecimal("750.0000"),LocalDate.now().plusDays(30)
+        )).getBody().get("id");
+        assertThat(commerce.getQuote(quoteId).get("status")).isEqualTo("DRAFT");
+        commerce.quoteStatus(quoteId,new CommerceController.StatusInput("SUBMITTED"));
+        commerce.quoteStatus(quoteId,new CommerceController.StatusInput("APPROVED"));
+        assertThat(commerce.getQuote(quoteId).get("approved_by")).isEqualTo("test-admin");
+
+        UUID salesId=(UUID)commerce.createOrder(
+            new CommerceController.OrderInput(quoteId)).getBody().get("id");
+        assertThat(commerce.getOrder(salesId).get("total_amount"))
+            .isEqualByComparingTo(new BigDecimal("15000.00"));
+        commerce.orderStatus(salesId,new CommerceController.StatusInput("CONFIRMED"));
+
+        assertThatThrownBy(() -> commerce.createPurchase(
+            new CommerceController.PurchaseInput(salesId,offerId,new BigDecimal("1.000"))))
+            .isInstanceOf(ResponseStatusException.class);
+        UUID poId=(UUID)commerce.createPurchase(new CommerceController.PurchaseInput(
+            salesId,offerId,new BigDecimal("20.000"))).getBody().get("id");
+        assertThat(commerce.getPurchase(poId).get("total_amount"))
+            .isEqualByComparingTo(new BigDecimal("10000.00"));
+        commerce.purchaseStatus(poId,new CommerceController.StatusInput("ISSUED"));
+
+        UUID shipmentId=(UUID)logistics.create(new LogisticsController.ShipmentInput(
+            salesId,poId,"Shanghai, CN","Rotterdam, NL","Carrier X","BILL-TEST",
+            LocalDate.now(),LocalDate.now().plusDays(30))).getBody().get("id");
+        commerce.orderStatus(salesId,new CommerceController.StatusInput("IN_PROGRESS"));
+        assertThatThrownBy(() -> commerce.orderStatus(
+            salesId,new CommerceController.StatusInput("COMPLETED")))
+            .isInstanceOf(ResponseStatusException.class);
+        logistics.change(shipmentId,new LogisticsController.StatusInput("IN_TRANSIT","Departed"));
+        logistics.change(shipmentId,new LogisticsController.StatusInput("DELIVERED","Received"));
+        assertThat(logistics.milestones(shipmentId)).hasSize(3);
+        commerce.orderStatus(salesId,new CommerceController.StatusInput("COMPLETED"));
+
+        UUID invoiceId=(UUID)finance.create(new FinanceController.InvoiceInput(
+            salesId,null,"RECEIVABLE",new BigDecimal("1000.00"),LocalDate.now().plusDays(45)
+        )).getBody().get("id");
+        finance.status(invoiceId,new FinanceController.StatusInput("ISSUED"));
+        finance.recordPayment(invoiceId,new FinanceController.PaymentInput(
+            new BigDecimal("600.00"),"WIRE-TEST-1",LocalDate.now()));
+        assertThatThrownBy(() -> finance.recordPayment(invoiceId,new FinanceController.PaymentInput(
+            new BigDecimal("500.00"),"WIRE-TEST-2",LocalDate.now())))
+            .isInstanceOf(ResponseStatusException.class);
+        finance.recordPayment(invoiceId,new FinanceController.PaymentInput(
+            new BigDecimal("400.00"),"WIRE-TEST-3",LocalDate.now()));
+        assertThat(finance.get(invoiceId).get("status")).isEqualTo("PAID");
+        assertThat(finance.payments(invoiceId)).hasSize(2);
+        assertThatThrownBy(() -> finance.status(invoiceId,new FinanceController.StatusInput("VOID")))
+            .isInstanceOf(ResponseStatusException.class);
+
+        UUID payable=(UUID)finance.create(new FinanceController.InvoiceInput(
+            salesId,poId,"PAYABLE",new BigDecimal("1500.00"),null
+        )).getBody().get("id");
+        finance.status(payable,new FinanceController.StatusInput("ISSUED"));
+        assertThat(finance.summary()).containsKeys("receivables","payables","unpaidInvoices");
+
+        UUID adminId=db.queryForObject(
+            "SELECT id FROM staff_users WHERE username='test-admin'",UUID.class);
+        UUID taskId=(UUID)tasks.create(new TasksController.TaskInput(
+            "Verify delivery packet","Check shipment documents",adminId,null,
+            salesId,null,LocalDate.now().plusDays(1),"HIGH")).getBody().get("id");
+        assertThat(tasks.list(0,20).content()).anyMatch(r->taskId.equals(r.get("id")));
+        tasks.status(taskId,new TasksController.StatusInput("IN_PROGRESS"));
+        tasks.status(taskId,new TasksController.StatusInput("DONE"));
+
+        Long count=db.queryForObject("SELECT count(*) FROM audit_events",Long.class);
+        assertThat(count).isGreaterThanOrEqualTo(15);
+    }
+
+    @Test
+    @WithMockUser(username="test-admin",roles="ADMIN")
+    void administratorsCanProvisionStaffAndRoleChangesAreValidated() {
+        String username="operator-"+UUID.randomUUID().toString().substring(0,8);
+        var member=staff.create(new StaffController.NewStaff(
+            username,"strong-temporary-password-234","LOGISTICS"));
+        assertThat(member).containsEntry("role","LOGISTICS");
+        assertThat(member).doesNotContainKey("password_hash");
+        UUID id=(UUID)member.get("id");
+        staff.changeAccess(id,new StaffController.ChangeAccess("SOURCING",true));
+        assertThat(staff.options()).anyMatch(o->username.equals(o.get("username")));
+        assertThatThrownBy(() -> staff.changeAccess(id,
+            new StaffController.ChangeAccess("INVALID",true)))
+            .isInstanceOf(ResponseStatusException.class);
+        UUID self=db.queryForObject("SELECT id FROM staff_users WHERE username='test-admin'",UUID.class);
+        assertThatThrownBy(() -> staff.changeAccess(self,
+            new StaffController.ChangeAccess("FINANCE",false)))
+            .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    @WithMockUser(username="limited-user",roles="BD")
+    void businessDevelopmentCannotReadFinanceOrManageStaff() {
+        assertThatThrownBy(() -> finance.list("",0,20))
+            .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> staff.list(0,20))
+            .isInstanceOf(AccessDeniedException.class);
+    }
+}
