@@ -103,11 +103,16 @@ async function api<T>(path: string, options?: RequestInit): Promise<T> {
 const send = <T,>(path:string, method:"POST"|"PATCH", payload:Row) => api<T>(path,{
   method,headers:{"content-type":"application/json"},body:JSON.stringify(payload)
 });
-function statuses(currentModule:Module,row:Row,role:string): string[] {
+function statuses(currentModule:Module,row:Row,role:string,username:string): string[] {
   const state=String(row.status??"");
   switch(currentModule) {
-    case "quotes": return state==="DRAFT"?["SUBMITTED"]:
-      state==="SUBMITTED" && ["ADMIN","MANAGEMENT"].includes(role)?["APPROVED","REJECTED"]:[];
+    case "quotes": {
+      if (state==="DRAFT") return ["SUBMITTED"];
+      if (state!=="SUBMITTED" || !["ADMIN","MANAGEMENT"].includes(role)) return [];
+      const expires=row.valid_until && String(row.valid_until)<new Date().toISOString().slice(0,10);
+      const independent=String(row.created_by)!==username;
+      return independent && !expires ? ["APPROVED","REJECTED"] : ["REJECTED"];
+    }
     case "orders": if (!["ADMIN","MANAGEMENT","BD"].includes(role)) return []; return state==="DRAFT"?["CONFIRMED","CANCELLED"]:
       state==="CONFIRMED"?["IN_PROGRESS","CANCELLED"]:
       state==="IN_PROGRESS"?["COMPLETED"]:[];
@@ -305,7 +310,7 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
         <Select name="rfqId" label="RFQ ready for quotation" options={selectOptions((refs.rfqs??[]).filter(r=>r.status==="READY_FOR_QUOTE"),"reference","subject")} />
         <FormField name="unitPrice" label="Customer unit selling price" type="number" required />
         <FormField name="validUntil" label="Valid until" type="date"/>
-        <p className="en-help">Currency and quantity are copied from the linked RFQ. Approval requires management access.</p>
+        <p className="en-help">Currency and quantity are copied from the linked RFQ. An independent management/admin account must approve. The quote creator cannot approve their own work.</p>
       </>;
       case "orders":return <>
         <Select name="quoteId" label="Approved customer quotation"
@@ -476,8 +481,8 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
           {detail.length>0&&<section className="en-timeline"><h3>{currentModule==="shipments"?"Shipment milestones":"Recorded payments"}</h3>
             {detail.map((item,i)=><div key={i}>{Object.entries(item).filter(([key])=>key!=="id").map(([key,value])=>
               <p key={key}><strong>{key.replaceAll("_"," ")}:</strong> {pretty(value,key)}</p>)}</div>)}</section>}
-          {statuses(currentModule,active,user?.role??"").length>0&&<div className="en-transitions"><h3>Available actions</h3>
-            {statuses(currentModule,active,user?.role??"").map(status=><button key={status} disabled={busy}
+          {statuses(currentModule,active,user?.role??"",user?.username??"").length>0&&<div className="en-transitions"><h3>Available actions</h3>
+            {statuses(currentModule,active,user?.role??"",user?.username??"").map(status=><button key={status} disabled={busy}
               onClick={()=>void changeStatus(active,status)}>{titles[status]??status} →</button>)}</div>}
           {currentModule==="invoices"&&active.status==="ISSUED"&&<button className="en-primary" onClick={()=>setModal("payment")}>Record payment →</button>}
           {currentModule==="staff"&&<button className="en-primary" onClick={()=>setModal("access")}>Edit staff access →</button>}
