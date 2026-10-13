@@ -173,7 +173,7 @@ export function CostDesk({module}:{module:Module}){
           </section>
           {module==="expenses"&&summary.length>0&&<div className="cx-summary">
             {summary.map(s=><div key={String(s.currency)} className="en-panel cx-summary-card">
-              <small>APPROVED EXPENSES · {s.currency}</small>
+              <small>APPROVED EXPENSES · {String(s.currency)}</small>
               <strong>{Number(s.approved).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>
               <span>Pending: {Number(s.pending).toLocaleString("en-US",{minimumFractionDigits:2})}</span>
             </div>)}</div>}
