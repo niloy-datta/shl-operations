@@ -57,22 +57,18 @@ public class GrowthController {
             "SELECT EXISTS(SELECT 1 FROM staff_users WHERE id=? AND enabled=true)",Boolean.class,id);
         require(Boolean.TRUE.equals(valid),"Assign to an active staff member");
     }
-    private Pages.Result page(String select,String from,String columns,String q,int page,int size) {
-        String term=clean(q==null?"":q).toLowerCase(Locale.ROOT);
-        term=term.substring(0,Math.min(term.length(),100));
-        String where=" WHERE "+columns;
-        return Pages.of(db,select,from,where,new Object[]{"%"+term+"%"},
-            "ORDER BY created_at DESC,id DESC",page,size);
-    }
-
     @GetMapping("/leads")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGEMENT','BD')")
     public Pages.Result leads(@RequestParam(defaultValue="") String q,
         @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
-        return page("l.*,u.username AS owner_name,c.name AS customer_name",
+        String term=clean(q).toLowerCase(Locale.ROOT);
+        term=term.substring(0,Math.min(term.length(),100));
+        return Pages.of(db,"l.*,u.username AS owner_name,c.name AS customer_name",
             "FROM crm_leads l LEFT JOIN staff_users u ON u.id=l.owner_id "+
                 "LEFT JOIN customers c ON c.id=l.customer_id",
-            "(lower(l.company_name) LIKE ? OR lower(l.subject) LIKE ?)",q,page,size);
+            " WHERE (lower(l.company_name) LIKE ? OR lower(l.subject) LIKE ?)",
+            new Object[]{"%"+term+"%","%"+term+"%"},
+            "ORDER BY l.created_at DESC,l.id DESC",page,size);
     }
     @GetMapping("/leads/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGEMENT','BD')")
