@@ -17,7 +17,7 @@ import static org.springframework.http.HttpStatus.*;
 
 @RestController
 @RequestMapping("/api/commerce")
-@PreAuthorize("hasAnyRole('ADMIN','MANAGEMENT','BD','SOURCING')")
+@PreAuthorize("hasAnyRole('ADMIN','MANAGEMENT','BD','SOURCING','LOGISTICS','FINANCE')")
 public class CommerceController {
     private final JdbcTemplate db;
     private final AuditService audit;
@@ -53,6 +53,7 @@ public class CommerceController {
             new Object[] { "%" + term + "%" }, order, page, size);
     }
     @GetMapping("/quotes")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGEMENT','BD','SOURCING')")
     public Pages.Result quotes(@RequestParam(defaultValue="") String q,
         @RequestParam(defaultValue="0") int page, @RequestParam(defaultValue="20") int size) {
         return list("cq.*,r.reference AS rfq_reference,r.subject,c.name AS customer_name",
@@ -77,6 +78,7 @@ public class CommerceController {
         return ResponseEntity.created(URI.create("/api/commerce/quotes/"+id)).body(getQuote(id));
     }
     @GetMapping("/quotes/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGEMENT','BD','SOURCING')")
     public Map<String,Object> getQuote(@PathVariable UUID id) {
         return locked("SELECT * FROM customer_quotes WHERE id=?",id);
     }
@@ -95,12 +97,19 @@ public class CommerceController {
                 List.of("ROLE_ADMIN","ROLE_MANAGEMENT").contains(a.getAuthority())),
                 "Management approval required");
         }
+        if ("APPROVED".equals(next)) {
+            Long prior=db.queryForObject(
+                "SELECT count(*) FROM customer_quotes WHERE rfq_id=? AND status='APPROVED' AND id<>?",
+                Long.class,quote.get("rfq_id"),id);
+            require(prior!=null && prior==0,"An approved version already exists for this RFQ");
+        }
         db.update("UPDATE customer_quotes SET status=?,approved_by=?,updated_at=now() WHERE id=?",
             next,"APPROVED".equals(next) ? audit.actor() : null,id);
         audit.log("STATUS_CHANGED","QUOTE",id,before+" -> "+next);
         return getQuote(id);
     }
     @GetMapping("/orders")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGEMENT','BD','SOURCING','LOGISTICS','FINANCE')")
     public Pages.Result orders(@RequestParam(defaultValue="") String q,
         @RequestParam(defaultValue="0") int page, @RequestParam(defaultValue="20") int size) {
         return list("so.*, c.name AS customer_name, r.subject AS rfq_subject",
@@ -128,10 +137,12 @@ public class CommerceController {
         return ResponseEntity.created(URI.create("/api/commerce/orders/"+id)).body(getOrder(id));
     }
     @GetMapping("/orders/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGEMENT','BD','SOURCING','LOGISTICS','FINANCE')")
     public Map<String,Object> getOrder(@PathVariable UUID id) {
         return locked("SELECT * FROM sales_orders WHERE id=?",id);
     }
     @PatchMapping("/orders/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGEMENT','BD')")
     @Transactional
     public Map<String,Object> orderStatus(@PathVariable UUID id,@Valid @RequestBody StatusInput input) {
         var order=locked("SELECT * FROM sales_orders WHERE id=? FOR UPDATE",id);
@@ -142,16 +153,19 @@ public class CommerceController {
             || (List.of("DRAFT","CONFIRMED").contains(before) && "CANCELLED".equals(next)),
             "Invalid sales order transition");
         if ("COMPLETED".equals(next)) {
+            Long delivered=db.queryForObject("SELECT count(*) FROM shipments WHERE sales_order_id=? AND status='DELIVERED'",
+                Long.class,id);
             Long open=db.queryForObject("SELECT count(*) FROM shipments WHERE sales_order_id=? AND status <> 'DELIVERED'",
                 Long.class,id);
-            require(open != null && open == 0,"Shipments must be delivered before completion");
+            require(delivered != null && delivered > 0 && open != null && open == 0,
+                "At least one delivered shipment and no outstanding shipments are required");
         }
         db.update("UPDATE sales_orders SET status=?,updated_at=now() WHERE id=?",next,id);
         audit.log("STATUS_CHANGED","SALES_ORDER",id,before+" -> "+next);
         return getOrder(id);
     }
     @GetMapping("/purchase-orders")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGEMENT','SOURCING')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGEMENT','SOURCING','LOGISTICS','FINANCE')")
     public Pages.Result purchaseOrders(@RequestParam(defaultValue="") String q,
         @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
         return list("po.*,s.name AS supplier_name,so.reference AS sales_reference",
@@ -181,7 +195,7 @@ public class CommerceController {
         return ResponseEntity.created(URI.create("/api/commerce/purchase-orders/"+id)).body(getPurchase(id));
     }
     @GetMapping("/purchase-orders/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGEMENT','SOURCING')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGEMENT','SOURCING','LOGISTICS','FINANCE')")
     public Map<String,Object> getPurchase(@PathVariable UUID id) {
         return locked("SELECT * FROM purchase_orders WHERE id=?",id);
     }

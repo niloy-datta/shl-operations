@@ -1,6 +1,7 @@
 package com.shl.operations.trading;
 
 import jakarta.validation.Valid;
+import com.shl.operations.enterprise.AuditService;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -19,7 +20,8 @@ import static org.springframework.http.HttpStatus.*;
 @RequestMapping("/api/rfqs")
 public class TradingController {
     private final JdbcTemplate db;
-    public TradingController(JdbcTemplate db) { this.db = db; }
+    private final AuditService audit;
+    public TradingController(JdbcTemplate db, AuditService audit) { this.db = db; this.audit=audit; }
 
     public record RfqInput(
         @NotNull UUID customerId,
@@ -73,6 +75,7 @@ public class TradingController {
     private void activity(UUID rfqId, String action, String detail) {
         db.update("INSERT INTO rfq_activity(id,rfq_id,actor,action,detail) VALUES(?,?,?,?,?)",
             UUID.randomUUID(), rfqId, actor(), action, detail);
+        audit.log(action,"RFQ",rfqId,detail);
     }
     private boolean exists(String table, UUID id) {
         // Table identifiers are fixed literals at call sites, never user input.

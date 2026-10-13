@@ -59,8 +59,8 @@ public class LogisticsController {
             var po=row("SELECT * FROM purchase_orders WHERE id=?",input.purchaseOrderId());
             require(po.get("sales_order_id").equals(input.salesOrderId()),
                 "Purchase order does not match sales order");
-            require(!"CANCELLED".equals(po.get("status")),
-                "Cancelled purchase order cannot be shipped");
+            require(List.of("ISSUED","RECEIVED").contains(po.get("status")),
+                "Linked purchase order must be issued before shipping");
         }
         if (input.etd()!=null && input.eta()!=null)
             require(!input.eta().isBefore(input.etd()),"ETA cannot precede ETD");

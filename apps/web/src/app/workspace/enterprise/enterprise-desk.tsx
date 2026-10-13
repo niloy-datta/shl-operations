@@ -107,7 +107,7 @@ function statuses(currentModule:Module,row:Row,role:string): string[] {
   switch(currentModule) {
     case "quotes": return state==="DRAFT"?["SUBMITTED"]:
       state==="SUBMITTED" && ["ADMIN","MANAGEMENT"].includes(role)?["APPROVED","REJECTED"]:[];
-    case "orders": return state==="DRAFT"?["CONFIRMED","CANCELLED"]:
+    case "orders": if (!["ADMIN","MANAGEMENT","BD"].includes(role)) return []; return state==="DRAFT"?["CONFIRMED","CANCELLED"]:
       state==="CONFIRMED"?["IN_PROGRESS","CANCELLED"]:
       state==="IN_PROGRESS"?["COMPLETED"]:[];
     case "purchase-orders": return state==="DRAFT"?["ISSUED","CANCELLED"]:state==="ISSUED"?["RECEIVED"]:[];
@@ -218,10 +218,7 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
     const order=refs.orders?.find(item=>asText(item.id)===id);
     if(!order)return;
     try {
-      const quotes=await api<Page>("commerce/quotes?size=100");
-      const quote=quotes.content.find(item=>item.id===order.quote_id);
-      if(!quote){setRefs(v=>({...v,offers:[]}));return;}
-      const offers=await api<Row[]>("/api/trading/rfqs/"+quote.rfq_id+"/offers");
+      const offers=await api<Row[]>("/api/trading/rfqs/"+order.rfq_id+"/offers");
       setRefs(v=>({...v,offers}));
     }catch(e){setError(e instanceof Error?e.message:"Could not load supplier offers");}
   }
@@ -292,6 +289,9 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
     finally{setBusy(false);}
   }
   const allowed=user && config.roles.includes(user.role);
+  const canCreate=!!user && (currentModule==="tasks" ? ["ADMIN","MANAGEMENT"].includes(user.role) :
+    currentModule==="quotes" || currentModule==="orders" ? ["ADMIN","MANAGEMENT","BD"].includes(user.role) :
+    currentModule==="staff" ? user.role==="ADMIN" : !!allowed);
   const total=list.totalElements;
   const orderChoices=(refs.orders??[]).filter(item=>!["DRAFT","CANCELLED"].includes(String(item.status)));
   const poChoices=(refs["purchase-orders"]??[]).filter(item=>item.sales_order_id===chosenOrder || currentModule==="invoices");
@@ -392,7 +392,7 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
       <main className="en-content">
         <div className="en-heading"><div><p className="en-eyebrow">SHL INTERNATIONAL <span>/</span> ENTERPRISE WORKFLOWS</p>
           <h1>{config.name}<span>.</span></h1><p>{config.subtitle}</p></div>
-          {allowed && config.create && (currentModule!=="staff"||user?.role==="ADMIN") &&
+          {allowed && canCreate && config.create &&
             <button className="en-primary" onClick={()=>void openCreate()}><span>＋</span> {config.create}</button>}</div>
         {!user && !error ? <div className="en-panel en-loading">Checking workspace permissions…</div> :
         !allowed ? <div className="en-panel en-restricted"><span>◇</span><h2>Access restricted</h2>
