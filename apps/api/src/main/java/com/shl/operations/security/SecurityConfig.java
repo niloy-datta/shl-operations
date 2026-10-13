@@ -60,7 +60,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/growth/leads/**", "/api/growth/leads")
                     .hasAnyRole("ADMIN","MANAGEMENT","BD")
                 .requestMatchers("/api/growth/projects/**", "/api/growth/projects")
-                    .hasAnyRole("ADMIN","MANAGEMENT","BD","SOURCING","LOGISTICS")
+                    .hasAnyRole("ADMIN","MANAGEMENT","BD","SOURCING","LOGISTICS","FINANCE")
                 .requestMatchers("/api/costs/commissions/**", "/api/costs/commissions")
                     .authenticated()
                 .requestMatchers("/api/costs/expenses/**", "/api/costs/expenses")

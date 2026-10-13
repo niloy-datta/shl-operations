@@ -79,7 +79,7 @@ export function GrowthDesk({module}:{module:Module}){
     return()=>{alive=false;};
   },[]);
   useEffect(()=>{
-    if(!me||!["ADMIN","MANAGEMENT","BD","SOURCING","LOGISTICS"].includes(me.role))return;
+    if(!me||!["ADMIN","MANAGEMENT","BD","SOURCING","LOGISTICS","FINANCE"].includes(me.role))return;
     if(module==="leads"&&!roles.includes(me.role))return;
     let alive=true;
     const frame=requestAnimationFrame(()=>setLoading(true));
@@ -92,7 +92,7 @@ export function GrowthDesk({module}:{module:Module}){
 
   const canWrite=!!me&&roles.includes(me.role);
   const canView=!!me&&(module==="projects"?
-    ["ADMIN","MANAGEMENT","BD","SOURCING","LOGISTICS"].includes(me.role):canWrite);
+    ["ADMIN","MANAGEMENT","BD","SOURCING","LOGISTICS","FINANCE"].includes(me.role):canWrite);
   const lookup=(rows:Item[],key:string,extra?:string):Lookup[]=>
     rows.map(x=>({id:String(x.id),text:String(x[key]??x.id),
       extra:extra?String(x[extra]??""):undefined}));
