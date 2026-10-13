@@ -45,6 +45,11 @@ public class CommerceController {
     private BigDecimal total(BigDecimal quantity, BigDecimal price) {
         return quantity.multiply(price).setScale(2, RoundingMode.HALF_UP);
     }
+    private LocalDate sqlDate(Object value) {
+        if (value == null) return null;
+        if (value instanceof java.sql.Date date) return date.toLocalDate();
+        return (LocalDate)value;
+    }
     private Pages.Result list(String select, String from, String searchField, String q, String order,
         int page, int size) {
         String term = q == null ? "" : q.trim();
@@ -100,7 +105,7 @@ public class CommerceController {
         if ("APPROVED".equals(next)) {
             require(!audit.actor().equals(quote.get("created_by")),
                 "Four-eyes approval: quote creator cannot approve their own quotation");
-            LocalDate validUntil=(LocalDate)quote.get("valid_until");
+            LocalDate validUntil=sqlDate(quote.get("valid_until"));
             require(validUntil==null || !validUntil.isBefore(LocalDate.now()),
                 "Expired quotes cannot be approved");
             Long prior=db.queryForObject(
@@ -130,7 +135,7 @@ public class CommerceController {
             WHERE cq.id=? FOR UPDATE OF cq
             """, input.quoteId());
         require("APPROVED".equals(quote.get("status")), "Only approved quotes can become orders");
-        LocalDate validUntil=(LocalDate)quote.get("valid_until");
+        LocalDate validUntil=sqlDate(quote.get("valid_until"));
         require(validUntil==null || !validUntil.isBefore(LocalDate.now()),
             "Expired customer quotation cannot become a sales order");
         UUID id=UUID.randomUUID();
