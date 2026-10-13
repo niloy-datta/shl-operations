@@ -24,11 +24,16 @@ const primaryViews: { key: View; label: string; icon: IconName }[] = [
   { key: "suppliers", label: "Suppliers", icon: "building" }
 ];
 const enterpriseViews: { label: string; href: string; icon: IconName }[] = [
+  { label: "Due dates & alerts", href: "/workspace/alerts", icon: "check" },
+  { label: "Lead pipeline", href: "/workspace/growth/leads", icon: "users" },
+  { label: "Projects & jobs", href: "/workspace/growth/projects", icon: "grid" },
   { label: "Quotations", href: "/workspace/enterprise/quotes", icon: "layers" },
   { label: "Sales orders", href: "/workspace/enterprise/orders", icon: "grid" },
   { label: "Purchase orders", href: "/workspace/enterprise/purchase-orders", icon: "package" },
   { label: "Shipments", href: "/workspace/enterprise/shipments", icon: "ship" },
   { label: "Finance", href: "/workspace/enterprise/invoices", icon: "chart" },
+  { label: "Expenses", href: "/workspace/costs/expenses", icon: "chart" },
+  { label: "Project contribution", href: "/workspace/costs/profitability", icon: "chart" },
   { label: "Team tasks", href: "/workspace/enterprise/tasks", icon: "check" },
   { label: "Staff & audit", href: "/workspace/enterprise/staff", icon: "users" }
 ];
@@ -77,6 +82,15 @@ export function Workspace() {
   const [editing, setEditing] = useState<Contact | null>(null);
   const [saving, setSaving] = useState(false);
   const requestCounter = useRef(0);
+  const [commissionAccess, setCommissionAccess] = useState(false);
+  useEffect(() => {
+    let alive=true;
+    fetch("/api/costs/commissions/access",{cache:"no-store"})
+      .then(r=>r.ok?r.json():Promise.resolve({allowed:false}))
+      .then((d:{allowed?:boolean})=>{if(alive)setCommissionAccess(d.allowed===true);})
+      .catch(()=>{});
+    return()=>{alive=false;};
+  },[]);
 
   const load = useCallback(async () => {
     const requestNumber = ++requestCounter.current;
@@ -206,6 +220,8 @@ export function Workspace() {
         <Link href="/workspace/rfqs" className="nav-item"><Icon name="layers" /><span>RFQ &amp; Sourcing</span><small className="live-module">LIVE</small></Link>
         <p className="nav-heading future-heading">COMING NEXT</p>
         <Link href="/workspace/account" className="nav-item"><Icon name="lock" /><span>My security</span></Link>
+        {commissionAccess&&<Link href="/workspace/costs/commissions" className="nav-item">
+          <Icon name="lock"/><span>Commission vault</span></Link>}
         {enterpriseViews.map(item => <Link key={item.label} href={item.href} className="nav-item">
           <Icon name={item.icon} /><span>{item.label}</span></Link>)}
       </nav>

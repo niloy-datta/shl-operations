@@ -40,6 +40,9 @@ class EnterpriseWorkflowTest {
     @Autowired FinanceController finance;
     @Autowired TasksController tasks;
     @Autowired StaffController staff;
+    @Autowired GrowthController growth;
+    @Autowired OperationalAlertsController alerts;
+    @Autowired ProjectProfitabilityController profitability;
     @Autowired JdbcTemplate db;
 
     @Test
@@ -103,6 +106,18 @@ class EnterpriseWorkflowTest {
         assertThat((BigDecimal)commerce.getPurchase(poId).get("total_amount"))
             .isEqualByComparingTo(new BigDecimal("10000.00"));
         commerce.purchaseStatus(poId,new CommerceController.StatusInput("ISSUED"));
+        UUID ownerId=db.queryForObject(
+            "SELECT id FROM staff_users WHERE username='test-admin'",UUID.class);
+        UUID linkedProjectId=(UUID)growth.addProject(new GrowthController.ProjectInput(
+            buyer.id,null,salesId,"Linked trading project",null,ownerId,
+            LocalDate.now().plusDays(40))).getBody().get("id");
+        var profitRow=profitability.list("Linked trading project",0,10).content().stream()
+            .filter(record->linkedProjectId.equals(record.get("id")))
+            .findFirst().orElseThrow();
+        assertThat((BigDecimal)profitRow.get("provisional_contribution"))
+            .isEqualByComparingTo(new BigDecimal("5000.00"));
+        assertThat(((String)profitRow.get("currency")).trim()).isEqualTo("USD");
+
 
         UUID shipmentId=(UUID)logistics.create(new LogisticsController.ShipmentInput(
             salesId,poId,"Shanghai, CN","Rotterdam, NL","Carrier X","BILL-TEST",
@@ -218,6 +233,76 @@ class EnterpriseWorkflowTest {
         assertThatThrownBy(() -> staff.changeAccess(self,
             new StaffController.ChangeAccess("FINANCE",false)))
             .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    @WithMockUser(username="test-admin",roles="ADMIN")
+    void leadPipelineCreatesLinkedProjectWithAuditableNotes() {
+        String suffix=UUID.randomUUID().toString();
+        var buyer=customers.save(new Customer(new ContactInput(
+            "CRM buyer "+suffix,"crm@example.test",null,"Germany")));
+        UUID owner=db.queryForObject("SELECT id FROM staff_users WHERE username='test-admin'",UUID.class);
+        var lead=growth.addLead(new GrowthController.LeadInput(
+            buyer.id,"CRM company "+suffix,"Decision Maker","decision@example.test","EMAIL",
+            "Industrial components", "Request for pricing",owner,LocalDate.now().plusDays(2)
+        )).getBody();
+        UUID leadId=(UUID)lead.get("id");
+        assertThat(growth.leads("CRM company",0,10).content())
+            .anyMatch(x->leadId.equals(x.get("id")));
+        assertThatThrownBy(()->growth.leadStatus(leadId,
+            new GrowthController.ChangeStatus("WON")))
+            .isInstanceOf(ResponseStatusException.class);
+        growth.leadStatus(leadId,new GrowthController.ChangeStatus("CONTACTED"));
+        growth.leadStatus(leadId,new GrowthController.ChangeStatus("QUALIFIED"));
+        growth.leadStatus(leadId,new GrowthController.ChangeStatus("WON"));
+        UUID id=(UUID)growth.addProject(new GrowthController.ProjectInput(
+            buyer.id,leadId,null,"Customer shipment job",null,owner,
+            LocalDate.now().plusDays(10)
+        )).getBody().get("id");
+        assertThat(growth.projects("Customer shipment",0,20).content())
+            .anyMatch(x->id.equals(x.get("id")));
+        growth.note(id,new GrowthController.NoteInput("Supplier call completed"));
+        assertThat(growth.notes(id)).anyMatch(x->
+            "Supplier call completed".equals(x.get("note")));
+        growth.projectStatus(id,new GrowthController.ChangeStatus("ACTIVE"));
+        growth.projectStatus(id,new GrowthController.ChangeStatus("COMPLETED"));
+        assertThat(growth.project(id).get("status")).isEqualTo("COMPLETED");
+        assertThatThrownBy(()->growth.projectStatus(id,
+            new GrowthController.ChangeStatus("ACTIVE")))
+            .isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(()->growth.addProject(new GrowthController.ProjectInput(
+            buyer.id,leadId,null,"Duplicate lead project",null,owner,null
+        ))).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @WithMockUser(username="test-admin",roles="ADMIN")
+    void roleScopedAlertFeedUsesRealDeadlines() {
+        String suffix=UUID.randomUUID().toString();
+        Customer buyer=customers.save(new Customer(new ContactInput(
+            "Alert buyer "+suffix,"alert@example.test",null,"CN")));
+        UUID owner=db.queryForObject(
+            "SELECT id FROM staff_users WHERE username='test-admin'",UUID.class);
+        String subject="Follow-up "+suffix;
+        UUID leadId=(UUID)growth.addLead(new GrowthController.LeadInput(
+            buyer.id,"Buyer "+suffix,"Test lead","lead@example.test","MANUAL",
+            subject,null,owner,LocalDate.now(java.time.ZoneOffset.UTC)
+        )).getBody().get("id");
+        var feed=alerts.feed();
+        assertThat(feed.items()).anyMatch(item->"LEAD".equals(item.source())
+            && subject.equals(item.title()));
+        assertThat(feed.dueToday()).isPositive();
+        assertThat(feed.timezone()).isEqualTo("UTC");
+        assertThat(feed.items()).noneMatch(item->"COMMISSION".equals(item.source()));
+        growth.leadStatus(leadId,new GrowthController.ChangeStatus("LOST"));
+        assertThat(alerts.feed().items()).noneMatch(item->subject.equals(item.title()));
+    }
+
+    @Test
+    @WithMockUser(username="limited-user",roles="BD")
+    void bdAlertFeedDoesNotExposeInvoicesOrUnownedProjects() {
+        assertThat(alerts.feed().items()).noneMatch(item->
+            "INVOICE".equals(item.source())||"SHIPMENT".equals(item.source()));
     }
 
     @Test
