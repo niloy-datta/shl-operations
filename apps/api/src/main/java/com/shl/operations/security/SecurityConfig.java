@@ -63,6 +63,8 @@ public class SecurityConfig {
                     .hasAnyRole("ADMIN","MANAGEMENT","BD")
                 .requestMatchers("/api/growth/projects/**", "/api/growth/projects")
                     .hasAnyRole("ADMIN","MANAGEMENT","BD","SOURCING","LOGISTICS","FINANCE")
+                .requestMatchers(HttpMethod.GET, "/api/costs/profitability")
+                    .hasAnyRole("ADMIN","MANAGEMENT","FINANCE")
                 .requestMatchers("/api/costs/commissions/**", "/api/costs/commissions")
                     .authenticated()
                 .requestMatchers("/api/costs/expenses/**", "/api/costs/expenses")

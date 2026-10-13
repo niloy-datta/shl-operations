@@ -4,7 +4,7 @@ type Context={params:Promise<{path:string[]}>};
 const uuid="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
 const exact=(v:string)=>new RegExp("^"+v+"$");
 const allow:Record<string,RegExp[]>={
-  GET:[exact("expenses(/"+uuid+")?"),exact("expenses/summary"),
+  GET:[exact("profitability"),exact("expenses(/"+uuid+")?"),exact("expenses/summary"),
     exact("commissions/access"),exact("commissions(/"+uuid+"(/history)?)?")],
   POST:[exact("expenses"),exact("commissions")],
   PATCH:[exact("expenses/"+uuid+"/status"),exact("commissions/"+uuid+"/status")]

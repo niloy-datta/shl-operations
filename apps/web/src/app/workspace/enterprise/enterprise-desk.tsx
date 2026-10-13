@@ -66,6 +66,7 @@ const nav: { label: string; url: string; symbol: string; roles?: string[] }[] = 
   {label:"Shipments",url:"/workspace/enterprise/shipments",symbol:"⇢",roles:moduleConfig.shipments.roles},
   {label:"Finance",url:"/workspace/enterprise/invoices",symbol:"▥",roles:moduleConfig.invoices.roles},
   {label:"Expenses",url:"/workspace/costs/expenses",symbol:"◎",roles:moduleConfig.invoices.roles},
+  {label:"Project contribution",url:"/workspace/costs/profitability",symbol:"◴",roles:moduleConfig.invoices.roles},
   {label:"Team tasks",url:"/workspace/enterprise/tasks",symbol:"☷",roles:moduleConfig.tasks.roles},
   {label:"Staff",url:"/workspace/enterprise/staff",symbol:"♧",roles:moduleConfig.staff.roles},
   {label:"Audit trail",url:"/workspace/enterprise/audit",symbol:"⊞",roles:moduleConfig.audit.roles},

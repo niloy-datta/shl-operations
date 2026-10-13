@@ -33,6 +33,7 @@ const enterpriseViews: { label: string; href: string; icon: IconName }[] = [
   { label: "Shipments", href: "/workspace/enterprise/shipments", icon: "ship" },
   { label: "Finance", href: "/workspace/enterprise/invoices", icon: "chart" },
   { label: "Expenses", href: "/workspace/costs/expenses", icon: "chart" },
+  { label: "Project contribution", href: "/workspace/costs/profitability", icon: "chart" },
   { label: "Team tasks", href: "/workspace/enterprise/tasks", icon: "check" },
   { label: "Staff & audit", href: "/workspace/enterprise/staff", icon: "users" }
 ];

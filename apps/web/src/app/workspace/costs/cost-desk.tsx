@@ -133,6 +133,7 @@ export function CostDesk({module}:{module:Module}){
             ["/workspace/alerts","◉","Due dates & alerts"],
             ["/workspace/enterprise/invoices","▥","Invoices"],
             ["/workspace/costs/expenses","◎","Operational expenses"],
+            ["/workspace/costs/profitability","◴","Project contribution"],
             ...(authorized?[["/workspace/costs/commissions","◆","Commission vault"]]:[]),
             ["/workspace/account","◌","Account security"]
           ].map(([href,symbol,label])=><Link className={"en-nav-item "+
