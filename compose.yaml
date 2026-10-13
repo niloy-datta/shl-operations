@@ -34,7 +34,6 @@ services:
       - "127.0.0.1:3000:3000"
     environment:
       API_INTERNAL_URL: http://api:8080
-      SESSION_KEY: ${SESSION_KEY}
     depends_on:
       api:
         condition: service_healthy

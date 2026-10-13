@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { sessionAuthorization } from "@/lib/session";
 import { PasswordForm } from "./password-form";
+import { SessionManager } from "./session-manager";
 import "../enterprise/enterprise.css";
 
 export default async function AccountSettings() {
@@ -14,7 +15,8 @@ export default async function AccountSettings() {
         <h1>Account security<span>.</span></h1>
         <p>Rotate your password without administrator assistance.</p></div></div>
       <div className="en-panel"><PasswordForm /></div>
-      <p className="en-disclaimer">A password change signs you out. All active sessions must be separately revoked when centrally managed sessions are introduced. MFA is not yet supported.</p>
+      <SessionManager />
+      <p className="en-disclaimer">Changing your password revokes all sessions. You can also revoke individual sessions above. Multi-factor authentication is still pending.</p>
     </main>
   </div></div>;
 }
