@@ -75,7 +75,7 @@ class EnterpriseWorkflowTest {
 
         UUID salesId=(UUID)commerce.createOrder(
             new CommerceController.OrderInput(quoteId)).getBody().get("id");
-        assertThat(commerce.getOrder(salesId).get("total_amount"))
+        assertThat((BigDecimal)commerce.getOrder(salesId).get("total_amount"))
             .isEqualByComparingTo(new BigDecimal("15000.00"));
         commerce.orderStatus(salesId,new CommerceController.StatusInput("CONFIRMED"));
 
@@ -84,7 +84,7 @@ class EnterpriseWorkflowTest {
             .isInstanceOf(ResponseStatusException.class);
         UUID poId=(UUID)commerce.createPurchase(new CommerceController.PurchaseInput(
             salesId,offerId,new BigDecimal("20.000"))).getBody().get("id");
-        assertThat(commerce.getPurchase(poId).get("total_amount"))
+        assertThat((BigDecimal)commerce.getPurchase(poId).get("total_amount"))
             .isEqualByComparingTo(new BigDecimal("10000.00"));
         commerce.purchaseStatus(poId,new CommerceController.StatusInput("ISSUED"));
 
