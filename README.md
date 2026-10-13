@@ -11,7 +11,7 @@ GitHub Pages sites are publicly accessible. See [the preview](https://niloy-datt
 ## Run locally
 
 1. Install Docker Desktop with Compose.
-2. Copy `.env.example` to `.env`. Set distinct random database and admin passwords. Sessions use 256-bit random opaque tokens hashed in PostgreSQL; SESSION_KEY is no longer needed. Generate a unique MFA_ENCRYPTION_KEY with `openssl rand -hex 32` before enabling authenticator MFA. Do not commit `.env`.
+2. Copy `.env.example` to `.env`. Set distinct random database and admin passwords. Sessions use 256-bit random opaque tokens hashed in PostgreSQL; SESSION_KEY is no longer needed. Generate a unique MFA_ENCRYPTION_KEY with `openssl rand -hex 32` before enabling authenticator MFA. Do not commit `.env`. Commission records are visible only to exact existing staff usernames in protected `COMMISSION_AUTHORIZED_USERS`; leave it empty to deny all. This list must be explicitly approved.
 3. Run `docker compose up --build` in this folder.
 4. Open `http://localhost:3000` and sign in with the bootstrap admin credentials.
 
@@ -19,7 +19,7 @@ The PostgreSQL volume persists records between restarts. To rerun checks in an e
 
 ## Enterprise workflow foundation (development)
 
-A connected foundation now covers quotation approval, sales/purchase orders, shipments, invoices/payments, tasks, staff roles, audit events and authenticated Next.js pages. See [enterprise documentation](docs/enterprise-workflows-v4.md) for module boundaries, role matrix, workflow steps, testing and outstanding security gates.
+A connected foundation covers quotation approval, sales/purchase orders, shipments, invoices/payments, tasks, staff roles, audit events and authenticated Next.js pages. CRM leads, project jobs, expenses, an explicitly restricted commission vault and role-filtered operational alerts now have real database/API/UI implementations. See [new project and finance milestone](docs/implementation-milestone-v6.md) and [enterprise documentation](docs/enterprise-workflows-v4.md) for module boundaries, role matrix, workflow steps, testing and outstanding security gates.
 
 For a local PostgreSQL archive use `bash scripts/backup-local.sh`, then test restoring it with `bash scripts/restore-drill-local.sh backups/<archive>.dump`. Never store backups in Git.
 
@@ -36,7 +36,7 @@ For a local PostgreSQL archive use `bash scripts/backup-local.sh`, then test res
 - Updated read-only static visual preview in `docs/demo` with no fictional counts, sample records, API calls, or storage.
 - RFQ sourcing desk at `/workspace/rfqs`: customer-linked inquiries, supplier offer comparison (price/MOQ/lead time), guarded RFQ status changes and RFQ activity history.
 - PostgreSQL Flyway V2 migration and transactional sourcing API; RFQ lifecycle tested using PostgreSQL Testcontainers.
-- Outgoing customer quotations, purchasing, shipments, invoices, payments and named-staff RBAC now have development implementations. **True double-entry ledger, commissions, MFA, production deployment and security hardening remain unimplemented.**
+- Outgoing customer quotations, purchasing, shipments, invoices, payments and named-staff RBAC have development implementations. CRM lead qualification, project jobs and notes, expenses, explicitly authorized confidential commissions, operational alerts and conservative project contribution reporting have also been implemented. **True double-entry ledger, commission settlement, compulsory MFA, production deployment and full security hardening are not implemented.**
 - No fabricated business metrics or sample records.
 
 ## Boundaries
