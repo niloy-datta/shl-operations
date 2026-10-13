@@ -70,8 +70,24 @@ class EnterpriseWorkflowTest {
         )).getBody().get("id");
         assertThat(commerce.getQuote(quoteId).get("status")).isEqualTo("DRAFT");
         commerce.quoteStatus(quoteId,new CommerceController.StatusInput("SUBMITTED"));
-        commerce.quoteStatus(quoteId,new CommerceController.StatusInput("APPROVED"));
-        assertThat(commerce.getQuote(quoteId).get("approved_by")).isEqualTo("test-admin");
+        assertThatThrownBy(() -> commerce.quoteStatus(quoteId,
+            new CommerceController.StatusInput("APPROVED")))
+            .isInstanceOf(ResponseStatusException.class);
+        var originalAuth=org.springframework.security.core.context.SecurityContextHolder
+            .getContext().getAuthentication();
+        try {
+            org.springframework.security.core.context.SecurityContextHolder.getContext()
+                .setAuthentication(new org.springframework.security.authentication
+                    .UsernamePasswordAuthenticationToken(
+                        "independent-approver",null,
+                        java.util.List.of(new org.springframework.security.core.authority
+                            .SimpleGrantedAuthority("ROLE_MANAGEMENT"))));
+            commerce.quoteStatus(quoteId,new CommerceController.StatusInput("APPROVED"));
+        } finally {
+            org.springframework.security.core.context.SecurityContextHolder.getContext()
+                .setAuthentication(originalAuth);
+        }
+        assertThat(commerce.getQuote(quoteId).get("approved_by")).isEqualTo("independent-approver");
 
         UUID salesId=(UUID)commerce.createOrder(
             new CommerceController.OrderInput(quoteId)).getBody().get("id");
