@@ -188,7 +188,9 @@ public class MfaService {
                 """,UUID.randomUUID(),id,hash(body));
             codes.add(displayed);
         }
-        audit.log("MFA_ENABLED","STAFF",id,"Recovery codes issued");
+        // Any password-only sessions must not survive MFA activation.
+        db.update("UPDATE auth_sessions SET revoked_at=now() WHERE staff_id=? AND revoked_at IS NULL",id);
+        audit.log("MFA_ENABLED","STAFF",id,"Recovery codes issued; sessions revoked");
         return codes;
     }
     /** Caller holds the login rate-limiter row lock; the staff row serializes code reuse. */
