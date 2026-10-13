@@ -11,7 +11,7 @@ GitHub Pages sites are publicly accessible. See [the preview](https://niloy-datt
 ## Run locally
 
 1. Install Docker Desktop with Compose.
-2. Copy `.env.example` to `.env`. Set distinct random database and admin passwords. Sessions use 256-bit random opaque tokens hashed in PostgreSQL; SESSION_KEY is no longer needed. Do not commit `.env`.
+2. Copy `.env.example` to `.env`. Set distinct random database and admin passwords. Sessions use 256-bit random opaque tokens hashed in PostgreSQL; SESSION_KEY is no longer needed. Generate a unique MFA_ENCRYPTION_KEY with `openssl rand -hex 32` before enabling authenticator MFA. Do not commit `.env`.
 3. Run `docker compose up --build` in this folder.
 4. Open `http://localhost:3000` and sign in with the bootstrap admin credentials.
 
@@ -21,9 +21,9 @@ The PostgreSQL volume persists records between restarts. To rerun checks in an e
 
 A connected foundation now covers quotation approval, sales/purchase orders, shipments, invoices/payments, tasks, staff roles, audit events and authenticated Next.js pages. See [enterprise documentation](docs/enterprise-workflows-v4.md) for module boundaries, role matrix, workflow steps, testing and outstanding security gates.
 
-For a local PostgreSQL archive use bash scripts/backup-local.sh. Do not store database backups in Git. This is not a restore test.
+For a local PostgreSQL archive use `bash scripts/backup-local.sh`, then test restoring it with `bash scripts/restore-drill-local.sh backups/<archive>.dump`. Never store backups in Git.
 
-**This is not production ready.** MFA, account recovery, stronger login defenses, proper accounting, secure documents, automated restore drills and independent security review are still required. Do not load real SHL company data yet.
+**This is not production ready.** MFA is optional, secure account recovery and enforced MFA are pending, as are edge login defenses and proper accounting, secure documents, automated restore drills and independent security review are still required. Do not load real SHL company data yet.
 
 ## Implemented in the current development milestone
 

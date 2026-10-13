@@ -22,3 +22,16 @@ CI validates Next.js typecheck/lint/build and Maven/PostgreSQL integration tests
 - Database audit is not immutable. Use append-only external retention for production.
 - TLS/HSTS assumes correct HTTPS termination in production; enable only after testing a dedicated domain.
 - The first deployment after migration V4 forces existing users to log in again.
+
+## Optional authenticator MFA (Flyway V5)
+- Configure a **unique 64-character hex** MFA_ENCRYPTION_KEY before offering enrollment. Never commit it.
+- At Account security, enter current password, register the manual TOTP key in an authenticator app, confirm a six-digit code, and save the eight one-use recovery codes.
+- RFC 6238 SHA1 / 30-second / six-digit verification with ±1-step clock tolerance and replay counter.
+- Secret is encrypted at rest with AES-256-GCM and an application-managed environment key; recovery code digests only are stored in PostgreSQL.
+- Enabling or disabling MFA revokes all active sessions; complete the login again.
+- Losing both the authenticator and all recovery codes requires a controlled manual identity-recovery process which is not implemented.
+- MFA is optional in development, so un-enrolled accounts remain password-only. Enforcing MFA organization-wide and securing recovery are production blockers.
+- **Encryption key loss makes existing MFA secrets unusable; key rotation is not implemented.** Store and back up key through a compliant secrets manager.
+
+## Local restoration test
+Use `bash scripts/backup-local.sh` then `bash scripts/restore-drill-local.sh backups/<archive>.dump`. The drill restores to a network-isolated temporary PostgreSQL container without touching the actual database. It only validates the presence of core tables; maintain separate production recovery exercises, encrypted backup retention, point-in-time recovery and data reconciliation.
