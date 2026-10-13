@@ -41,6 +41,7 @@ class EnterpriseWorkflowTest {
     @Autowired TasksController tasks;
     @Autowired StaffController staff;
     @Autowired GrowthController growth;
+    @Autowired OperationalAlertsController alerts;
     @Autowired JdbcTemplate db;
 
     @Test
@@ -259,6 +260,36 @@ class EnterpriseWorkflowTest {
         assertThatThrownBy(()->growth.addProject(new GrowthController.ProjectInput(
             buyer.id,leadId,null,"Duplicate lead project",null,owner,null
         ))).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @WithMockUser(username="test-admin",roles="ADMIN")
+    void roleScopedAlertFeedUsesRealDeadlines() {
+        String suffix=UUID.randomUUID().toString();
+        Customer buyer=customers.save(new Customer(new ContactInput(
+            "Alert buyer "+suffix,"alert@example.test",null,"CN")));
+        UUID owner=db.queryForObject(
+            "SELECT id FROM staff_users WHERE username='test-admin'",UUID.class);
+        String subject="Follow-up "+suffix;
+        UUID leadId=(UUID)growth.addLead(new GrowthController.LeadInput(
+            buyer.id,"Buyer "+suffix,"Test lead","lead@example.test","MANUAL",
+            subject,null,owner,LocalDate.now(java.time.ZoneOffset.UTC)
+        )).getBody().get("id");
+        var feed=alerts.feed();
+        assertThat(feed.items()).anyMatch(item->"LEAD".equals(item.source())
+            && subject.equals(item.title()));
+        assertThat(feed.dueToday()).isPositive();
+        assertThat(feed.timezone()).isEqualTo("UTC");
+        assertThat(feed.items()).noneMatch(item->"COMMISSION".equals(item.source()));
+        growth.leadStatus(leadId,new GrowthController.ChangeStatus("LOST"));
+        assertThat(alerts.feed().items()).noneMatch(item->subject.equals(item.title()));
+    }
+
+    @Test
+    @WithMockUser(username="limited-user",roles="BD")
+    void bdAlertFeedDoesNotExposeInvoicesOrUnownedProjects() {
+        assertThat(alerts.feed().items()).noneMatch(item->
+            "INVOICE".equals(item.source())||"SHIPMENT".equals(item.source()));
     }
 
     @Test
