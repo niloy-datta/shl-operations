@@ -1,0 +1,16 @@
+.ax-banner{background:linear-gradient(110deg,#0d253f,#173a52 65%,#226971)}
+.ax-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;margin-bottom:27px}
+.ax-card{border:1px solid #e4ebf2;border-radius:12px;text-align:left;padding:25px;cursor:pointer;color:#16314a;background:white}
+.ax-card:hover,.ax-selected{border-color:#31b99b;background:#f0fffb}
+.ax-card span{font-size:11px;font-weight:800;display:block;color:#6e8599}
+.ax-card strong{font-size:39px;display:block;letter-spacing:-1.5px;margin:9px 0;font-variant-numeric:tabular-nums}
+.ax-card small{font-size:10px;color:#96a8b5}
+.ax-items{border-top:1px solid #e6edf3}.ax-item{display:flex;align-items:center;gap:18px;border-bottom:1px solid #edf2f5;padding:20px 26px;color:#18364a;text-decoration:none;transition:background .2s}
+.ax-item:hover{background:#f4fbfa}.ax-icon{display:grid;place-items:center;border-radius:11px;width:39px;height:39px;flex:none;background:#eaf4fc;color:#2589c3;font-size:19px;font-weight:900}
+.ax-overdue{background:#fff0ed;color:#d85843}.ax-due_today{background:#fff5e1;color:#bc8428}
+.ax-item>div:nth-child(2){min-width:0;flex:1}.ax-item strong{font-size:13px;display:block;overflow-wrap:anywhere}
+.ax-item p{font-size:10px;color:#8096a8;margin:7px 0 0}.ax-item-date{text-align:right}
+.ax-item-date span{font-size:12px;font-variant-numeric:tabular-nums;display:block}
+.ax-item-date small{font-size:9px;color:#8099a9;letter-spacing:1.2px;margin-top:4px;display:block}
+.ax-item>span:last-child{font-size:17px;color:#30a991}
+@media(max-width:740px){.ax-cards{grid-template-columns:1fr}.ax-item{padding:16px;gap:10px}.ax-item-date{min-width:85px}}
