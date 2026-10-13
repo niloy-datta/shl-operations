@@ -23,10 +23,14 @@ const primaryViews: { key: View; label: string; icon: IconName }[] = [
   { key: "customers", label: "Customers", icon: "users" },
   { key: "suppliers", label: "Suppliers", icon: "building" }
 ];
-const futureViews: { label: string; icon: IconName }[] = [
-  { label: "Procurement", icon: "package" },
-  { label: "Shipments", icon: "ship" },
-  { label: "Finance", icon: "chart" }
+const enterpriseViews: { label: string; href: string; icon: IconName }[] = [
+  { label: "Quotations", href: "/workspace/enterprise/quotes", icon: "layers" },
+  { label: "Sales orders", href: "/workspace/enterprise/orders", icon: "grid" },
+  { label: "Purchase orders", href: "/workspace/enterprise/purchase-orders", icon: "package" },
+  { label: "Shipments", href: "/workspace/enterprise/shipments", icon: "ship" },
+  { label: "Finance", href: "/workspace/enterprise/invoices", icon: "chart" },
+  { label: "Team tasks", href: "/workspace/enterprise/tasks", icon: "check" },
+  { label: "Staff & audit", href: "/workspace/enterprise/staff", icon: "users" }
 ];
 
 function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
@@ -55,6 +59,12 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
 export function Workspace() {
   const router = useRouter();
   const [view, setView] = useState<View>("overview");
+  useEffect(() => {
+    const queryView = new URLSearchParams(window.location.search).get("view");
+    if (queryView !== "customers" && queryView !== "suppliers") return;
+    const frame = window.requestAnimationFrame(() => setView(queryView));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
   const [totals, setTotals] = useState<Totals | null>(null);
   const [data, setData] = useState<ContactPage>(emptyPage);
   const [page, setPage] = useState(0);
@@ -191,8 +201,9 @@ export function Workspace() {
         <p className="nav-heading future-heading">TRADING OPERATIONS</p>
         <Link href="/workspace/rfqs" className="nav-item"><Icon name="layers" /><span>RFQ &amp; Sourcing</span><small className="live-module">LIVE</small></Link>
         <p className="nav-heading future-heading">COMING NEXT</p>
-        {futureViews.map(item => <div key={item.label} className="nav-item nav-planned" title="Planned for a future release">
-          <Icon name={item.icon} /><span>{item.label}</span><small>SOON</small></div>)}
+        <Link href="/workspace/account" className="nav-item"><Icon name="lock" /><span>My security</span></Link>
+        {enterpriseViews.map(item => <Link key={item.label} href={item.href} className="nav-item">
+          <Icon name={item.icon} /><span>{item.label}</span></Link>)}
       </nav>
       <div className="sidebar-bottom">
         <div className="side-status"><Icon name="lock" size={15} /><span>Private operations workspace</span></div>

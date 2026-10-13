@@ -17,6 +17,14 @@ GitHub Pages sites are publicly accessible. See [the preview](https://niloy-datt
 
 The PostgreSQL volume persists records between restarts. To rerun checks in an environment with Docker, run `docker compose run --rm api mvn test` only in a build image with Maven, or `cd apps/api && mvn test` with Java 25 and Maven installed. For the web, run `cd apps/web && npm install && npm run typecheck && npm run lint && npm run build`.
 
+## Enterprise workflow foundation (development)
+
+A connected foundation now covers quotation approval, sales/purchase orders, shipments, invoices/payments, tasks, staff roles, audit events and authenticated Next.js pages. See [enterprise documentation](docs/enterprise-workflows-v4.md) for module boundaries, role matrix, workflow steps, testing and outstanding security gates.
+
+For a local PostgreSQL archive use bash scripts/backup-local.sh. Do not store database backups in Git. This is not a restore test.
+
+**This is not production ready.** Identity/MFA, proper accounting, secure documents, automated restore drills and independent security review are still required. Do not load real SHL company data yet.
+
 ## Implemented in the current development milestone
 
 - Admin sign in, encrypted HTTP only browser session, internal REST API authorization.
@@ -28,7 +36,7 @@ The PostgreSQL volume persists records between restarts. To rerun checks in an e
 - Updated read-only static visual preview in `docs/demo` with no fictional counts, sample records, API calls, or storage.
 - RFQ sourcing desk at `/workspace/rfqs`: customer-linked inquiries, supplier offer comparison (price/MOQ/lead time), guarded RFQ status changes and RFQ activity history.
 - PostgreSQL Flyway V2 migration and transactional sourcing API; RFQ lifecycle tested using PostgreSQL Testcontainers.
-- Procurement, shipments, outgoing customer quotations, financial ledgers, commissions and staff-wide RBAC/MFA remain **planned, not implemented**.
+- Outgoing customer quotations, purchasing, shipments, invoices, payments and named-staff RBAC now have development implementations. **True double-entry ledger, commissions, MFA, production deployment and security hardening remain unimplemented.**
 - No fabricated business metrics or sample records.
 
 ## Boundaries

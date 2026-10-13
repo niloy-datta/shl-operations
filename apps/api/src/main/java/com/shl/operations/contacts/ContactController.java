@@ -1,6 +1,7 @@
 package com.shl.operations.contacts;
 
 import jakarta.validation.Valid;
+import com.shl.operations.enterprise.AuditService;
 import java.net.URI;
 import java.util.Map;
 import java.util.UUID;
@@ -19,8 +20,9 @@ public class ContactController {
     private final CustomerRepository customers;
     private final SupplierRepository suppliers;
     private final JdbcTemplate db;
-    public ContactController(CustomerRepository customers, SupplierRepository suppliers, JdbcTemplate db) {
-        this.customers = customers; this.suppliers = suppliers; this.db = db;
+    private final AuditService audit;
+    public ContactController(CustomerRepository customers, SupplierRepository suppliers, JdbcTemplate db, AuditService audit) {
+        this.customers = customers; this.suppliers = suppliers; this.db = db; this.audit=audit;
     }
     private PageRequest page(int index, int size) {
         return PageRequest.of(Math.max(0, index), Math.min(100, Math.max(1, size)), Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -31,10 +33,12 @@ public class ContactController {
     }
     @PostMapping("/customers") @Transactional public ResponseEntity<Customer> createCustomer(@Valid @RequestBody ContactInput input) {
         Customer saved = customers.save(new Customer(input));
+        audit.log("CREATED","CUSTOMER",saved.id,saved.name);
         return ResponseEntity.created(URI.create("/api/customers/" + saved.id)).body(saved);
     }
     @PutMapping("/customers/{id}") @Transactional public Customer updateCustomer(@PathVariable UUID id, @Valid @RequestBody ContactInput input) {
         Customer saved = customers.findById(id).orElseThrow(() -> new ResponseStatusException(NOT_FOUND));
+        audit.log("UPDATED","CUSTOMER",id,input.name());
         saved.update(input); return saved;
     }
     @GetMapping("/suppliers") public Page<Supplier> suppliers(@RequestParam(defaultValue = "") String q,
@@ -43,10 +47,12 @@ public class ContactController {
     }
     @PostMapping("/suppliers") @Transactional public ResponseEntity<Supplier> createSupplier(@Valid @RequestBody ContactInput input) {
         Supplier saved = suppliers.save(new Supplier(input));
+        audit.log("CREATED","SUPPLIER",saved.id,saved.name);
         return ResponseEntity.created(URI.create("/api/suppliers/" + saved.id)).body(saved);
     }
     @PutMapping("/suppliers/{id}") @Transactional public Supplier updateSupplier(@PathVariable UUID id, @Valid @RequestBody ContactInput input) {
         Supplier saved = suppliers.findById(id).orElseThrow(() -> new ResponseStatusException(NOT_FOUND));
+        audit.log("UPDATED","SUPPLIER",id,input.name());
         saved.update(input); return saved;
     }
     @GetMapping("/dashboard") public Map<String, Long> dashboard() {

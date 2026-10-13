@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -18,6 +19,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.config.http.SessionCreationPolicy;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
     @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
 
@@ -49,7 +51,22 @@ public class SecurityConfig {
             .authorizeHttpRequests(a -> a
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/me").authenticated()
-                .requestMatchers("/api/**").hasRole("ADMIN")
+                
+                .requestMatchers("/api/staff/password", "/api/staff/options").authenticated()
+                .requestMatchers("/api/staff/**", "/api/staff").hasRole("ADMIN")
+                .requestMatchers("/api/audit/**", "/api/audit").hasAnyRole("ADMIN","MANAGEMENT")
+                .requestMatchers("/api/finance/**").hasAnyRole("ADMIN","MANAGEMENT","FINANCE")
+                .requestMatchers("/api/commerce/**").hasAnyRole("ADMIN","MANAGEMENT","BD","SOURCING","LOGISTICS","FINANCE")
+                .requestMatchers("/api/logistics/**").hasAnyRole("ADMIN","MANAGEMENT","LOGISTICS","SOURCING")
+                .requestMatchers("/api/tasks/**", "/api/tasks").hasAnyRole("ADMIN","MANAGEMENT","BD","SOURCING","LOGISTICS","FINANCE")
+                .requestMatchers("/api/rfqs/**", "/api/rfqs").hasAnyRole("ADMIN","MANAGEMENT","BD","SOURCING")
+                .requestMatchers(HttpMethod.GET,"/api/customers","/api/suppliers","/api/dashboard")
+                    .hasAnyRole("ADMIN","MANAGEMENT","BD","SOURCING","LOGISTICS","FINANCE")
+                .requestMatchers(HttpMethod.POST,"/api/customers","/api/suppliers")
+                    .hasAnyRole("ADMIN","MANAGEMENT","BD","SOURCING")
+                .requestMatchers(HttpMethod.PUT,"/api/customers/*","/api/suppliers/*")
+                    .hasAnyRole("ADMIN","MANAGEMENT","BD","SOURCING")
+                .requestMatchers("/api/**").denyAll()
                 .anyRequest().denyAll())
             .httpBasic(Customizer.withDefaults()).build();
     }
