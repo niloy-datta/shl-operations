@@ -66,3 +66,10 @@ Automated checks: Next.js TypeScript, ESLint and production build; Java Maven ve
 - Robust business UAT and deployment security gates.
 
 This is a significant coded enterprise foundation, not a certified production-grade or million-dollar finished application.
+
+## Integrity hardening (step-by-step commits)
+
+- Supplier offers may be inserted or revised **only** while the RFQ is in `SOURCING`. Once an RFQ becomes `READY_FOR_QUOTE`, offers are frozen and remain stable for subsequent quote and PO decisions. This is enforced by Spring Boot, not only the UI.
+- A customer quotation must be independently approved: the creator cannot approve their own quotation, including if they have an administrative role. The approver must have `ADMIN` or `MANAGEMENT` authority.
+- Customer quotations with an expired validity date cannot be approved or converted into sales orders. JDBC PostgreSQL `DATE` values are normalized before comparing dates.
+- Added persistent-database tests covering frozen offers, independent approval, and expired quotations. This remains an internal development system, not a certified production workflow.
