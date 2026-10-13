@@ -59,6 +59,12 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
 export function Workspace() {
   const router = useRouter();
   const [view, setView] = useState<View>("overview");
+  useEffect(() => {
+    const queryView = new URLSearchParams(window.location.search).get("view");
+    if (queryView !== "customers" && queryView !== "suppliers") return;
+    const frame = window.requestAnimationFrame(() => setView(queryView));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
   const [totals, setTotals] = useState<Totals | null>(null);
   const [data, setData] = useState<ContactPage>(emptyPage);
   const [page, setPage] = useState(0);
@@ -195,6 +201,7 @@ export function Workspace() {
         <p className="nav-heading future-heading">TRADING OPERATIONS</p>
         <Link href="/workspace/rfqs" className="nav-item"><Icon name="layers" /><span>RFQ &amp; Sourcing</span><small className="live-module">LIVE</small></Link>
         <p className="nav-heading future-heading">COMING NEXT</p>
+        <Link href="/workspace/account" className="nav-item"><Icon name="lock" /><span>My security</span></Link>
         {enterpriseViews.map(item => <Link key={item.label} href={item.href} className="nav-item">
           <Icon name={item.icon} /><span>{item.label}</span></Link>)}
       </nav>

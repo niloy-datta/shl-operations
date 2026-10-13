@@ -36,7 +36,7 @@ For a local PostgreSQL archive use bash scripts/backup-local.sh. Do not store da
 - Updated read-only static visual preview in `docs/demo` with no fictional counts, sample records, API calls, or storage.
 - RFQ sourcing desk at `/workspace/rfqs`: customer-linked inquiries, supplier offer comparison (price/MOQ/lead time), guarded RFQ status changes and RFQ activity history.
 - PostgreSQL Flyway V2 migration and transactional sourcing API; RFQ lifecycle tested using PostgreSQL Testcontainers.
-- Procurement, shipments, outgoing customer quotations, financial ledgers, commissions and staff-wide RBAC/MFA remain **planned, not implemented**.
+- Outgoing customer quotations, purchasing, shipments, invoices, payments and named-staff RBAC now have development implementations. **True double-entry ledger, commissions, MFA, production deployment and security hardening remain unimplemented.**
 - No fabricated business metrics or sample records.
 
 ## Boundaries
