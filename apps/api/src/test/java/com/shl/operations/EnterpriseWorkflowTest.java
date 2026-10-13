@@ -70,8 +70,24 @@ class EnterpriseWorkflowTest {
         )).getBody().get("id");
         assertThat(commerce.getQuote(quoteId).get("status")).isEqualTo("DRAFT");
         commerce.quoteStatus(quoteId,new CommerceController.StatusInput("SUBMITTED"));
-        commerce.quoteStatus(quoteId,new CommerceController.StatusInput("APPROVED"));
-        assertThat(commerce.getQuote(quoteId).get("approved_by")).isEqualTo("test-admin");
+        assertThatThrownBy(() -> commerce.quoteStatus(quoteId,
+            new CommerceController.StatusInput("APPROVED")))
+            .isInstanceOf(ResponseStatusException.class);
+        var originalAuth=org.springframework.security.core.context.SecurityContextHolder
+            .getContext().getAuthentication();
+        try {
+            org.springframework.security.core.context.SecurityContextHolder.getContext()
+                .setAuthentication(new org.springframework.security.authentication
+                    .UsernamePasswordAuthenticationToken(
+                        "independent-approver",null,
+                        java.util.List.of(new org.springframework.security.core.authority
+                            .SimpleGrantedAuthority("ROLE_MANAGEMENT"))));
+            commerce.quoteStatus(quoteId,new CommerceController.StatusInput("APPROVED"));
+        } finally {
+            org.springframework.security.core.context.SecurityContextHolder.getContext()
+                .setAuthentication(originalAuth);
+        }
+        assertThat(commerce.getQuote(quoteId).get("approved_by")).isEqualTo("independent-approver");
 
         UUID salesId=(UUID)commerce.createOrder(
             new CommerceController.OrderInput(quoteId)).getBody().get("id");
@@ -133,6 +149,55 @@ class EnterpriseWorkflowTest {
 
         Long count=db.queryForObject("SELECT count(*) FROM audit_events",Long.class);
         assertThat(count).isGreaterThanOrEqualTo(15);
+    }
+
+    @Test
+    @WithMockUser(username="test-admin",roles="ADMIN")
+    void expiredQuotesCannotBeApprovedOrTurnedIntoOrders() {
+        String suffix=UUID.randomUUID().toString();
+        Customer buyer=customers.save(new Customer(new ContactInput(
+            "Quote expiry buyer "+suffix, "expiry@example.test", null, "BD")));
+        Supplier seller=suppliers.save(new Supplier(new ContactInput(
+            "Quote expiry supplier "+suffix, "offers@example.test", null, "CN")));
+        UUID rfqId=trading.create(new TradingController.RfqInput(
+            buyer.id, "Expiry test RFQ", "Demo specifications",
+            new BigDecimal("5"), "PCS", "USD", null)).getBody().id();
+        trading.changeStatus(rfqId,new TradingController.StatusInput("SOURCING"));
+        trading.saveOffer(rfqId,new TradingController.OfferInput(
+            seller.id,new BigDecimal("7.00"),new BigDecimal("1"),10,null));
+        trading.changeStatus(rfqId,new TradingController.StatusInput("READY_FOR_QUOTE"));
+
+        UUID expiredId=(UUID)commerce.createQuote(new CommerceController.QuoteInput(
+            rfqId,new BigDecimal("12.00"),LocalDate.now().minusDays(1)))
+            .getBody().get("id");
+        commerce.quoteStatus(expiredId,new CommerceController.StatusInput("SUBMITTED"));
+
+        UUID validId=(UUID)commerce.createQuote(new CommerceController.QuoteInput(
+            rfqId,new BigDecimal("12.00"),LocalDate.now().plusDays(30)))
+            .getBody().get("id");
+        commerce.quoteStatus(validId,new CommerceController.StatusInput("SUBMITTED"));
+
+        var context=org.springframework.security.core.context.SecurityContextHolder.getContext();
+        var original=context.getAuthentication();
+        try {
+            context.setAuthentication(new org.springframework.security.authentication
+                .UsernamePasswordAuthenticationToken(
+                    "independent-approver",null,
+                    java.util.List.of(new org.springframework.security.core.authority
+                        .SimpleGrantedAuthority("ROLE_MANAGEMENT"))));
+            assertThatThrownBy(()->commerce.quoteStatus(expiredId,
+                new CommerceController.StatusInput("APPROVED")))
+                .isInstanceOf(ResponseStatusException.class);
+            commerce.quoteStatus(validId,new CommerceController.StatusInput("APPROVED"));
+        } finally {
+            context.setAuthentication(original);
+        }
+
+        db.update("UPDATE customer_quotes SET valid_until=? WHERE id=?",
+            LocalDate.now().minusDays(1),validId);
+        assertThatThrownBy(()->commerce.createOrder(
+            new CommerceController.OrderInput(validId)))
+            .isInstanceOf(ResponseStatusException.class);
     }
 
     @Test
