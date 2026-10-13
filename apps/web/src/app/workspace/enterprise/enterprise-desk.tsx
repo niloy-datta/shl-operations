@@ -64,7 +64,8 @@ const nav: { label: string; url: string; symbol: string; roles?: string[] }[] = 
   {label:"Finance",url:"/workspace/enterprise/invoices",symbol:"▥",roles:moduleConfig.invoices.roles},
   {label:"Team tasks",url:"/workspace/enterprise/tasks",symbol:"☷",roles:moduleConfig.tasks.roles},
   {label:"Staff",url:"/workspace/enterprise/staff",symbol:"♧",roles:moduleConfig.staff.roles},
-  {label:"Audit trail",url:"/workspace/enterprise/audit",symbol:"⊞",roles:moduleConfig.audit.roles}
+  {label:"Audit trail",url:"/workspace/enterprise/audit",symbol:"⊞",roles:moduleConfig.audit.roles},
+  {label:"My security",url:"/workspace/account",symbol:"◌"}
 ];
 const titles: Record<string,string> = {
   DRAFT:"Draft",SUBMITTED:"Submitted",APPROVED:"Approved",REJECTED:"Rejected",
