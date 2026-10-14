@@ -9,12 +9,14 @@ const paths: Record<string, RegExp[]> = {
     regex("commerce/(quotes|orders|purchase-orders)(/" + id + ")?"),
     regex("logistics/shipments(/" + id + "(/milestones)?)?"),
     regex("logistics/consignees(/" + id + ")?"),
+    regex("entities(/" + id + "(/contacts)?)?"),
     regex("finance/(invoices(/" + id + "(/payments)?)?|summary)"),
     regex("tasks"), regex("staff"), regex("staff/options"), regex("audit")
   ],
   POST: [
     regex("commerce/(quotes|orders|purchase-orders)"),
     regex("logistics/shipments"), regex("logistics/consignees"), regex("finance/invoices"),
+    regex("entities(/" + id + "/contacts)?"),
     regex("finance/invoices/" + id + "/payments"),
     regex("tasks"), regex("staff"), regex("staff/password")
   ],
@@ -23,6 +25,7 @@ const paths: Record<string, RegExp[]> = {
     regex("logistics/shipments/" + id + "/status"),
     regex("logistics/shipments/" + id + "/consignee"),
     regex("logistics/consignees/" + id),
+    regex("entities/" + id + "(/contacts/" + id + ")?"),
     regex("finance/invoices/" + id + "/status"),
     regex("tasks/" + id + "/status"),
     regex("staff/" + id + "/access")

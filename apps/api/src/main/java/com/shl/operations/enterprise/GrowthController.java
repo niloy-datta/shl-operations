@@ -35,7 +35,11 @@ public class GrowthController {
         @NotNull UUID ownerId, LocalDate dueDate) {}
     public record ChangeStatus(@NotBlank String status) {}
     public record NoteInput(@NotBlank @Size(max=2000) String note) {}
+    public record LeadActivityInput(@NotBlank String activityType,
+        @NotBlank @Size(max=2000) String note,LocalDate nextFollowUp) {}
 
+    private static final Set<String> ACTIVITY_TYPES=Set.of(
+        "NOTE","CALL","EMAIL","WECHAT","MEETING","OTHER");
     private static final Set<String> SOURCES=Set.of(
         "WEBSITE","EMAIL","WECHAT","REFERRAL","MANUAL","OTHER");
     private Map<String,Object> row(String sql,Object...args) {
@@ -108,6 +112,48 @@ public class GrowthController {
         db.update("UPDATE crm_leads SET status=?,updated_at=now() WHERE id=?",next,id);
         audit.log("STATUS_CHANGED","LEAD",id,old+" -> "+next);
         return lead(id);
+    }
+
+    @GetMapping("/leads/{id}/activity")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGEMENT','BD')")
+    public List<Map<String,Object>> leadActivity(@PathVariable UUID id) {
+        lead(id);
+        return db.queryForList("""
+            SELECT id,activity_type,note,next_follow_up,actor,created_at
+            FROM crm_lead_activity WHERE lead_id=?
+            ORDER BY created_at DESC,id DESC LIMIT 100
+            """,id);
+    }
+
+    @PostMapping("/leads/{id}/activity")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGEMENT','BD')")
+    @Transactional
+    public Map<String,Object> addLeadActivity(@PathVariable UUID id,
+        @Valid @RequestBody LeadActivityInput input) {
+        if(!ACTIVITY_TYPES.contains(input.activityType()))
+            throw new ResponseStatusException(BAD_REQUEST,"Invalid activity type");
+        var current=row("SELECT status FROM crm_leads WHERE id=? FOR UPDATE",id);
+        if(input.nextFollowUp()!=null) {
+            require(!List.of("WON","LOST").contains(current.get("status")),
+                "Closed leads cannot schedule further follow-ups");
+            if(input.nextFollowUp().isBefore(LocalDate.now(java.time.ZoneOffset.UTC)))
+                throw new ResponseStatusException(BAD_REQUEST,"Follow-up must be today or later (UTC)");
+        }
+        UUID eventId=UUID.randomUUID();
+        db.update("""
+            INSERT INTO crm_lead_activity(id,lead_id,activity_type,note,next_follow_up,actor)
+            VALUES(?,?,?,?,?,?)
+            """,eventId,id,input.activityType(),input.note().trim(),
+            input.nextFollowUp(),audit.actor());
+        if(input.nextFollowUp()!=null)
+            db.update("UPDATE crm_leads SET next_follow_up=?,updated_at=now() WHERE id=?",
+                input.nextFollowUp(),id);
+        audit.log("ACTIVITY_ADDED","LEAD",id,
+            input.activityType()+" activity "+eventId);
+        return row("""
+            SELECT id,activity_type,note,next_follow_up,actor,created_at
+            FROM crm_lead_activity WHERE id=?
+            """,eventId);
     }
 
     @GetMapping("/projects")

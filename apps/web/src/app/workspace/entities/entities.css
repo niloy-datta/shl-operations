@@ -1,0 +1,11 @@
+.enregistry-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.enregistry-head-actions{display:flex;align-items:center;gap:12px}
+.enregistry-head-actions>button:not(.cn-primary){border:1px solid #d9e4ec;background:white;color:#5c7183;border-radius:8px;padding:12px 17px;cursor:pointer}
+.enregistry .cn-hero{background:radial-gradient(ellipse at 93% 18%,#16576f 0%,transparent 34%),linear-gradient(120deg,#06182e 0%,#123747 74%,#0e5c59 100%)}
+.enregistry .cn-stats>div:nth-child(2){background:#092942;border-color:#164158}
+.enregistry .cn-stats>div:nth-child(2) strong{font-size:26px;color:#73eecf}
+.enregistry .cn-stats>div:nth-child(2) span{color:#98b7c9}
+.enregistry .cn-stats>div:nth-child(2) small{color:#8caebf}
+.enregistry .cn-modal .enregistry-inline-error{margin:0 28px 20px;color:#b03730;padding:11px;background:#fff0ef;border:1px solid #f5cfc9;border-radius:8px}
+.enregistry .cn-scroll tbody tr:hover{background:#f7fbfa}
+.enregistry .cn-scroll td button:focus-visible,.enregistry button:focus-visible,.enregistry a:focus-visible{outline:3px solid #12a88a;outline-offset:3px}

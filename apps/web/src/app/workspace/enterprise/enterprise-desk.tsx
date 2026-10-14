@@ -54,6 +54,7 @@ const moduleConfig: Record<Module, Config> = {
 };
 const nav: { label: string; url: string; symbol: string; roles?: string[] }[] = [
   {label:"Overview",url:"/workspace",symbol:"▦"},
+  {label:"Executive cockpit",url:"/workspace/command-center",symbol:"◈",roles:["ADMIN","MANAGEMENT"]},
   {label:"Customers",url:"/workspace?view=customers",symbol:"♙"},
   {label:"Suppliers",url:"/workspace?view=suppliers",symbol:"◇"},
   {label:"RFQ sourcing",url:"/workspace/rfqs",symbol:"▤"},
@@ -65,6 +66,7 @@ const nav: { label: string; url: string; symbol: string; roles?: string[] }[] = 
   {label:"Purchase orders",url:"/workspace/enterprise/purchase-orders",symbol:"⬡",roles:moduleConfig["purchase-orders"].roles},
   {label:"Shipments",url:"/workspace/enterprise/shipments",symbol:"⇢",roles:moduleConfig.shipments.roles},
   {label:"Consignees",url:"/workspace/consignees",symbol:"◎",roles:moduleConfig.shipments.roles},
+  {label:"Global entities",url:"/workspace/entities",symbol:"♧",roles:["ADMIN","MANAGEMENT","BD","SOURCING"]},
   {label:"Finance",url:"/workspace/enterprise/invoices",symbol:"▥",roles:moduleConfig.invoices.roles},
   {label:"Expenses",url:"/workspace/costs/expenses",symbol:"◎",roles:moduleConfig.invoices.roles},
   {label:"Project contribution",url:"/workspace/costs/profitability",symbol:"◴",roles:moduleConfig.invoices.roles},
