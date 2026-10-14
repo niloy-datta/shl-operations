@@ -6,9 +6,13 @@ const uuid = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-
 const allowed = {
   GET: [new RegExp("^rfqs$"), new RegExp("^rfqs/stats$"),
     new RegExp("^rfqs/" + uuid + "$"), new RegExp("^rfqs/" + uuid + "/offers$"),
-    new RegExp("^rfqs/" + uuid + "/history$")],
-  POST: [new RegExp("^rfqs$"), new RegExp("^rfqs/" + uuid + "/offers$")],
-  PATCH: [new RegExp("^rfqs/" + uuid + "/status$")]
+    new RegExp("^rfqs/" + uuid + "/history$"),
+    new RegExp("^rfqs/" + uuid + "/items$")],
+  POST: [new RegExp("^rfqs$"), new RegExp("^rfqs/" + uuid + "/offers$"),
+    new RegExp("^rfqs/" + uuid + "/items$")],
+  PATCH: [new RegExp("^rfqs/" + uuid + "/status$")],
+  PUT: [new RegExp("^rfqs/" + uuid + "/items/" + uuid + "$")],
+  DELETE: [new RegExp("^rfqs/" + uuid + "/items/" + uuid + "$")]
 } as const;
 
 async function relay(request: Request, context: Context) {
@@ -37,6 +41,9 @@ async function relay(request: Request, context: Context) {
     const upstream = await fetch(apiUrl, {
       method, headers: { authorization, "content-type": "application/json" }, body, cache: "no-store"
     });
+    if (upstream.status === 204) return new NextResponse(null, {
+      status: 204, headers: { "cache-control": "no-store" }
+    });
     return new NextResponse(await upstream.text(), {
       status: upstream.status,
       headers: { "content-type": "application/json", "cache-control": "no-store" }
@@ -48,3 +55,5 @@ async function relay(request: Request, context: Context) {
 export const GET = relay;
 export const POST = relay;
 export const PATCH = relay;
+export const PUT = relay;
+export const DELETE = relay;
