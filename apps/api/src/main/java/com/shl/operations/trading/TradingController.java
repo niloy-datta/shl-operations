@@ -180,6 +180,26 @@ public class TradingController {
         if (!Objects.equals(next.get(current), input.status()))
             throw new ResponseStatusException(CONFLICT, "Invalid workflow transition");
         if ("READY_FOR_QUOTE".equals(input.status())) {
+            // Existing quote and purchasing APIs price one RFQ header quantity/unit.
+            // Preserve historical RFQs without lines; block multi-line conversion
+            // rather than silently calculating an inaccurate commercial total.
+            List<Map<String,Object>> lines=db.queryForList("""
+                SELECT quantity,unit FROM rfq_line_items
+                WHERE rfq_id=? ORDER BY line_number
+                """,id);
+            if (lines.size()>1)
+                throw new ResponseStatusException(CONFLICT,
+                    "Multi-item RFQ requires a line-aware quotation workflow before approval");
+            if (lines.size()==1) {
+                BigDecimal lineQuantity=(BigDecimal)lines.getFirst().get("quantity");
+                String lineUnit=(String)lines.getFirst().get("unit");
+                Map<String,Object> header=db.queryForMap(
+                    "SELECT quantity,unit FROM rfqs WHERE id=?",id);
+                if (lineQuantity.compareTo((BigDecimal)header.get("quantity"))!=0
+                    || !lineUnit.equalsIgnoreCase(((String)header.get("unit")).trim()))
+                    throw new ResponseStatusException(CONFLICT,
+                        "Match the requirement line quantity/unit to RFQ header before quoting");
+            }
             Long offerCount = db.queryForObject("SELECT count(*) FROM supplier_offers WHERE rfq_id = ?", Long.class, id);
             if (offerCount == null || offerCount == 0)
                 throw new ResponseStatusException(CONFLICT, "Add a supplier offer before marking ready");
