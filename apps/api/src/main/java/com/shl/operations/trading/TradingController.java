@@ -159,6 +159,9 @@ public class TradingController {
         List<Map<String,Object>> requirements=db.queryForList("""
             SELECT quantity,unit FROM rfq_line_items WHERE rfq_id=? ORDER BY line_number
             """,id);
+        if (requirements.size()>1)
+            throw new ResponseStatusException(CONFLICT,
+                "Multi-item RFQ requires supplier offers priced per line; aggregate pricing is disabled");
         if (requirements.size()==1) {
             Map<String,Object> header=db.queryForMap(
                 "SELECT quantity,unit FROM rfqs WHERE id=?",id);
