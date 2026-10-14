@@ -17,6 +17,10 @@ GitHub Pages sites are publicly accessible. See [the preview](https://niloy-datt
 
 The PostgreSQL volume persists records between restarts. To rerun checks in an environment with Docker, run `docker compose run --rm api mvn test` only in a build image with Maven, or `cd apps/api && mvn test` with Java 25 and Maven installed. For the web, run `cd apps/web && npm install && npm run typecheck && npm run lint && npm run build`.
 
+## Current roadmap
+
+The [50-step enterprise delivery roadmap](docs/enterprise-50-step-roadmap.md) tracks delivered code versus outstanding production tasks. The new customer-scoped consignee master at `/workspace/consignees` supports profile management and pre-dispatch shipment assignment, including owner matching and audit records. **This does not mean the system is production-ready.**
+
 ## Enterprise workflow foundation (development)
 
 A connected foundation covers quotation approval, sales/purchase orders, shipments, invoices/payments, tasks, staff roles, audit events and authenticated Next.js pages. CRM leads, project jobs, expenses, an explicitly restricted commission vault and role-filtered operational alerts now have real database/API/UI implementations. See [new project and finance milestone](docs/implementation-milestone-v6.md) and [enterprise documentation](docs/enterprise-workflows-v4.md) for module boundaries, role matrix, workflow steps, testing and outstanding security gates.
