@@ -53,7 +53,7 @@ class ConsigneeWorkflowTest {
         UUID id=(UUID)saved.get("id");
         assertThat(saved.get("code")).asString().startsWith("CNE-");
         assertThat(consignees.get(id).get("customer_id")).isEqualTo(buyer);
-        assertThat(consignees.list("Rotterdam Receiving",0,10).content())
+        assertThat(consignees.list("Rotterdam Receiving",0,10,buyer).content())
             .anyMatch(row->id.equals(row.get("id")));
         assertThatThrownBy(() -> consignees.update(id,profile(another,"Hijacked",true)))
             .isInstanceOf(ResponseStatusException.class);
