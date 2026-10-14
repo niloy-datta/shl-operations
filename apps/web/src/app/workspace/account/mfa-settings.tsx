@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
-type Status = { enabled: boolean; enrollmentPending: boolean; recoveryCodesRemaining: number };
+type Status = { enabled: boolean; enrollmentPending: boolean; recoveryCodesRemaining: number; required: boolean };
 type Enrollment = { secret: string; otpAuthUrl: string };
 
 async function send(path: string, data: Record<string,string>): Promise<Response> {
@@ -108,13 +108,13 @@ export function MfaSettings() {
         </form>
       </> : status ? <>
         <p className="en-help">MFA is active. {status.recoveryCodesRemaining} unused recovery codes remain. Disabling requires your password and an authenticator or recovery code.</p>
-        <form onSubmit={e=>void disable(e)} style={{display:"grid",gap:12}}>
+        {status.required ? <p className="en-help">MFA is required by organization policy and cannot be disabled. Contact your administrator for secure recovery.</p> : <form onSubmit={e=>void disable(e)} style={{display:"grid",gap:12}}>
           <label className="en-field"><span>Current password</span>
             <input name="password" type="password" autoComplete="current-password" required/></label>
           <label className="en-field"><span>Authenticator or recovery code</span>
             <input name="code" autoComplete="one-time-code" required maxLength={40}/></label>
           <button disabled={busy} className="en-secondary">{busy?"Disabling…":"Disable MFA and sign out"}</button>
-        </form>
+        </form>}
       </> : null}
     </div>
   </section>;
