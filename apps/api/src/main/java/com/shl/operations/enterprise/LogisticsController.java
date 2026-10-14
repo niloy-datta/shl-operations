@@ -85,7 +85,9 @@ public class LogisticsController {
         var shipment=row("SELECT * FROM shipments WHERE id=? FOR UPDATE",id);
         require("BOOKED".equals(shipment.get("status")),
             "Consignee can only be assigned before shipment departure");
-        var consignee=row("SELECT id,code,customer_id,active FROM consignees WHERE id=?",
+        if (input.consigneeId().equals(shipment.get("consignee_id"))) return get(id);
+        // Share-lock the recipient so deactivation cannot race with assignment.
+        var consignee=row("SELECT id,code,customer_id,active FROM consignees WHERE id=? FOR SHARE",
             input.consigneeId());
         require(Boolean.TRUE.equals(consignee.get("active")),"Consignee must be active");
         UUID customerId=db.queryForObject("SELECT customer_id FROM sales_orders WHERE id=?",
