@@ -11,7 +11,7 @@ REQUIRED = (
     "SHL_DOMAIN", "POSTGRES_DB", "POSTGRES_USER", "POSTGRES_PASSWORD",
     "BOOTSTRAP_ADMIN_USERNAME", "BOOTSTRAP_ADMIN_PASSWORD", "MFA_ENCRYPTION_KEY",
 )
-DOMAIN = re.compile(r"^(?=.{4,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[A-Za-z]{2,63}$")
+DOMAIN = re.compile(r"^(?=.{4,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[A-Za-z]{2,63}$")
 HEX_KEY = re.compile(r"^[0-9a-fA-F]{64}$")
 
 

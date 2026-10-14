@@ -13,7 +13,7 @@ class ProductionPreflightTests(unittest.TestCase):
             "POSTGRES_PASSWORD": "db_" + "aZ7f93_pT4" * 3,
             "BOOTSTRAP_ADMIN_USERNAME": "operations_owner",
             "BOOTSTRAP_ADMIN_PASSWORD": "admin_" + "Yk94rT3#" * 3,
-            "MFA_ENCRYPTION_KEY": "7e0f94a2d31c8b6e5f0a9132c4d7b8e69a1f0c2d3b4e5a6f7c8d9e0b1a2c3d4",
+            "MFA_ENCRYPTION_KEY": "7e0f94a2d31c8b6e5f0a9132c4d7b8e69a1f0c2d3b4e5a6f7c8d9e0b1a2c3d45",
         }
 
     def test_valid_candidate_configuration(self):
@@ -33,7 +33,7 @@ class ProductionPreflightTests(unittest.TestCase):
     def test_duplicate_env_key_rejected(self):
         with TemporaryDirectory() as folder:
             path = Path(folder) / ".env"
-            path.write_text("A=hello\\nA=again\\n")
+            path.write_text("A=hello\nA=again\n")
             with self.assertRaisesRegex(ValueError, "duplicate"):
                 read_env(path)
 
