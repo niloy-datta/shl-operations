@@ -16,6 +16,8 @@ jobs:
       - name: Check public preview scripts
         run: node --check ../../docs/demo/demo.js && node --check ../../docs/demo/enterprise.js
       - run: npm run build
+      - name: Audit production npm dependencies
+        run: npm audit --omit=dev --audit-level=high
         env:
           SESSION_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
   api:
@@ -35,3 +37,15 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate recovery scripts
         run: bash -n scripts/backup-local.sh scripts/restore-drill-local.sh
+      - name: Unit-test deployment preflight
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+      - name: Validate isolated production Compose topology
+        env:
+          SHL_DOMAIN: staging.example.org
+          POSTGRES_DB: shl_operations
+          POSTGRES_USER: shl_app
+          POSTGRES_PASSWORD: ci-only-not-a-real-secret
+          BOOTSTRAP_ADMIN_USERNAME: ci_operator
+          BOOTSTRAP_ADMIN_PASSWORD: ci-only-bootstrap-credential
+          MFA_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+        run: docker compose -f compose.prod.yaml config --quiet

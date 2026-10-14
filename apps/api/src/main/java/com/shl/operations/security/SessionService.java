@@ -11,6 +11,7 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,19 +32,24 @@ public class SessionService {
     private final PasswordEncoder passwords;
     private final AuditService audit;
     private final MfaService mfa;
+    private final boolean mandatoryMfa;
     private final SecureRandom rng = new SecureRandom();
     private final String dummyHash;
 
-    public SessionService(JdbcTemplate db, PasswordEncoder passwords, AuditService audit, MfaService mfa) {
+    public SessionService(JdbcTemplate db, PasswordEncoder passwords, AuditService audit, MfaService mfa,
+        @Value("${SHL_REQUIRE_MFA:false}") boolean mandatoryMfa) {
         this.db = db;
         this.passwords = passwords;
         this.audit = audit;
         this.mfa = mfa;
+        this.mandatoryMfa = mandatoryMfa;
         this.dummyHash = passwords.encode("deliberately-not-a-real-credential");
     }
 
-    public record Granted(String token, Instant expiresAt, String username, String role) {}
-    public record Valid(UUID sessionId, UUID staffId, String username, String role) {}
+    public record Granted(String token, Instant expiresAt, String username, String role,
+        boolean mfaSetupRequired) {}
+    public record Valid(UUID sessionId, UUID staffId, String username, String role,
+        boolean mfaEnabled) {}
 
     public static boolean validFormat(String token) {
         return token != null && token.matches("[A-Za-z0-9_-]{43}");
@@ -149,13 +155,14 @@ public class SessionService {
             VALUES(?,?,?,?)
             """,sessionId,staffId,hash(token),java.sql.Timestamp.from(expiry));
         audit.log("LOGIN","STAFF",staffId,"New session "+sessionId);
-        return new Granted(token,expiry,(String)staff.get("username"),(String)staff.get("role"));
+        return new Granted(token,expiry,(String)staff.get("username"),(String)staff.get("role"),
+            mandatoryMfa && !Boolean.TRUE.equals(staff.get("mfa_enabled")));
     }
 
     public Valid validate(String token) {
         if (!validFormat(token)) return null;
         return db.query("""
-            SELECT s.id AS session_id,u.id AS staff_id,u.username,u.role
+            SELECT s.id AS session_id,u.id AS staff_id,u.username,u.role,u.mfa_enabled
             FROM auth_sessions s JOIN staff_users u ON u.id=s.staff_id
             WHERE s.token_hash=? AND s.revoked_at IS NULL AND s.expires_at>now()
               AND u.enabled=true
@@ -163,7 +170,7 @@ public class SessionService {
             """, (rs, ignored)->new Valid(
                 rs.getObject("session_id",UUID.class),
                 rs.getObject("staff_id",UUID.class),
-                rs.getString("username"),rs.getString("role")),hash(token)
+                rs.getString("username"),rs.getString("role"),rs.getBoolean("mfa_enabled")),hash(token)
         ).stream().findFirst().orElse(null);
     }
 

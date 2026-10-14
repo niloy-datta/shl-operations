@@ -1,0 +1,96 @@
+# Standalone production candidate. Do not merge with compose.yaml.
+# No application API or database ports are published.
+services:
+  db:
+    image: postgres:17.6
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - data
+    security_opt:
+      - no-new-privileges:true
+
+  api:
+    build: ./apps/api
+    restart: unless-stopped
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      DB_USERNAME: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:?Set admin username in .env}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?Set admin password in .env}
+      MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY:?Set 64-char MFA key in .env}
+      SHL_REQUIRE_MFA: "true"
+      COMMISSION_AUTHORIZED_USERS: ${COMMISSION_AUTHORIZED_USERS:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - data
+      - application
+    security_opt:
+      - no-new-privileges:true
+
+  web:
+    build: ./apps/web
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: http://api:8080
+    depends_on:
+      api:
+        condition: service_healthy
+    expose:
+      - "3000"
+    networks:
+      - application
+    security_opt:
+      - no-new-privileges:true
+
+  caddy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    environment:
+      SHL_DOMAIN: ${SHL_DOMAIN:?Set SHL_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+    networks:
+      - edge
+      - application
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  edge: {}
+  application:
+    internal: true
+  data:
+    internal: true
