@@ -154,6 +154,21 @@ public class TradingController {
             (rs, row) -> rs.getString(1), id).stream().findFirst()
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "RFQ not found"));
         if (!"SOURCING".equals(status)) throw new ResponseStatusException(CONFLICT, "Supplier offers can only be edited while sourcing; ready RFQs have frozen offers");
+        // Prevent freezing a contradictory single product line once an offer exists.
+        // Legacy RFQs without structured lines remain backward-compatible.
+        List<Map<String,Object>> requirements=db.queryForList("""
+            SELECT quantity,unit FROM rfq_line_items WHERE rfq_id=? ORDER BY line_number
+            """,id);
+        if (requirements.size()==1) {
+            Map<String,Object> header=db.queryForMap(
+                "SELECT quantity,unit FROM rfqs WHERE id=?",id);
+            if (((BigDecimal)requirements.getFirst().get("quantity"))
+                  .compareTo((BigDecimal)header.get("quantity"))!=0
+                || !((String)requirements.getFirst().get("unit"))
+                  .equalsIgnoreCase(((String)header.get("unit")).trim()))
+                throw new ResponseStatusException(CONFLICT,
+                    "Requirement line quantity/unit must match the RFQ header before supplier offers are saved");
+        }
         if (!exists("suppliers", input.supplierId()))
             throw new ResponseStatusException(BAD_REQUEST, "Select an existing supplier");
         db.update("""
