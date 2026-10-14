@@ -183,3 +183,5 @@
 .desk-line-history>strong { display:block; color:#174b43; margin-bottom:8px; font-size:12px; }
 .desk-line-history p { font-size:11px; margin:9px 0; color:#536b6a; line-height:1.6; overflow-wrap:anywhere; }
 .desk-line-warning { color:#a75b0e!important; font-weight:700; }
+
+.desk-quote-launch{margin:12px 0 24px;padding:18px;display:flex;gap:16px;align-items:center;justify-content:space-between;background:#edf9f5;border:1px solid #bfe5d9;border-radius:12px}.desk-quote-launch strong{color:#0b6b5b;font-size:13px}.desk-quote-launch p{font-size:11px;line-height:1.7;color:#557d74;margin:7px 0 0}.desk-quote-launch a{text-decoration:none;flex:none}@media(max-width:520px){.desk-quote-launch{flex-direction:column;align-items:flex-start}.desk-quote-launch a{width:100%;text-align:center}}

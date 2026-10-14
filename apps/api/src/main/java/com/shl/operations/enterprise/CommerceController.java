@@ -71,6 +71,21 @@ public class CommerceController {
     public ResponseEntity<Map<String,Object>> createQuote(@Valid @RequestBody QuoteInput input) {
         var rfq = locked("SELECT id,status,quantity,currency FROM rfqs WHERE id=? FOR UPDATE", input.rfqId());
         require("READY_FOR_QUOTE".equals(rfq.get("status")), "RFQ must be ready for quote");
+        // Legacy customer quotes represent one RFQ header; never consume multi-item
+        // pricing or a separately approved line-aware quotation accidentally.
+        Long structured=db.queryForObject("""
+            SELECT count(*) FROM rfq_line_items WHERE rfq_id=?
+            """,Long.class,input.rfqId());
+        Long linePriced=db.queryForObject("""
+            SELECT count(*) FROM rfq_line_offer_revisions WHERE rfq_id=?
+            """,Long.class,input.rfqId());
+        Long lineQuoted=db.queryForObject("""
+            SELECT count(*) FROM customer_line_quotes WHERE rfq_id=?
+            """,Long.class,input.rfqId());
+        require((structured==null || structured<=1)
+            && (linePriced==null || linePriced==0)
+            && (lineQuoted==null || lineQuoted==0),
+            "Structured line-price RFQs require a separate line-aware order workflow");
         UUID id = UUID.randomUUID();
         Integer version = db.queryForObject("SELECT coalesce(max(version),0)+1 FROM customer_quotes WHERE rfq_id=?",
             Integer.class,input.rfqId());

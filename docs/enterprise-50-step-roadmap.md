@@ -26,7 +26,7 @@
 - [ ] **10 — Lead conversion automation (P1).** Reviewed lead→customer→RFQ→project mapping with idempotency.
 
 ### 3. Sourcing and quotations (11–15)
-- [ ] **11 — Structured RFQ line items (P0).** Partially delivered: audited per-RFQ requirement lines for specs, HS codes, quantities/units, tolerances, origin and target destination. Per-line supplier quote revisions and current-price comparison now implemented for sourcing. Commercial customer quotation mapping, attachment storage and purchase-order matching remain pending; multi-item commercial conversion stays blocked.
+- [ ] **11 — Structured RFQ line items (P0).** Partially delivered: audited per-RFQ item requirements, per-item supplier quotation revisions and draft/submitted/approved customer line quotation pricing with provisional margin and independent review. **Not complete:** attachment storage, line-aware sales orders, supplier PO line matching and shipment/invoicing allocation; legacy commercial conversion stays blocked.
 - [ ] **12 — Supplier quotation revisions (P0).** Partially delivered: immutable per-line supplier pricing, sequential revisions, latest-price comparison and audit trail. Attachment references, documentary evidence review and vendor validation still pending.
 - [ ] **13 — Landed-cost comparison (P1).** Incoterms, freight, insurance, duty and currency assumptions separately sourced.
 - [ ] **14 — Sourcing evaluation approval (P1).** Multi-review scoring and four-eyes selection.
@@ -106,3 +106,10 @@
 - Flyway V11 records internal CRM lead activities with a typed interaction label, staff actor, notes and optional future follow-up.
 - The lead drawer can log activities and update the next follow-up; the API forbids scheduling on won/lost leads.
 - No external email, WhatsApp, WeCom, or SMS integration is connected. Logging an activity is not proof of message delivery.
+
+### Customer quotation versioning and independent review (V14)
+- Separate `customer_line_quotes` / `customer_line_quote_items` capture all RFQ lines with the source supplier revision ID, cost snapshot, proposed selling price, totals, version and decision history.
+- Draft creation checks source revision ownership/freshness, MOQ and non-negative provisional contribution, rejecting duplicate/omitted RFQ lines and already-approved deals.
+- The creator must submit a draft; an independent ADMIN or MANAGEMENT user reviews and approves/rejects it. Supplier quote amendments are frozen during submitted/approved review. Old line snapshots are immutable at the database layer.
+- New UI: `/workspace/enterprise/line-quotes?rfqId=<uuid>`; accessible from RFQ drawer. No live quote sending, automatic sales order, purchase order, invoice or settlement results from approvals.
+- Legacy one-header commercial quote/order endpoints explicitly refuse structured line-price RFQs. A line-aware order and procurement vertical slice is still required before production rollout.
