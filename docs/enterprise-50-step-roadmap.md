@@ -1,6 +1,6 @@
 # SHL Operations OS — 50-step enterprise execution roadmap
 
-> Source of truth: `main`. Existing features stay in place. This is a backlog, not a claim that all 50 are complete.
+> Source of truth: `main`. Existing features stay in place. This is a backlog, not a claim that all 50 are complete. The new phase-two enterprise modules are implemented on a feature branch until reviewed and merged.
 > All stages require server-side authorization, auditability, tests and no synthetic production data.
 > **Do not enter real SHL financial, client or shipping information until production security gates are signed off.**
 
@@ -14,8 +14,8 @@
 ### 1. Master data and CRM (01–05)
 - [x] **01 — Consignee master and shipment binding (P0).** Customer-scoped address/contact profiles, create/edit/deactivate, auditable pre-dispatch shipment linkage, role checks and integration tests. UI under `/workspace/consignees`.
 - [x] **02 — Scalable consignee selector (P0).** Server-side customer-bound filter/search, paginated selection and backend verification. Large-scale 100k performance remains unbenchmarked.
-- [ ] **03 — Business entity directory (P0).** HQ, branches, countries, trade names and immutable business IDs.
-- [ ] **04 — Multiple company contacts (P0).** Decision-maker, buying, finance and consignee contact roles with opt-in communications.
+- [x] **03 — Business entity directory (P0).** HQ/partner/customer/supplier entity types, country/branch/registration details and immutable parent identity link. Broader organization hierarchy remains future scope.
+- [x] **04 — Multiple company contacts (P0).** Department-specific buying, finance, logistics, management and compliance roles with a single active primary contact each. Consent-aware messaging remains in item 08/46.
 - [ ] **05 — Safe deduplication (P1).** Customer/supplier/consignee duplicate reports and reviewed merges with preserved foreign keys.
 
 ### 2. Lead intake and team workflow (06–10)
@@ -58,7 +58,7 @@
 - [ ] **32 — Commission approval administration (P0).** Dual-control grants, periodic recertification and emergency revoke.
 - [ ] **33 — Budget and cost centers (P1).** Team/project budgets, caps and variance explanations.
 - [ ] **34 — Margin bridge dashboard (P1).** Contract to realized margin with auditable cost sources and unavailable-data flags.
-- [ ] **35 — Executive exception cockpit (P1).** Profit at risk, late projects, disputed payments and actions by owner.
+- [ ] **35 — Executive exception cockpit (P1).** Partially delivered: management-only live operational snapshot, overdue projects, shipments, invoices, open tasks, outstanding currency balances. Risk-adjusted profit and dispute casework still outstanding.
 
 ### 8. Identity / security (36–40)
 - [ ] **36 — Mandatory MFA policy (P0).** Enrollment, role-based enforcement, step-up approval authentication and safe reset.
@@ -95,3 +95,9 @@
 3. DB writes use transactions and migrations, financial amounts use decimal types and immutable history where appropriate.
 4. Each vertical slice needs UI, API, test coverage, documentation, and a successful CI build.
 5. Product owner and operations stakeholders approve workflow semantics before production rollout.
+
+## Phase two UI milestone (awaiting merge)
+- Real multi-entity business registry: `/workspace/entities` with create/edit for approved staff and department contact maintenance.
+- Executive command cockpit: `/workspace/command-center` with source-based KPI cards, exceptions, outstanding invoices and action queues. Confidential commissions excluded.
+- Premium accessible public design experience: `/docs/demo/enterprise.html` source preview, no database, fake records, auth or API calls.
+- Any static showcase deployment is **not** a launch of the authenticated operations platform; it must remain clearly labeled as an interface tour.
