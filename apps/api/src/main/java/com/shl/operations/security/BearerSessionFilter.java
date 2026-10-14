@@ -36,8 +36,12 @@ public class BearerSessionFilter extends OncePerRequestFilter {
             var valid=sessions.validate(auth.substring(7));
             if (valid!=null) {
                 if (valid.enrollmentRequired() && !enrollmentEndpoint(request)) {
-                    response.sendError(HttpServletResponse.SC_FORBIDDEN,
-                        "Complete authenticator enrollment before accessing business data");
+                    // sendError dispatches /error, which a deny-all security chain can
+                    // transform into an unrelated 401. Return the intended 403 directly.
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json");
+                    response.setHeader("Cache-Control","no-store");
+                    response.getWriter().write("{\"error\":\"MFA enrollment required\"}");
                     return;
                 }
                 var ctx=SecurityContextHolder.createEmptyContext();

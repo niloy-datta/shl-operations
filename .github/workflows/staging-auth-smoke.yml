@@ -1,0 +1,53 @@
+name: Isolated Full-Stack Auth Smoke
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-auth-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build, boot and smoke-test disposable app
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'docker compose down -v --remove-orphans >/dev/null 2>&1 || true; rm -f .env' EXIT
+          db_pass="$(openssl rand -hex 24)"
+          admin_pass="$(openssl rand -hex 24)"
+          mfa_key="$(openssl rand -hex 32)"
+          {
+            printf 'POSTGRES_DB=shl_integration\nPOSTGRES_USER=shl_test\n'
+            printf 'POSTGRES_PASSWORD=%s\n' "$db_pass"
+            printf 'BOOTSTRAP_ADMIN_USERNAME=integration_admin\n'
+            printf 'BOOTSTRAP_ADMIN_PASSWORD=%s\n' "$admin_pass"
+            printf 'MFA_ENCRYPTION_KEY=%s\nMFA_ENFORCEMENT_ENABLED=true\n' "$mfa_key"
+            printf 'SHL_DEPLOYMENT_MODE=development\n'
+          } > .env
+          chmod 600 .env
+          docker compose up -d --build
+          ready=0
+          for i in $(seq 1 90); do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:3000/login; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$ready" -ne 1 ]]; then
+            docker compose ps
+            echo "Test app did not become ready" >&2
+            exit 1
+          fi
+          SHL_TEST_ADMIN_USERNAME=integration_admin \
+          SHL_TEST_ADMIN_PASSWORD="$admin_pass" \
+          SHL_TEST_BASE_URL=http://127.0.0.1:3000 \
+            node --test scripts/staging-auth-smoke.test.mjs
