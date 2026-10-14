@@ -64,6 +64,7 @@ const nav: { label: string; url: string; symbol: string; roles?: string[] }[] = 
   {label:"Sales orders",url:"/workspace/enterprise/orders",symbol:"▣",roles:moduleConfig.orders.roles},
   {label:"Purchase orders",url:"/workspace/enterprise/purchase-orders",symbol:"⬡",roles:moduleConfig["purchase-orders"].roles},
   {label:"Shipments",url:"/workspace/enterprise/shipments",symbol:"⇢",roles:moduleConfig.shipments.roles},
+  {label:"Consignees",url:"/workspace/consignees",symbol:"◎",roles:moduleConfig.shipments.roles},
   {label:"Finance",url:"/workspace/enterprise/invoices",symbol:"▥",roles:moduleConfig.invoices.roles},
   {label:"Expenses",url:"/workspace/costs/expenses",symbol:"◎",roles:moduleConfig.invoices.roles},
   {label:"Project contribution",url:"/workspace/costs/profitability",symbol:"◴",roles:moduleConfig.invoices.roles},
