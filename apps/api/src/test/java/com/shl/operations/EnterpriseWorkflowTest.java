@@ -253,8 +253,23 @@ class EnterpriseWorkflowTest {
             new GrowthController.ChangeStatus("WON")))
             .isInstanceOf(ResponseStatusException.class);
         growth.leadStatus(leadId,new GrowthController.ChangeStatus("CONTACTED"));
+        var event=growth.addLeadActivity(leadId,new GrowthController.LeadActivityInput(
+            "CALL","Discussed purchasing requirements",LocalDate.now().plusDays(5)));
+        assertThat(event.get("activity_type")).isEqualTo("CALL");
+        assertThat(growth.leadActivity(leadId))
+            .anyMatch(item->"Discussed purchasing requirements".equals(item.get("note")));
+        assertThat(growth.lead(leadId).get("next_follow_up")).isNotNull();
+        assertThatThrownBy(()->growth.addLeadActivity(leadId,
+            new GrowthController.LeadActivityInput("PHONE","Unsupported type",null)))
+            .isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(()->growth.addLeadActivity(leadId,
+            new GrowthController.LeadActivityInput("NOTE","Cannot set past followup",LocalDate.now().minusDays(2))))
+            .isInstanceOf(ResponseStatusException.class);
         growth.leadStatus(leadId,new GrowthController.ChangeStatus("QUALIFIED"));
         growth.leadStatus(leadId,new GrowthController.ChangeStatus("WON"));
+        assertThatThrownBy(()->growth.addLeadActivity(leadId,
+            new GrowthController.LeadActivityInput("NOTE","Closed opportunity",LocalDate.now().plusDays(7))))
+            .isInstanceOf(ResponseStatusException.class);
         UUID id=(UUID)growth.addProject(new GrowthController.ProjectInput(
             buyer.id,leadId,null,"Customer shipment job",null,owner,
             LocalDate.now().plusDays(10)
