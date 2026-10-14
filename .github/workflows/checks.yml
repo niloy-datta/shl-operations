@@ -34,4 +34,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate recovery scripts
-        run: bash -n scripts/backup-local.sh scripts/restore-drill-local.sh
+        run: bash -n scripts/backup-local.sh scripts/restore-drill-local.sh scripts/predeploy-check.sh
