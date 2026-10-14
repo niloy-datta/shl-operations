@@ -172,6 +172,11 @@ public class TradingController {
                 throw new ResponseStatusException(CONFLICT,
                     "Requirement line quantity/unit must match the RFQ header before supplier offers are saved");
         }
+        Long lineOfferCount=db.queryForObject(
+            "SELECT count(*) FROM rfq_line_offer_revisions WHERE rfq_id=?",Long.class,id);
+        if (lineOfferCount!=null && lineOfferCount>0)
+            throw new ResponseStatusException(CONFLICT,
+                "This RFQ uses per-line supplier quotes; legacy aggregate offers are blocked");
         if (!exists("suppliers", input.supplierId()))
             throw new ResponseStatusException(BAD_REQUEST, "Select an existing supplier");
         db.update("""

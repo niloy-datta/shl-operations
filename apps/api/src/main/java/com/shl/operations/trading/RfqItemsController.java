@@ -93,6 +93,11 @@ public class RfqItemsController {
         if (offers!=null && offers>0)
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                 "Requirements are frozen after the first supplier offer; start a new RFQ for revised scope");
+        Long revised=db.queryForObject(
+            "SELECT count(*) FROM rfq_line_offer_revisions WHERE rfq_id=?",Long.class,rfqId);
+        if (revised!=null && revised>0)
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Requirements are frozen after a supplier item quote has been recorded");
     }
 
     private ItemRow get(UUID rfqId,UUID itemId) {

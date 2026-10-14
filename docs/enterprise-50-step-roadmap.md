@@ -26,8 +26,8 @@
 - [ ] **10 — Lead conversion automation (P1).** Reviewed lead→customer→RFQ→project mapping with idempotency.
 
 ### 3. Sourcing and quotations (11–15)
-- [ ] **11 — Structured RFQ line items (P0).** Partially delivered: audited per-RFQ requirement lines for specs, HS codes, quantities/units, tolerances, origin and target destination. Per-line supplier offer pricing, commercial quotation mapping and order matching remain pending; multi-item conversion is blocked to prevent inaccurate totals.
-- [ ] **12 — Supplier quotation revisions (P0).** Append-only version history and attachment references.
+- [ ] **11 — Structured RFQ line items (P0).** Partially delivered: audited per-RFQ requirement lines for specs, HS codes, quantities/units, tolerances, origin and target destination. Per-line supplier quote revisions and current-price comparison now implemented for sourcing. Commercial customer quotation mapping, attachment storage and purchase-order matching remain pending; multi-item commercial conversion stays blocked.
+- [ ] **12 — Supplier quotation revisions (P0).** Partially delivered: immutable per-line supplier pricing, sequential revisions, latest-price comparison and audit trail. Attachment references, documentary evidence review and vendor validation still pending.
 - [ ] **13 — Landed-cost comparison (P1).** Incoterms, freight, insurance, duty and currency assumptions separately sourced.
 - [ ] **14 — Sourcing evaluation approval (P1).** Multi-review scoring and four-eyes selection.
 - [ ] **15 — Supplier compliance evidence (P1).** Trade licenses, compliance expiry and approved-vendor status.
