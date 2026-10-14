@@ -55,6 +55,10 @@ export function ConsigneeWorkspace() {
   const [draft,setDraft]=useState<Draft>(empty);
   const [shipping,setShipping]=useState<Shipment|null>(null);
   const [recipient,setRecipient]=useState("");
+  const [recipientQuery,setRecipientQuery]=useState("");
+  const [recipientTerm,setRecipientTerm]=useState("");
+  const [recipientPage,setRecipientPage]=useState(0);
+  const [matching,setMatching]=useState<Page<Consignee>>({content:[],totalElements:0,totalPages:0});
   const refresh=useCallback(()=>setTick(value=>value+1),[]);
 
   useEffect(()=>{
@@ -73,6 +77,22 @@ export function ConsigneeWorkspace() {
     return()=>{live=false;};
   },[page,term,tick]);
 
+  useEffect(()=>{
+    if(!shipping)return;
+    let live=true;
+    const params=new URLSearchParams({customerId:shipping.customer_id,
+      page:String(recipientPage),size:"20",q:recipientTerm});
+    request<Page<Consignee>>("logistics/consignees?"+params)
+      .then(result=>{if(live)setMatching(result);})
+      .catch(err=>{if(live)setError(err instanceof Error?err.message:"Unable to find recipients");});
+    return()=>{live=false;};
+  },[shipping,recipientPage,recipientTerm]);
+
+  function openShipment(shipment:Shipment) {
+    setShipping(shipment);setRecipient("");setRecipientQuery("");setRecipientTerm("");
+    setRecipientPage(0);setMatching({content:[],totalElements:0,totalPages:0});
+    setError("");
+  }
   function startNew() {
     setDraft({...empty});setEditing(null);setShowForm(true);setError("");
   }
@@ -131,7 +151,7 @@ export function ConsigneeWorkspace() {
     {error&&<div className="cn-feedback cn-error" role="alert">{error}<button onClick={()=>setError("")} aria-label="Dismiss error">×</button></div>}
     {notice&&<div className="cn-feedback cn-good" role="status">{notice}<button onClick={()=>setNotice("")} aria-label="Dismiss notice">×</button></div>}
     <div className="cn-stats">
-      <div><span>CONSINGEE RECORDS</span><strong>{loading?"—":rows.totalElements.toLocaleString()}</strong><small>Database-backed count</small></div>
+      <div><span>CONSIGNEE RECORDS</span><strong>{loading?"—":rows.totalElements.toLocaleString()}</strong><small>Database-backed count</small></div>
       <div><span>SHIPMENTS READY</span><strong>{loading?"—":shipmentsReady.length}</strong><small>First 100 recent shipments</small></div>
       <div><span>RECIPIENT CONTROLS</span><strong>Verified</strong><small>Shipment customer must match</small></div>
     </div>
@@ -168,7 +188,7 @@ export function ConsigneeWorkspace() {
       <div className="cn-shipments">
         {shipmentsReady.slice(0,12).map(shipment=><div key={shipment.id} className="cn-shipment">
           <div><strong>{shipment.reference}</strong><small>{shipment.consignee_name??"Recipient not assigned"}</small></div>
-          <button type="button" onClick={()=>{setShipping(shipment);setRecipient(shipment.consignee_id??"");setError("");}}>
+          <button type="button" onClick={()=>openShipment(shipment)}>
             {shipment.consignee_id?"Change consignee":"Assign consignee"} ↗
           </button>
         </div>)}
@@ -211,12 +231,27 @@ export function ConsigneeWorkspace() {
           <button type="button" onClick={()=>setShipping(null)} disabled={saving} aria-label="Close dialog">×</button></header>
         <form onSubmit={e=>void assign(e)}>
           <p>Choose an active consignee registered under this shipment&apos;s customer.</p>
+          <label>Search this customer&apos;s recipients
+            <div className="cn-recipient-search">
+              <input value={recipientQuery} onChange={e=>setRecipientQuery(e.target.value)}
+                placeholder="Name or consignee code" aria-label="Search eligible recipients" />
+              <button type="button" onClick={()=>{setRecipientPage(0);setRecipient("");
+                setRecipientTerm(recipientQuery.trim());}}>Find</button>
+            </div>
+          </label>
           <label>Consignee<select required value={recipient} onChange={e=>setRecipient(e.target.value)}>
             <option value="">Select receiving party</option>
-            {rows.content.filter(r=>r.active&&r.customer_id===shipping.customer_id).map(c=>
+            {matching.content.filter(c=>c.active).map(c=>
               <option key={c.id} value={c.id}>{c.company_name} · {c.code}</option>)}
           </select></label>
-          <p className="cn-hint">Only consignees on the current directory page are shown. Use the search above to locate the recipient.</p>
+          <div className="cn-recipient-pager"><span>{matching.totalElements} matching records</span>
+            <button type="button" disabled={recipientPage===0} onClick={()=>{setRecipient("");
+              setRecipientPage(p=>Math.max(0,p-1));}}>Previous</button>
+            <button type="button" disabled={recipientPage+1>=matching.totalPages} onClick={()=>{setRecipient("");
+              setRecipientPage(p=>p+1);}}>Next</button>
+          </div>
+          <p className="cn-hint">Only active recipients with the same customer are eligible. Final validation runs on the server.</p>
+          {error&&<p className="cn-inline-error" role="alert">{error}</p>}
           <footer><button type="button" onClick={()=>setShipping(null)} disabled={saving}>Cancel</button>
             <button type="submit" className="cn-primary" disabled={saving||!recipient}>Assign recipient →</button></footer>
         </form>
