@@ -54,6 +54,7 @@ const moduleConfig: Record<Module, Config> = {
 };
 const nav: { label: string; url: string; symbol: string; roles?: string[] }[] = [
   {label:"Overview",url:"/workspace",symbol:"▦"},
+  {label:"Executive cockpit",url:"/workspace/command-center",symbol:"◈",roles:["ADMIN","MANAGEMENT"]},
   {label:"Customers",url:"/workspace?view=customers",symbol:"♙"},
   {label:"Suppliers",url:"/workspace?view=suppliers",symbol:"◇"},
   {label:"RFQ sourcing",url:"/workspace/rfqs",symbol:"▤"},
