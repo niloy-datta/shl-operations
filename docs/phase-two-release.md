@@ -1,6 +1,6 @@
 # Phase 2 — Enterprise modules and safe showcase
 
-**Status:** Development release candidate. All statements below describe source code only unless a deployment is explicitly identified.
+**Status:** Development source merged to main, not production-ready. All statements below describe source code only unless a deployment is explicitly identified.
 
 ## New application modules
 - `/workspace/entities` — legal entity/branch directory; customer and supplier links; active status; department contact profiles; primary-contact uniqueness.
