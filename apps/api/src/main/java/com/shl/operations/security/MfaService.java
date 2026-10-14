@@ -35,6 +35,9 @@ public class MfaService {
         @Value("${MFA_ENCRYPTION_KEY:}") String encryptionKey,
         @Value("${MFA_ENFORCEMENT_ENABLED:false}") boolean mfaEnforced) {
         this.db=db;this.passwords=passwords;this.audit=audit;this.encryptionKey=encryptionKey;this.mfaEnforced=mfaEnforced;
+        if (mfaEnforced && !encryptionKey.matches("[0-9a-fA-F]{64}"))
+            throw new IllegalStateException(
+                "MFA enforcement requires a valid 256-bit encryption key");
     }
     public record Enrollment(String secret,String otpAuthUrl) {}
     public record Status(boolean enabled, boolean enrollmentPending,
