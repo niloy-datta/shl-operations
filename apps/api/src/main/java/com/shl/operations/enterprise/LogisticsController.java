@@ -27,6 +27,7 @@ public class LogisticsController {
         @Size(max=160) String carrier, @Size(max=120) String trackingNumber,
         LocalDate etd, LocalDate eta) {}
     public record StatusInput(@NotBlank String status, @Size(max=300) String notes) {}
+    public record ConsigneeAssignment(@NotNull UUID consigneeId) {}
     private Map<String,Object> row(String sql,Object... values) {
         return db.queryForList(sql,values).stream().findFirst()
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND,"Record not found"));
@@ -39,15 +40,15 @@ public class LogisticsController {
         @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
         String term=q==null?"":q.trim().toLowerCase(Locale.ROOT);
         term=term.substring(0,Math.min(100,term.length()));
-        return Pages.of(db,"sh.*,so.reference AS sales_reference",
-            "FROM shipments sh JOIN sales_orders so ON so.id=sh.sales_order_id",
-            " WHERE lower(sh.reference) LIKE ? OR lower(sh.destination) LIKE ?",
-            new Object[] {"%"+term+"%","%"+term+"%"},
+        return Pages.of(db,"sh.*,so.reference AS sales_reference,c.code AS consignee_code,c.company_name AS consignee_name",
+            "FROM shipments sh JOIN sales_orders so ON so.id=sh.sales_order_id LEFT JOIN consignees c ON c.id=sh.consignee_id",
+            " WHERE lower(sh.reference) LIKE ? OR lower(sh.destination) LIKE ? OR lower(coalesce(c.company_name,'')) LIKE ?",
+            new Object[] {"%"+term+"%","%"+term+"%","%"+term+"%"},
             "ORDER BY sh.created_at DESC,sh.id DESC",page,size);
     }
     @GetMapping("/shipments/{id}")
     public Map<String,Object> get(@PathVariable UUID id) {
-        return row("SELECT * FROM shipments WHERE id=?",id);
+        return row("SELECT sh.*,c.code AS consignee_code,c.company_name AS consignee_name FROM shipments sh LEFT JOIN consignees c ON c.id=sh.consignee_id WHERE sh.id=?",id);
     }
     @PostMapping("/shipments")
     @Transactional
@@ -76,6 +77,27 @@ public class LogisticsController {
         milestone(id,"BOOKED","Shipment booked");
         audit.log("CREATED","SHIPMENT",id,"Sales order "+input.salesOrderId());
         return ResponseEntity.created(URI.create("/api/logistics/shipments/"+id)).body(get(id));
+    }
+    @PatchMapping("/shipments/{id}/consignee")
+    @Transactional
+    public Map<String,Object> assignConsignee(@PathVariable UUID id,
+        @Valid @RequestBody ConsigneeAssignment input) {
+        var shipment=row("SELECT * FROM shipments WHERE id=? FOR UPDATE",id);
+        require("BOOKED".equals(shipment.get("status")),
+            "Consignee can only be assigned before shipment departure");
+        var consignee=row("SELECT id,code,customer_id,active FROM consignees WHERE id=?",
+            input.consigneeId());
+        require(Boolean.TRUE.equals(consignee.get("active")),"Consignee must be active");
+        UUID customerId=db.queryForObject("SELECT customer_id FROM sales_orders WHERE id=?",
+            UUID.class,shipment.get("sales_order_id"));
+        require(customerId != null && customerId.equals(consignee.get("customer_id")),
+            "Consignee belongs to a different customer");
+        db.update("UPDATE shipments SET consignee_id=?,updated_at=now() WHERE id=?",
+            input.consigneeId(),id);
+        milestone(id,"CONSIGNEE_SET","Assigned consignee "+consignee.get("code"));
+        audit.log("CONSIGNEE_ASSIGNED","SHIPMENT",id,
+            "Consignee reference "+consignee.get("code"));
+        return get(id);
     }
     private void milestone(UUID id,String event,String notes) {
         db.update("""
