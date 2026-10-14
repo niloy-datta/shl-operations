@@ -55,14 +55,18 @@ public class ConsigneeController {
 
     @GetMapping
     public Pages.Result list(@RequestParam(defaultValue="") String q,
-        @RequestParam(defaultValue="0") int page, @RequestParam(defaultValue="20") int size) {
+        @RequestParam(defaultValue="0") int page, @RequestParam(defaultValue="20") int size,
+        @RequestParam(required=false) UUID customerId) {
         String term = q == null ? "" : q.trim().toLowerCase(Locale.ROOT);
         term = term.substring(0,Math.min(100,term.length()));
         String like = "%" + term + "%";
+        String where=" WHERE (lower(c.code) LIKE ? OR lower(c.company_name) LIKE ? OR lower(cu.name) LIKE ?)";
+        if (customerId != null) where += " AND c.customer_id = ?";
+        Object[] args=customerId == null ? new Object[]{like,like,like} :
+            new Object[]{like,like,like,customerId};
         return Pages.of(db,"c.*,cu.name AS customer_name",
             "FROM consignees c JOIN customers cu ON cu.id=c.customer_id",
-            " WHERE lower(c.code) LIKE ? OR lower(c.company_name) LIKE ? OR lower(cu.name) LIKE ?",
-            new Object[] {like,like,like},"ORDER BY c.created_at DESC,c.id DESC",page,size);
+            where,args,"ORDER BY c.created_at DESC,c.id DESC",page,size);
     }
 
     @GetMapping("/{id}")
