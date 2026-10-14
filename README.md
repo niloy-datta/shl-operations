@@ -4,7 +4,7 @@ Independent internal application. The existing `shl-global` website is untouched
 
 **Security note:** The source GitHub repository is currently public. The application is not ready for production; do not commit business data, credentials, commission details, or customer documents. Review privacy and security requirements before loading SHL records.
 
-**Phase-two development:** [New enterprise modules and release gates](docs/phase-two-release.md) · [50-feature roadmap](docs/enterprise-50-step-roadmap.md). Business entity registry, executive command-center source and CRM lead timeline have been developed on a feature branch pending merge. The safe [interactive enterprise design tour](https://shl-operations-enterprise-preview.vercel.app/enterprise.html) is a static showcase only, not a live ERP deployment.
+**Phase-two development:** [New enterprise modules and release gates](docs/phase-two-release.md) · [50-feature roadmap](docs/enterprise-50-step-roadmap.md). Business entity registry, executive command-center source and CRM lead timeline are merged into `main` as development features; they are not yet publicly deployed as a functional ERP. The safe [interactive enterprise design tour](https://shl-operations-enterprise-preview.vercel.app/enterprise.html) is a static showcase only, not a live ERP deployment.
 
 ## Static GitHub Pages preview
 
