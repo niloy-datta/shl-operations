@@ -8,3 +8,9 @@
 
 /backups/
 *.dump
+
+# Encrypted archives and private recovery keys are never committed.
+*.dump.age
+*.agekey
+*.age.key
+.recovery-secrets/

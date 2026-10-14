@@ -12,6 +12,10 @@ The read-only visual demo is in [`docs/demo`](docs/demo) and is published from a
 
 GitHub Pages sites are publicly accessible. See [the preview](https://niloy-datta.github.io/shl-operations-preview/) for the static interface demo.
 
+## Security-focused release improvements (review in progress)
+
+Production startup now has a fail-closed deployment-mode guard, and opt-in encrypted S3 backup and isolated restore scripts are available. These are implementation building blocks, not a deployed service, disaster recovery certification or permission to use real SHL data. See [release hardening](docs/production-hardening.md).
+
 ## Run locally
 
 1. Install Docker Desktop with Compose.

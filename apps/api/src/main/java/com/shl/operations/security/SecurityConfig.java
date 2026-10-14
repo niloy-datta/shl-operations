@@ -34,11 +34,21 @@ public class SecurityConfig {
 
     @Bean ApplicationRunner bootstrapAdmin(JdbcTemplate db, PasswordEncoder encoder,
         @Value("${BOOTSTRAP_ADMIN_USERNAME}") String username,
-        @Value("${BOOTSTRAP_ADMIN_PASSWORD}") String password) {
+        @Value("${BOOTSTRAP_ADMIN_PASSWORD}") String password,
+        @Value("${SHL_DEPLOYMENT_MODE:development}") String deploymentMode,
+        @Value("${spring.profiles.active:}") String profiles,
+        @Value("${MFA_ENFORCEMENT_ENABLED:false}") boolean mfaRequired,
+        @Value("${MFA_ENCRYPTION_KEY:}") String mfaKey) {
         return args -> {
+            ReleaseSafety.verify(deploymentMode, profiles, mfaRequired, mfaKey);
+            Integer count = db.queryForObject("SELECT count(*) FROM staff_users", Integer.class);
+            if (ReleaseSafety.isProduction(deploymentMode, profiles)) {
+                if (count == null || count == 0)
+                    throw new IllegalStateException("Production bootstrap forbidden: provision staff via approved secure migration");
+                return;
+            }
             if (username.isBlank() || password.length() < 16 || password.startsWith("replace-"))
                 throw new IllegalStateException("Set a unique admin password of at least 16 characters");
-            Integer count = db.queryForObject("SELECT count(*) FROM staff_users", Integer.class);
             if (count != null && count == 0) db.update(
                 "INSERT INTO staff_users (id, username, password_hash, role, enabled) VALUES (?, ?, ?, 'ADMIN', true)",
                 UUID.randomUUID(), username, encoder.encode(password));
