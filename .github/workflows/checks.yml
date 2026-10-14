@@ -13,6 +13,8 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run typecheck
       - run: npm run lint
+      - name: Check public preview scripts
+        run: node --check ../../docs/demo/demo.js && node --check ../../docs/demo/enterprise.js
       - run: npm run build
         env:
           SESSION_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
