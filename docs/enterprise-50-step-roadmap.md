@@ -96,7 +96,7 @@
 4. Each vertical slice needs UI, API, test coverage, documentation, and a successful CI build.
 5. Product owner and operations stakeholders approve workflow semantics before production rollout.
 
-## Phase two UI milestone (awaiting merge)
+## Phase two UI milestone (merged to main)
 - Real multi-entity business registry: `/workspace/entities` with create/edit for approved staff and department contact maintenance.
 - Executive command cockpit: `/workspace/command-center` with source-based KPI cards, exceptions, outstanding invoices and action queues. Confidential commissions excluded.
 - Premium accessible public design experience: `/docs/demo/enterprise.html` source preview, no database, fake records, auth or API calls.
