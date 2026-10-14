@@ -333,7 +333,8 @@ export function RfqWorkspace() {
                 but cannot enter the existing single-item quotation workflow. For one item, its quantity and unit must match the RFQ header.</p>
             </section>
             <div className="desk-offer-header"><div><p className="desk-eyebrow">COMPARISON MATRIX</p><h3>Supplier offers</h3></div>
-              {selected.status === "SOURCING" && <button onClick={() => { setMessage(""); setShowOffer(true); }}>＋ Add offer</button>}</div>
+              {selected.status === "SOURCING" && items.length <= 1 &&
+                <button onClick={() => { setMessage(""); setShowOffer(true); }}>＋ Add offer</button>}</div>
             {offers.length === 0 ? <p className="desk-panel-empty">No supplier quotations yet. Start sourcing to add offers; accepted offers are frozen when ready for quote.</p> :
               <div className="desk-offers">{offers.map((o, index) => <article className="desk-offer" key={o.id}>
                 <div><h4>{o.supplierName}</h4>{index === 0 && <span>LOWEST UNIT PRICE</span>}</div>
@@ -341,6 +342,8 @@ export function RfqWorkspace() {
                 <p>MOQ: {Number(o.moq).toLocaleString()} {selected.unit} <b>·</b> Lead time: {o.leadDays} days</p>
                 {o.notes && <p>{o.notes}</p>}
               </article>)}</div>}
+            {items.length > 1 && <p className="desk-caution">Multi-item requirements are recorded for sourcing preparation.
+              Aggregate supplier offers are disabled until prices are linked to individual items.</p>}
             <p className="desk-caution">All offers use the RFQ currency. Unit price alone does not account for freight, taxes, quality, payment terms or MOQ.</p>
             <div className="desk-event-head"><p className="desk-eyebrow">ACCOUNTABILITY</p><h3>Activity log</h3></div>
             <div className="desk-events">{events.map((a, i) => <div key={i}><span>•</span><div><strong>{a.action.replaceAll("_", " ")}</strong><small>{a.detail || ""} · {a.actor} · {new Date(a.createdAt).toLocaleString("en-GB")}</small></div></div>)}</div>
