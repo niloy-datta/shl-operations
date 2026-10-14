@@ -159,3 +159,20 @@
 @media(max-width:680px) { .desk { display:block; }.desk-side { height:auto; min-height:0; width:100%; position:static; padding:12px 15px; }.desk-brand { padding:0; }.desk-brand strong { font-size:22px; }.desk-monogram { width:34px; height:34px; }.desk-edition,.desk-side-label,.desk-planned,.desk-side-footer { display:none; }.desk-side .desk-nav { display:flex; overflow-x:auto; margin-top:11px; gap:5px; }.desk-nav a,.desk-nav>div { flex:none; width:auto; font-size:11px; padding:8px 10px; min-height:36px; }.desk-nav i { display:none; }.desk-topbar { height:48px; padding:0 17px; font-size:10px; }.desk-private { font-size:8px; }.desk-content { padding:24px 16px 35px; }.desk-heading { align-items:flex-start; }.desk-heading h1 { font-size:30px; }.desk-heading>button { padding:10px 12px; font-size:11px!important; }.desk-hero { min-height:235px; }.desk-hero-content { width:100%; padding:29px 22px; }.desk-hero h2 { font-size:28px; }.desk-hero p { max-width:270px; }.desk-hero-stages { gap:5px; font-size:9px; }.desk-orbit { width:40%; right:-14%; opacity:.28; }.desk-stats { gap:10px; }.desk-stat { padding:15px; }.desk-stat>div { font-size:9px; }.desk-stat strong { font-size:28px; }.desk-stat-icon { width:28px; height:28px; font-size:17px; }.desk-board-top { display:block; padding:18px; }.desk-search { width:100%; margin-top:18px; }.desk-drawer-body { padding:19px; }.desk-drawer>header,.desk-modal>header { padding:19px; }.desk-form { padding:19px; } }
 @media(max-width:420px) { .desk-heading { flex-direction:column; gap:14px; }.desk-hero-stages { font-size:8px; }.desk-form-grid { grid-template-columns:1fr; }.desk-detail-grid { gap:8px; }.desk-detail-grid>div { padding:12px; }.desk-offer-header { align-items:start; }.desk-drawer-actions .desk-primary { white-space:normal; } }
 @media(prefers-reduced-motion:reduce) { .desk * { transition:none!important; animation:none!important; scroll-behavior:auto!important; } }
+
+/* RFQ requirement editor — scoped to the trading desk */
+.desk-requirements { margin:8px 0 26px; }
+.desk-items { display:grid; gap:11px; margin-top:16px; }
+.desk-item { border:1px solid #e2eaf2; border-radius:11px; padding:16px; background:#fcfdff; }
+.desk-item-title { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+.desk-item-title small { font-size:9px; letter-spacing:1px; color:#748a9e; font-weight:800; }
+.desk-item-title h4 { font-size:14px; margin:4px 0 0; color:#1a3c50; }
+.desk-item-title strong { font-size:13px; flex:none; color:#087b68; }
+.desk-item>p { font-size:12px; white-space:pre-wrap; line-height:1.6; color:#52697a; margin:12px 0; }
+.desk-item-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.desk-item-tags span { font-size:10px; padding:6px 9px; border-radius:6px; background:#eff5f8; color:#436274; }
+.desk-item-controls { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.desk-item-controls button { background:#fff; border:1px solid #dce6ea; border-radius:7px; font-size:11px!important; padding:7px 11px; color:#416b77; }
+.desk-item-controls button:hover { border-color:#20a88d; color:#047e6e; }
+.desk-item-controls button:disabled { cursor:not-allowed; opacity:.5; }
+@media(max-width:420px) { .desk-item-title { flex-direction:column; gap:6px; } }
