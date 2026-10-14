@@ -42,7 +42,7 @@ async function relay(request: Request, context: Context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const incoming = new URL(request.url);
   const query = new URLSearchParams();
-  for (const key of ["page", "size", "q"]) {
+  for (const key of ["page", "size", "q", "customerId"]) {
     const value = incoming.searchParams.get(key);
     if (value !== null) query.set(key, value.slice(0, 120));
   }
