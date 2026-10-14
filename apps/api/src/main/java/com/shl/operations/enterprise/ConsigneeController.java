@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.net.URI;
 import java.util.Locale;
+import java.util.Set;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -48,6 +49,13 @@ public class ConsigneeController {
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND,"Consignee not found"));
     }
 
+    private static final Set<String> ISO_COUNTRIES=Set.of(Locale.getISOCountries());
+    private static String country(String value) {
+        String code=value.toUpperCase(Locale.ROOT);
+        if (!ISO_COUNTRIES.contains(code))
+            throw new ResponseStatusException(BAD_REQUEST,"Use a valid ISO 3166-1 country code");
+        return code;
+    }
     private static String required(String value) { return value.trim(); }
     private static String optional(String value) {
         return value == null || value.isBlank() ? null : value.trim();
@@ -85,7 +93,7 @@ public class ConsigneeController {
             VALUES (?,?,?,?,?,?,?,?,?,?,?)
             """,id,code,input.customerId(),required(input.companyName()),optional(input.contactName()),
             optional(input.email()),optional(input.phone()),
-            input.countryCode().toUpperCase(Locale.ROOT),required(input.address()),input.active(),audit.actor());
+            country(input.countryCode()),required(input.address()),input.active(),audit.actor());
         audit.log("CREATED","CONSIGNEE",id,"Customer-scoped consignee registered");
         return ResponseEntity.created(URI.create("/api/logistics/consignees/"+id)).body(find(id));
     }
@@ -102,7 +110,7 @@ public class ConsigneeController {
             UPDATE consignees SET company_name=?,contact_name=?,email=?,phone=?,country_code=?,
                 address=?,active=?,updated_at=now() WHERE id=?
             """,required(input.companyName()),optional(input.contactName()),optional(input.email()),
-            optional(input.phone()),input.countryCode().toUpperCase(Locale.ROOT),
+            optional(input.phone()),country(input.countryCode()),
             required(input.address()),input.active(),id);
         audit.log("UPDATED","CONSIGNEE",id,input.active()?"Profile updated":"Consignee deactivated");
         return find(id);
