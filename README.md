@@ -12,6 +12,10 @@ The read-only visual demo is in [`docs/demo`](docs/demo) and is published from a
 
 GitHub Pages sites are publicly accessible. See [the preview](https://niloy-datta.github.io/shl-operations-preview/) for the static interface demo.
 
+## Staging deployment candidate
+
+A separate `compose.prod.yaml` with Caddy HTTPS, private networks and mandatory MFA is available for review, along with `.env.production.example` and `scripts/production_preflight.py`. See [release gates](docs/deployment-readiness.md). **These are not a go-live approval.** No production deployment or import of company records has been performed.
+
 ## Run locally
 
 1. Install Docker Desktop with Compose.

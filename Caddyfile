@@ -1,0 +1,12 @@
+# DNS A/AAAA for SHL_DOMAIN must reach this server. Only edge TLS is public.
+{$SHL_DOMAIN} {
+  encode zstd gzip
+  reverse_proxy web:3000
+  header {
+    -Server
+    X-Content-Type-Options nosniff
+    X-Frame-Options DENY
+    Referrer-Policy no-referrer
+    Strict-Transport-Security "max-age=31536000"
+  }
+}
