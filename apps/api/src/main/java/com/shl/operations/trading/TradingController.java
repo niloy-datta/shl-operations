@@ -154,6 +154,24 @@ public class TradingController {
             (rs, row) -> rs.getString(1), id).stream().findFirst()
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "RFQ not found"));
         if (!"SOURCING".equals(status)) throw new ResponseStatusException(CONFLICT, "Supplier offers can only be edited while sourcing; ready RFQs have frozen offers");
+        // Prevent freezing a contradictory single product line once an offer exists.
+        // Legacy RFQs without structured lines remain backward-compatible.
+        List<Map<String,Object>> requirements=db.queryForList("""
+            SELECT quantity,unit FROM rfq_line_items WHERE rfq_id=? ORDER BY line_number
+            """,id);
+        if (requirements.size()>1)
+            throw new ResponseStatusException(CONFLICT,
+                "Multi-item RFQ requires supplier offers priced per line; aggregate pricing is disabled");
+        if (requirements.size()==1) {
+            Map<String,Object> header=db.queryForMap(
+                "SELECT quantity,unit FROM rfqs WHERE id=?",id);
+            if (((BigDecimal)requirements.getFirst().get("quantity"))
+                  .compareTo((BigDecimal)header.get("quantity"))!=0
+                || !((String)requirements.getFirst().get("unit"))
+                  .equalsIgnoreCase(((String)header.get("unit")).trim()))
+                throw new ResponseStatusException(CONFLICT,
+                    "Requirement line quantity/unit must match the RFQ header before supplier offers are saved");
+        }
         if (!exists("suppliers", input.supplierId()))
             throw new ResponseStatusException(BAD_REQUEST, "Select an existing supplier");
         db.update("""
@@ -180,6 +198,26 @@ public class TradingController {
         if (!Objects.equals(next.get(current), input.status()))
             throw new ResponseStatusException(CONFLICT, "Invalid workflow transition");
         if ("READY_FOR_QUOTE".equals(input.status())) {
+            // Existing quote and purchasing APIs price one RFQ header quantity/unit.
+            // Preserve historical RFQs without lines; block multi-line conversion
+            // rather than silently calculating an inaccurate commercial total.
+            List<Map<String,Object>> lines=db.queryForList("""
+                SELECT quantity,unit FROM rfq_line_items
+                WHERE rfq_id=? ORDER BY line_number
+                """,id);
+            if (lines.size()>1)
+                throw new ResponseStatusException(CONFLICT,
+                    "Multi-item RFQ requires a line-aware quotation workflow before approval");
+            if (lines.size()==1) {
+                BigDecimal lineQuantity=(BigDecimal)lines.getFirst().get("quantity");
+                String lineUnit=(String)lines.getFirst().get("unit");
+                Map<String,Object> header=db.queryForMap(
+                    "SELECT quantity,unit FROM rfqs WHERE id=?",id);
+                if (lineQuantity.compareTo((BigDecimal)header.get("quantity"))!=0
+                    || !lineUnit.equalsIgnoreCase(((String)header.get("unit")).trim()))
+                    throw new ResponseStatusException(CONFLICT,
+                        "Match the requirement line quantity/unit to RFQ header before quoting");
+            }
             Long offerCount = db.queryForObject("SELECT count(*) FROM supplier_offers WHERE rfq_id = ?", Long.class, id);
             if (offerCount == null || offerCount == 0)
                 throw new ResponseStatusException(CONFLICT, "Add a supplier offer before marking ready");

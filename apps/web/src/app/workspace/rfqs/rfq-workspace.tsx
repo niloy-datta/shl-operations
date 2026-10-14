@@ -11,6 +11,12 @@ type Rfq = {
   currency: string; deadline: string | null; status: Stage;
   offerCount: number; createdAt: string;
 };
+type RfqItem = {
+  id: string; rfqId: string; lineNumber: number; productName: string;
+  specifications: string | null; hsCode: string | null;
+  quantity: number; unit: string; toleranceNotes: string | null;
+  originCountry: string | null; targetDestination: string | null;
+};
 type Stage = "NEW" | "SOURCING" | "READY_FOR_QUOTE" | "CLOSED";
 type RfqPage = { content: Rfq[]; totalElements: number; totalPages: number };
 type Offer = { id: string; supplierId: string; supplierName: string; unitPrice: number;
@@ -35,6 +41,7 @@ async function json<T>(path: string, options?: RequestInit): Promise<T> {
     if (response.status === 400) throw new Error("Please check the required fields and selected records.");
     throw new Error("Request failed (" + response.status + "). Please retry.");
   }
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 const money = (amount: number | string, currency: string) =>
@@ -53,6 +60,9 @@ export function RfqWorkspace() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Rfq | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
+  const [items, setItems] = useState<RfqItem[]>([]);
+  const [editingItem, setEditingItem] = useState<RfqItem | null>(null);
+  const [showItem, setShowItem] = useState(false);
   const [events, setEvents] = useState<Event[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -86,10 +96,11 @@ export function RfqWorkspace() {
     Promise.all([
       json<Rfq>("/api/trading/rfqs/" + selectedId),
       json<Offer[]>("/api/trading/rfqs/" + selectedId + "/offers"),
-      json<Event[]>("/api/trading/rfqs/" + selectedId + "/history")
-    ]).then(([record, quotes, history]) => {
+      json<Event[]>("/api/trading/rfqs/" + selectedId + "/history"),
+      json<RfqItem[]>("/api/trading/rfqs/" + selectedId + "/items")
+    ]).then(([record, quotes, history, requirements]) => {
       if (!live) return;
-      setSelected(record); setOffers(quotes); setEvents(history);
+      setSelected(record); setOffers(quotes); setEvents(history); setItems(requirements);
     }).catch(e => { if (live) setMessage(e instanceof Error ? e.message : "Unable to load details"); })
       .finally(() => { if (live) setDetailLoading(false); });
     return () => { live = false; cancelAnimationFrame(frame); };
@@ -148,6 +159,43 @@ export function RfqWorkspace() {
       });
       setShowOffer(false); refresh();
     } catch (err) { setMessage(err instanceof Error ? err.message : "Could not save supplier offer"); }
+    finally { setSaving(false); }
+  }
+
+  async function saveItem(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!selectedId) return;
+    setSaving(true); setMessage("");
+    const form = new FormData(e.currentTarget);
+    const payload = {
+      productName: String(form.get("productName") || "").trim(),
+      specifications: String(form.get("specifications") || "").trim() || null,
+      hsCode: String(form.get("hsCode") || "").trim() || null,
+      quantity: String(form.get("quantity") || ""),
+      unit: String(form.get("unit") || "").trim(),
+      toleranceNotes: String(form.get("toleranceNotes") || "").trim() || null,
+      originCountry: String(form.get("originCountry") || "").trim() || null,
+      targetDestination: String(form.get("targetDestination") || "").trim() || null
+    };
+    try {
+      await json<RfqItem>("/api/trading/rfqs/" + selectedId + "/items" +
+        (editingItem ? "/" + editingItem.id : ""), {
+        method: editingItem ? "PUT" : "POST",
+        headers: { "content-type": "application/json" }, body: JSON.stringify(payload)
+      });
+      setShowItem(false); setEditingItem(null); refresh();
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to save requirement"); }
+    finally { setSaving(false); }
+  }
+
+  async function removeItem(item: RfqItem) {
+    if (!selectedId || !window.confirm("Remove requirement line " + item.lineNumber + "?")) return;
+    setSaving(true); setMessage("");
+    try {
+      await json<void>("/api/trading/rfqs/" + selectedId + "/items/" + item.id,
+        { method: "DELETE" });
+      refresh();
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to remove requirement"); }
     finally { setSaving(false); }
   }
 
@@ -257,8 +305,36 @@ export function RfqWorkspace() {
               <div><small>QUOTE CURRENCY</small><strong>{selected.currency}</strong></div>
               <div><small>DEADLINE</small><strong>{date(selected.deadline)}</strong></div>
               <div><small>SUPPLIER OFFERS</small><strong>{offers.length}</strong></div></div>
+            <section className="desk-requirements" aria-label="Structured RFQ requirements">
+              <div className="desk-offer-header"><div><p className="desk-eyebrow">PRODUCT REQUIREMENTS</p>
+                <h3>Item specifications ({items.length})</h3></div>
+                {(selected.status === "NEW" || selected.status === "SOURCING") && offers.length === 0 &&
+                  <button onClick={() => { setEditingItem(null); setShowItem(true); }}>＋ Add item</button>}
+              </div>
+              {items.length === 0 ?
+                <p className="desk-panel-empty">No structured lines recorded. Existing RFQ header remains the primary commercial quantity.</p> :
+                <div className="desk-items">{items.map(item => <article className="desk-item" key={item.id}>
+                  <div className="desk-item-title"><div><small>LINE {item.lineNumber}</small><h4>{item.productName}</h4></div>
+                    <strong>{Number(item.quantity).toLocaleString()} {item.unit}</strong></div>
+                  {item.specifications && <p>{item.specifications}</p>}
+                  <div className="desk-item-tags">
+                    {item.hsCode && <span>HS {item.hsCode}</span>}
+                    {item.originCountry && <span>Origin: {item.originCountry}</span>}
+                    {item.targetDestination && <span>Destination: {item.targetDestination}</span>}
+                    {item.toleranceNotes && <span>Tolerance: {item.toleranceNotes}</span>}
+                  </div>
+                  {(selected.status === "NEW" || selected.status === "SOURCING") && offers.length === 0 &&
+                    <div className="desk-item-controls">
+                      <button disabled={saving} onClick={() => { setEditingItem(item); setShowItem(true); }}>Edit</button>
+                      <button disabled={saving} onClick={() => void removeItem(item)}>Remove</button>
+                    </div>}
+                </article>)}</div>}
+              <p className="desk-caution">Requirements freeze after the first supplier offer. Multi-item RFQs are recorded for sourcing,
+                but cannot enter the existing single-item quotation workflow. For one item, its quantity and unit must match the RFQ header.</p>
+            </section>
             <div className="desk-offer-header"><div><p className="desk-eyebrow">COMPARISON MATRIX</p><h3>Supplier offers</h3></div>
-              {selected.status === "SOURCING" && <button onClick={() => { setMessage(""); setShowOffer(true); }}>＋ Add offer</button>}</div>
+              {selected.status === "SOURCING" && items.length <= 1 &&
+                <button onClick={() => { setMessage(""); setShowOffer(true); }}>＋ Add offer</button>}</div>
             {offers.length === 0 ? <p className="desk-panel-empty">No supplier quotations yet. Start sourcing to add offers; accepted offers are frozen when ready for quote.</p> :
               <div className="desk-offers">{offers.map((o, index) => <article className="desk-offer" key={o.id}>
                 <div><h4>{o.supplierName}</h4>{index === 0 && <span>LOWEST UNIT PRICE</span>}</div>
@@ -266,6 +342,8 @@ export function RfqWorkspace() {
                 <p>MOQ: {Number(o.moq).toLocaleString()} {selected.unit} <b>·</b> Lead time: {o.leadDays} days</p>
                 {o.notes && <p>{o.notes}</p>}
               </article>)}</div>}
+            {items.length > 1 && <p className="desk-caution">Multi-item requirements are recorded for sourcing preparation.
+              Aggregate supplier offers are disabled until prices are linked to individual items.</p>}
             <p className="desk-caution">All offers use the RFQ currency. Unit price alone does not account for freight, taxes, quality, payment terms or MOQ.</p>
             <div className="desk-event-head"><p className="desk-eyebrow">ACCOUNTABILITY</p><h3>Activity log</h3></div>
             <div className="desk-events">{events.map((a, i) => <div key={i}><span>•</span><div><strong>{a.action.replaceAll("_", " ")}</strong><small>{a.detail || ""} · {a.actor} · {new Date(a.createdAt).toLocaleString("en-GB")}</small></div></div>)}</div>
@@ -294,6 +372,33 @@ export function RfqWorkspace() {
         {message && <p className="desk-inline-error" role="alert">{message}</p>}
         <footer><button type="button" onClick={() => setShowCreate(false)} disabled={saving}>Cancel</button><button type="submit" className="desk-primary" disabled={saving}>{saving ? "Creating…" : "Create RFQ →"}</button></footer>
       </form></section></div>}
+
+    {showItem && selected && <div className="desk-modal-backdrop"><section className="desk-modal" role="dialog" aria-modal="true" aria-labelledby="rfq-item-title">
+      <header><div><p className="desk-eyebrow">RFQ REQUIREMENT</p>
+        <h2 id="rfq-item-title">{editingItem ? "Edit product item" : "Add product item"}</h2>
+        <p>Product specifications, quantity, origin and destination. Maximum 50 items per RFQ.</p></div>
+        <button className="desk-close" onClick={() => { setShowItem(false); setEditingItem(null); }} disabled={saving} aria-label="Close">×</button>
+      </header>
+      <form onSubmit={saveItem} className="desk-form">
+        <label>Product name *<input name="productName" required maxLength={240} defaultValue={editingItem?.productName || ""} placeholder="e.g. ASTM A36 steel plate" /></label>
+        <label>Specification / grade / dimensions<textarea name="specifications" maxLength={3000} rows={3}
+          defaultValue={editingItem?.specifications || ""} placeholder="Grade, thickness, size, packaging, acceptance criteria…" /></label>
+        <div className="desk-form-grid"><label>Quantity *<input name="quantity" type="number" min="0.001" step="0.001"
+          required defaultValue={editingItem?.quantity ?? selected.quantity} /></label>
+          <label>Unit *<input name="unit" maxLength={32} required defaultValue={editingItem?.unit ?? selected.unit} /></label></div>
+        <div className="desk-form-grid"><label>HS code (4–10 digits)<input name="hsCode" pattern="[0-9]{4,10}"
+          maxLength={10} defaultValue={editingItem?.hsCode || ""} placeholder="7208" /></label>
+          <label>Origin country<input name="originCountry" maxLength={100}
+            defaultValue={editingItem?.originCountry || ""} placeholder="China" /></label></div>
+        <label>Destination port / city<input name="targetDestination" maxLength={160}
+          defaultValue={editingItem?.targetDestination || ""} placeholder="La Guaira, Venezuela" /></label>
+        <label>Tolerance / additional conditions<textarea name="toleranceNotes" maxLength={500} rows={2}
+          defaultValue={editingItem?.toleranceNotes || ""} /></label>
+        {message && <p className="desk-inline-error" role="alert">{message}</p>}
+        <footer><button type="button" disabled={saving} onClick={() => { setShowItem(false); setEditingItem(null); }}>Cancel</button>
+          <button className="desk-primary" disabled={saving}>{saving ? "Saving…" : "Save item →"}</button></footer>
+      </form>
+    </section></div>}
 
     {showOffer && selected && <div className="desk-modal-backdrop"><section className="desk-modal" role="dialog" aria-modal="true" aria-labelledby="offer-title">
       <header><div><p className="desk-eyebrow">SUPPLIER SOURCING</p><h2 id="offer-title">Record supplier quotation</h2>
