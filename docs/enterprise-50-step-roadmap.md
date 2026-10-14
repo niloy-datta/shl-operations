@@ -13,7 +13,7 @@
 
 ### 1. Master data and CRM (01–05)
 - [x] **01 — Consignee master and shipment binding (P0).** Customer-scoped address/contact profiles, create/edit/deactivate, auditable pre-dispatch shipment linkage, role checks and integration tests. UI under `/workspace/consignees`.
-- [ ] **02 — Scalable consignee selector (P0).** Server-side customer filter/search, complete pagination and verified selection even with 100k recipients.
+- [x] **02 — Scalable consignee selector (P0).** Server-side customer-bound filter/search, paginated selection and backend verification. Large-scale 100k performance remains unbenchmarked.
 - [ ] **03 — Business entity directory (P0).** HQ, branches, countries, trade names and immutable business IDs.
 - [ ] **04 — Multiple company contacts (P0).** Decision-maker, buying, finance and consignee contact roles with opt-in communications.
 - [ ] **05 — Safe deduplication (P1).** Customer/supplier/consignee duplicate reports and reviewed merges with preserved foreign keys.
@@ -86,7 +86,7 @@
 - Java `ConsigneeController` owns creation, search, update and restricted access; `LogisticsController` enforces active customer matching before departure.
 - Existing shipments remain valid with `consignee_id = NULL`, ensuring backward compatibility; compulsory assignment is a separate product policy decision.
 - `ConsigneeWorkflowTest` tests create, update, customer immutability, mismatch/inactive guards, linked milestones and lock after departure.
-- UI creates/edits master data and assigns recipients to booked shipments. Current shipment and recipient selectors are capped to recent page(s), so item 02 is mandatory before production-scale use.
+- UI creates/edits master data and assigns recipients to booked shipments. Recipient selection queries are customer-scoped and paginated; the shipment overview still shows the 100 most recent shipments and needs a separate shipment-search enhancement before production scale.
 - No unreviewed public website integration, external messaging, file uploads or actual payment execution introduced.
 
 ## Engineering quality gates
