@@ -15,7 +15,9 @@ export function LoginForm() {
         setMfaRequired(true); setError("Enter the six-digit authenticator code or a recovery code."); return;
       }
       if (!response.ok) { setError((await response.json()).error || "Sign in failed"); return; }
-      router.replace("/workspace"); router.refresh();
+      const session = await response.json() as { enrollmentRequired?: boolean };
+      router.replace(session.enrollmentRequired ? "/workspace/account/enroll-mfa" : "/workspace");
+      router.refresh();
     } catch { setError("Unable to reach the service"); } finally { setBusy(false); }
   }
   return <form onSubmit={submit} className="stack">
