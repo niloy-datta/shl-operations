@@ -1,6 +1,6 @@
 # SHL Operations OS — 50-step enterprise execution roadmap
 
-> Source of truth: `main`. Existing features stay in place. This is a backlog, not a claim that all 50 are complete. The new phase-two enterprise modules are implemented on a feature branch until reviewed and merged.
+> Source of truth: `main`. Existing features stay in place. This is a backlog, not a claim that all 50 are complete. The phase-two enterprise modules have passed CI and been merged to main, but no live ERP deployment is authorized.
 > All stages require server-side authorization, auditability, tests and no synthetic production data.
 > **Do not enter real SHL financial, client or shipping information until production security gates are signed off.**
 
