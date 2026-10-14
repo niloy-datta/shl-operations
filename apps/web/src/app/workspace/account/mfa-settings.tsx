@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
-type Status = { enabled: boolean; enrollmentPending: boolean; recoveryCodesRemaining: number };
+type Status = { enabled: boolean; enrollmentPending: boolean; recoveryCodesRemaining: number; required: boolean };
 type Enrollment = { secret: string; otpAuthUrl: string };
 
 async function send(path: string, data: Record<string,string>): Promise<Response> {
@@ -81,7 +81,7 @@ export function MfaSettings() {
       {error&&<p className="en-alert" role="alert">{error}</p>}
       {!status&&!error&&<p className="en-help">Loading security settings…</p>}
       {recoveryCodes ? <>
-        <p className="en-help"><strong>MFA is enabled.</strong> Save these recovery codes in a password manager now. They will not be displayed again. Existing sessions have been revoked.</p>
+        <p className="en-help"><strong>MFA is enabled.</strong> Save these recovery codes in a password manager now. They will not be displayed again. Existing sessions have been revoked. When signing in again, use the next refreshed authenticator code (not the one used to confirm setup).</p>
         <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:9}}>
           {recoveryCodes.map(code=><code key={code} style={{padding:11,background:"#edf8f4",borderRadius:7,fontSize:13}}>{code}</code>)}
         </div>
@@ -108,13 +108,13 @@ export function MfaSettings() {
         </form>
       </> : status ? <>
         <p className="en-help">MFA is active. {status.recoveryCodesRemaining} unused recovery codes remain. Disabling requires your password and an authenticator or recovery code.</p>
-        <form onSubmit={e=>void disable(e)} style={{display:"grid",gap:12}}>
+        {status.required ? <p className="en-help">MFA is required by organization policy and cannot be disabled. Contact your administrator for secure recovery.</p> : <form onSubmit={e=>void disable(e)} style={{display:"grid",gap:12}}>
           <label className="en-field"><span>Current password</span>
             <input name="password" type="password" autoComplete="current-password" required/></label>
           <label className="en-field"><span>Authenticator or recovery code</span>
             <input name="code" autoComplete="one-time-code" required maxLength={40}/></label>
           <button disabled={busy} className="en-secondary">{busy?"Disabling…":"Disable MFA and sign out"}</button>
-        </form>
+        </form>}
       </> : null}
     </div>
   </section>;

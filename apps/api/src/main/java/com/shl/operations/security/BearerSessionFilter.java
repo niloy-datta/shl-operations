@@ -16,6 +16,17 @@ public class BearerSessionFilter extends OncePerRequestFilter {
     private final SessionService sessions;
     public BearerSessionFilter(SessionService sessions) { this.sessions=sessions; }
 
+    // Password-only sessions may access only the minimum enrollment/logout endpoints.
+    // Every request is evaluated against current staff MFA state, including old sessions.
+    private static boolean enrollmentEndpoint(HttpServletRequest request) {
+        String path=request.getRequestURI();
+        String method=request.getMethod();
+        return ("GET".equals(method) && "/api/auth/mfa/status".equals(path))
+            || ("POST".equals(method) && (
+                "/api/auth/mfa/enroll".equals(path) || "/api/auth/mfa/confirm".equals(path)))
+            || ("DELETE".equals(method) && "/api/auth/sessions/current".equals(path));
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response,
         FilterChain chain) throws ServletException, IOException {
@@ -24,6 +35,11 @@ public class BearerSessionFilter extends OncePerRequestFilter {
             && SecurityContextHolder.getContext().getAuthentication()==null) {
             var valid=sessions.validate(auth.substring(7));
             if (valid!=null) {
+                if (valid.enrollmentRequired() && !enrollmentEndpoint(request)) {
+                    response.sendError(HttpServletResponse.SC_FORBIDDEN,
+                        "Complete authenticator enrollment before accessing business data");
+                    return;
+                }
                 var ctx=SecurityContextHolder.createEmptyContext();
                 ctx.setAuthentication(new UsernamePasswordAuthenticationToken(
                     valid.username(),null,
