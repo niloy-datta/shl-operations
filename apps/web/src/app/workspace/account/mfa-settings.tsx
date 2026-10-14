@@ -81,7 +81,7 @@ export function MfaSettings() {
       {error&&<p className="en-alert" role="alert">{error}</p>}
       {!status&&!error&&<p className="en-help">Loading security settings…</p>}
       {recoveryCodes ? <>
-        <p className="en-help"><strong>MFA is enabled.</strong> Save these recovery codes in a password manager now. They will not be displayed again. Existing sessions have been revoked.</p>
+        <p className="en-help"><strong>MFA is enabled.</strong> Save these recovery codes in a password manager now. They will not be displayed again. Existing sessions have been revoked. When signing in again, use the next refreshed authenticator code (not the one used to confirm setup).</p>
         <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:9}}>
           {recoveryCodes.map(code=><code key={code} style={{padding:11,background:"#edf8f4",borderRadius:7,fontSize:13}}>{code}</code>)}
         </div>
