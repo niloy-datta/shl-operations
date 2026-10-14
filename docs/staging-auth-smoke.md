@@ -12,3 +12,7 @@ It checks:
 The workflow runs on pull requests or manual GitHub Actions invocation as `Isolated Full-Stack Auth Smoke`. It destroys volumes and synthetic credentials at the end, even on failures.
 
 It does **not** test real shipping/finance workflows, large datasets, visual accessibility, privileged recovery approvals, or deployment security. Those are still launch blockers.
+
+## Trusted public origin
+
+`SHL_PUBLIC_ORIGIN` defines the canonical origin accepted for mutating Next.js API requests. Docker Compose defaults to `http://127.0.0.1:3000`. Set it to the exact externally visible `https://` origin behind a trusted reverse proxy when deployed. The browser origin is not guessed from untrusted Host/X-Forwarded-Host headers. Do not allow arbitrary public HTTP origins.
