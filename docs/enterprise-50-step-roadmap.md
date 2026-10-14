@@ -21,7 +21,7 @@
 ### 2. Lead intake and team workflow (06–10)
 - [ ] **06 — Public website lead intake (P0).** Signed authenticated integration with spam protection, rate limits and validation; keep public site unchanged until approved.
 - [ ] **07 — Lead ownership routing (P0).** Queue, territories, workload balancing and ownership history.
-- [ ] **08 — Follow-up timeline (P0).** Notes, next action, contact attempts and consent-aware communication records.
+- [ ] **08 — Follow-up timeline (P0).** Partially delivered: append-only lead interaction notes (call/email/WeChat/meeting), next follow-up scheduling and audit history. Explicit communication consent records and outbound messaging remain pending.
 - [ ] **09 — Opportunity scoring (P1).** Transparent explainable qualification and confidence; no invented probabilities.
 - [ ] **10 — Lead conversion automation (P1).** Reviewed lead→customer→RFQ→project mapping with idempotency.
 
@@ -101,3 +101,8 @@
 - Executive command cockpit: `/workspace/command-center` with source-based KPI cards, exceptions, outstanding invoices and action queues. Confidential commissions excluded.
 - Premium accessible public design experience: `/docs/demo/enterprise.html` source preview, no database, fake records, auth or API calls.
 - Any static showcase deployment is **not** a launch of the authenticated operations platform; it must remain clearly labeled as an interface tour.
+
+### Lead timeline addition
+- Flyway V11 records internal CRM lead activities with a typed interaction label, staff actor, notes and optional future follow-up.
+- The lead drawer can log activities and update the next follow-up; the API forbids scheduling on won/lost leads.
+- No external email, WhatsApp, WeCom, or SMS integration is connected. Logging an activity is not proof of message delivery.
