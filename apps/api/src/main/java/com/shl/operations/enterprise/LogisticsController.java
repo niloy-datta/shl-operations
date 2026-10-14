@@ -40,7 +40,7 @@ public class LogisticsController {
         @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
         String term=q==null?"":q.trim().toLowerCase(Locale.ROOT);
         term=term.substring(0,Math.min(100,term.length()));
-        return Pages.of(db,"sh.*,so.reference AS sales_reference,c.code AS consignee_code,c.company_name AS consignee_name",
+        return Pages.of(db,"sh.*,so.reference AS sales_reference,so.customer_id AS customer_id,c.code AS consignee_code,c.company_name AS consignee_name",
             "FROM shipments sh JOIN sales_orders so ON so.id=sh.sales_order_id LEFT JOIN consignees c ON c.id=sh.consignee_id",
             " WHERE lower(sh.reference) LIKE ? OR lower(sh.destination) LIKE ? OR lower(coalesce(c.company_name,'')) LIKE ?",
             new Object[] {"%"+term+"%","%"+term+"%","%"+term+"%"},
