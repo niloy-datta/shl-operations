@@ -28,14 +28,18 @@ public class MfaService {
     private final PasswordEncoder passwords;
     private final AuditService audit;
     private final String encryptionKey;
+    private final boolean mandatoryMfa;
     private final SecureRandom rng=new SecureRandom();
 
     public MfaService(JdbcTemplate db, PasswordEncoder passwords, AuditService audit,
-        @Value("${MFA_ENCRYPTION_KEY:}") String encryptionKey) {
+        @Value("${MFA_ENCRYPTION_KEY:}") String encryptionKey,
+        @Value("${SHL_REQUIRE_MFA:false}") boolean mandatoryMfa) {
         this.db=db;this.passwords=passwords;this.audit=audit;this.encryptionKey=encryptionKey;
+        this.mandatoryMfa=mandatoryMfa;
     }
     public record Enrollment(String secret,String otpAuthUrl) {}
-    public record Status(boolean enabled, boolean enrollmentPending, long recoveryCodesRemaining) {}
+    public record Status(boolean enabled, boolean enrollmentPending,
+        long recoveryCodesRemaining, boolean required) {}
 
     private byte[] secretKey() {
         if (!encryptionKey.matches("[0-9a-fA-F]{64}"))
@@ -139,7 +143,7 @@ public class MfaService {
         return new Status(Boolean.TRUE.equals(row.get("mfa_enabled")),
             row.get("mfa_pending_at")!=null &&
                 ((java.sql.Timestamp)row.get("mfa_pending_at")).toInstant()
-                    .isAfter(Instant.now().minus(10,ChronoUnit.MINUTES)),codes==null?0:codes);
+                    .isAfter(Instant.now().minus(10,ChronoUnit.MINUTES)),codes==null?0:codes,mandatoryMfa);
     }
     @Transactional
     public Enrollment enroll(String username,String password) {
@@ -221,6 +225,8 @@ public class MfaService {
     }
     @Transactional
     public void disable(String username,String password,String code) {
+        if (mandatoryMfa) throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+            "MFA is required by organization policy");
         var account=staff(username);verifyPassword(account,password);
         UUID id=(UUID)account.get("id");
         if (!Boolean.TRUE.equals(account.get("mfa_enabled")))

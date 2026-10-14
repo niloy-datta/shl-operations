@@ -18,7 +18,7 @@ export default async function AccountSettings() {
       <div className="en-panel"><PasswordForm /></div>
       <MfaSettings />
       <SessionManager />
-      <p className="en-disclaimer">Changing your password revokes all sessions. You can also revoke individual sessions above. Authenticator MFA is available but remains optional during development.</p>
+      <p className="en-disclaimer">Changing your password revokes all sessions. You can also revoke individual sessions above. Authenticator MFA may be required by your organization. When required, complete setup before accessing business workflows.</p>
     </main>
   </div></div>;
 }

@@ -41,7 +41,8 @@ export async function POST(request: Request) {
       throw new Error("Invalid authentication payload");
 
     // The opaque token is never returned to browser JavaScript.
-    const response = NextResponse.json({ username: auth.username, role: auth.role },
+    const response = NextResponse.json({ username: auth.username, role: auth.role,
+      mfaSetupRequired: auth.mfaSetupRequired === true },
       { headers: { "cache-control": "no-store" } });
     response.cookies.set(cookieName, auth.token, {
       httpOnly: true, secure: process.env.NODE_ENV === "production",
