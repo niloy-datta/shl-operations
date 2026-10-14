@@ -30,7 +30,7 @@ public class CommandCenterController {
         output.put("suppliers",count("SELECT count(*) FROM suppliers"));
         output.put("leadsActive",count("SELECT count(*) FROM crm_leads WHERE status IN ('NEW','CONTACTED','QUALIFIED')"));
         output.put("leadsWon",count("SELECT count(*) FROM crm_leads WHERE status='WON'"));
-        output.put("rfqsOpen",count("SELECT count(*) FROM rfqs WHERE status NOT IN ('CANCELLED','CLOSED')"));
+        output.put("rfqsOpen",count("SELECT count(*) FROM rfqs WHERE status <> 'CLOSED'"));
         output.put("salesOpen",count("SELECT count(*) FROM sales_orders WHERE status IN ('DRAFT','CONFIRMED','IN_PROGRESS')"));
         output.put("projectsActive",count("SELECT count(*) FROM business_projects WHERE status IN ('PLANNED','ACTIVE','ON_HOLD')"));
         output.put("projectsOverdue",count("""
@@ -50,14 +50,14 @@ public class CommandCenterController {
             WHERE due_date < ? AND status='ISSUED'
             """,today));
         List<Map<String,Object>> aging=db.queryForList("""
-            SELECT currency,invoice_type,count(*) AS invoice_count,
-                sum(amount-coalesce((SELECT sum(p.amount) FROM invoice_payments p
-                    WHERE p.invoice_id=i.id),0)) AS outstanding
-            FROM invoices i WHERE status='ISSUED'
-            GROUP BY currency,invoice_type
-            HAVING sum(amount-coalesce((SELECT sum(p.amount) FROM invoice_payments p
-                    WHERE p.invoice_id=i.id),0)) > 0
-            ORDER BY currency,invoice_type
+            SELECT i.currency,i.invoice_type,count(*) AS invoice_count,
+                sum(i.amount-coalesce(payments.total,0)) AS outstanding
+            FROM invoices i LEFT JOIN LATERAL (
+                SELECT sum(p.amount) AS total FROM invoice_payments p WHERE p.invoice_id=i.id
+            ) payments ON true WHERE i.status='ISSUED'
+            GROUP BY i.currency,i.invoice_type
+            HAVING sum(i.amount-coalesce(payments.total,0)) > 0
+            ORDER BY i.currency,i.invoice_type
             """);
         output.put("outstandingByCurrency",aging);
         output.put("nextShipments",db.queryForList("""
