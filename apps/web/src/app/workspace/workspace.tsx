@@ -24,6 +24,7 @@ const primaryViews: { key: View; label: string; icon: IconName }[] = [
   { key: "suppliers", label: "Suppliers", icon: "building" }
 ];
 const enterpriseViews: { label: string; href: string; icon: IconName }[] = [
+  { label: "Executive cockpit", href: "/workspace/command-center", icon: "chart" },
   { label: "Due dates & alerts", href: "/workspace/alerts", icon: "check" },
   { label: "Lead pipeline", href: "/workspace/growth/leads", icon: "users" },
   { label: "Projects & jobs", href: "/workspace/growth/projects", icon: "grid" },
