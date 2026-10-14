@@ -71,3 +71,11 @@
 .cn-modal footer button:not(.cn-primary){padding:12px 19px;border:1px solid #d9e3eb;border-radius:8px;background:white;color:#617789;cursor:pointer}
 @media(max-width:720px){.cn-shell{padding:17px 12px}.cn-top{flex-wrap:wrap}.cn-hero{padding:30px 24px}.cn-hero h1{letter-spacing:-1.5px}.cn-stats{grid-template-columns:1fr}.cn-panel-head{padding:20px}.cn-panel-head form{width:100%}.cn-panel-head input{min-width:0;flex:1;width:100%}.cn-shipments{padding:0 17px}.cn-modal form,.cn-modal header{padding:20px}.cn-form-grid{grid-template-columns:1fr}.cn-shipment{align-items:flex-start;flex-wrap:wrap}}
 @media(prefers-reduced-motion:reduce){.cn-shell *{transition:none!important;animation:none!important}}
+
+.cn-recipient-search{display:flex;gap:8px;align-items:center}
+.cn-recipient-search input{flex:1;min-width:0}
+.cn-recipient-search button,.cn-recipient-pager button{border:1px solid #cce9e0;border-radius:7px;background:#ecf9f4;padding:10px 13px;font-size:12px;font-weight:750;color:#087c67;cursor:pointer}
+.cn-recipient-pager{display:flex;align-items:center;flex-wrap:wrap;gap:10px;font-size:12px;color:#698395}
+.cn-recipient-pager span{margin-right:auto}
+.cn-recipient-pager button:disabled{opacity:.4;cursor:not-allowed}
+.cn-modal p.cn-inline-error{color:#aa4539;background:#fff0ef;border:1px solid #efc8c1;border-radius:7px;padding:10px}
