@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.server.ResponseStatusException;
@@ -55,11 +56,20 @@ class ConsigneeWorkflowTest {
         assertThat(consignees.get(id).get("customer_id")).isEqualTo(buyer);
         assertThat(consignees.list("Rotterdam Receiving",0,10,buyer).content())
             .anyMatch(row->id.equals(row.get("id")));
+        assertThat(consignees.list("",0,10,another).content())
+            .noneMatch(row->id.equals(row.get("id")));
         assertThatThrownBy(() -> consignees.update(id,profile(another,"Hijacked",true)))
             .isInstanceOf(ResponseStatusException.class);
         assertThat(consignees.update(id,profile(buyer,"Updated Receiving",false)).get("active"))
             .isEqualTo(false);
         assertThat(consignees.get(id).get("company_name")).isEqualTo("Updated Receiving");
+    }
+
+    @Test
+    @WithMockUser(username="bd-user",roles="BD")
+    void businessDevelopmentCannotReadShippingRecipientMaster() {
+        assertThatThrownBy(() -> consignees.list("",0,10,null))
+            .isInstanceOf(AccessDeniedException.class);
     }
 
     @Test
