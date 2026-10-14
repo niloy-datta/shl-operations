@@ -104,15 +104,23 @@ class RfqItemsWorkflowTest {
         rfqs.changeStatus(id,new TradingController.StatusInput("SOURCING"));
         Supplier seller=suppliers.save(new Supplier(new ContactInput(
             "Multi-line vendor "+UUID.randomUUID(),"vendor@example.test",null,"CN")));
-        rfqs.saveOffer(id,new TradingController.OfferInput(
-            seller.id,new BigDecimal("30.00"),new BigDecimal("5"),10,null));
+        var quote=new TradingController.OfferInput(
+            seller.id,new BigDecimal("30.00"),new BigDecimal("5"),10,null);
+        assertThatThrownBy(()->rfqs.saveOffer(id,quote))
+            .isInstanceOf(ResponseStatusException.class)
+            .hasMessageContaining("per line");
+        assertThat(items.list(id)).hasSize(2);
+        // A multi-item request cannot proceed to commercial approval; the lines
+        // remain editable without a misleading aggregate supplier quotation.
         assertThatThrownBy(()->rfqs.changeStatus(id,
             new TradingController.StatusInput("READY_FOR_QUOTE")))
             .isInstanceOf(ResponseStatusException.class)
             .hasMessageContaining("Multi-item RFQ");
-        assertThat(items.list(id)).hasSize(2);
-        assertThatThrownBy(()->items.delete(id,second.id()))
-            .isInstanceOf(ResponseStatusException.class);
+        items.delete(id,second.id());
+        assertThat(items.list(id)).hasSize(1);
+        rfqs.saveOffer(id,quote);
+        assertThat(rfqs.changeStatus(id,new TradingController.StatusInput(
+            "READY_FOR_QUOTE")).status()).isEqualTo("READY_FOR_QUOTE");
         assertThat(first.productName()).isEqualTo("Base steel plate");
     }
 
