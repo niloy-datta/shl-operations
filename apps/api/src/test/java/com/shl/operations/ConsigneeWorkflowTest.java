@@ -63,6 +63,9 @@ class ConsigneeWorkflowTest {
         assertThat(consignees.update(id,profile(buyer,"Updated Receiving",false)).get("active"))
             .isEqualTo(false);
         assertThat(consignees.get(id).get("company_name")).isEqualTo("Updated Receiving");
+        assertThatThrownBy(() -> consignees.create(new ConsigneeController.Input(
+            buyer,"Invalid country",null,null,null,"ZZ","Address",true)))
+            .isInstanceOf(ResponseStatusException.class);
     }
 
     @Test
@@ -127,6 +130,9 @@ class ConsigneeWorkflowTest {
             new LogisticsController.ConsigneeAssignment(matched));
         assertThat(linked.get("consignee_id")).isEqualTo(matched);
         assertThat(logistics.milestones(shipment)).anyMatch(m->"CONSIGNEE_SET".equals(m.get("event")));
+        int milestoneCount=logistics.milestones(shipment).size();
+        logistics.assignConsignee(shipment,new LogisticsController.ConsigneeAssignment(matched));
+        assertThat(logistics.milestones(shipment)).hasSize(milestoneCount);
         logistics.change(shipment,new LogisticsController.StatusInput("IN_TRANSIT","Departed"));
         assertThatThrownBy(() -> logistics.assignConsignee(shipment,
             new LogisticsController.ConsigneeAssignment(matched)))
