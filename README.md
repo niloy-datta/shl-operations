@@ -47,6 +47,12 @@ For a local PostgreSQL archive use `bash scripts/backup-local.sh`, then test res
 - Outgoing customer quotations, purchasing, shipments, invoices, payments and named-staff RBAC have development implementations. CRM lead qualification, project jobs and notes, expenses, explicitly authorized confidential commissions, operational alerts and conservative project contribution reporting have also been implemented. **True double-entry ledger, commission settlement, compulsory MFA, production deployment and full security hardening are not implemented.**
 - No fabricated business metrics or sample records.
 
+## Mandatory authenticator policy (development)
+
+The existing TOTP authenticator and one-use recovery codes now support an optional organization-wide **enforcement setting**. Use `MFA_ENFORCEMENT_ENABLED=true` in an approved isolated staging configuration. Users who have not enrolled can receive only a restricted MFA-setup session: business API access is blocked until setup is confirmed, existing sessions are revoked, and a new login with a code succeeds. MFA cannot be disabled while the policy is enforced. The API refuses to start with an invalid encryption key when enforcement is enabled.
+
+Development default remains `false`, and enabling this flag **does not** make the ERP production-ready. Recovery governance, browser E2E coverage, external review and backups remain open. See [MFA rollout plan](docs/mfa-enforcement-rollout.md).
+
 ## Boundaries
 
 This is a **local first milestone**, not a production release. The initial account is bootstrapped only if `staff_users` is empty; changing the bootstrap environment password later does not rotate an existing staff password. Named staff accounts, role changes, revocable opaque sessions, optional authenticator MFA and audit events are implemented. The API stays private inside Compose, while the web interface is bound to loopback for local development. Production-grade identity recovery, external identity management, secret rotation, role isolation and deployment security reviews remain open. Do not use real company data yet.
