@@ -28,7 +28,7 @@ async function json<T>(path:string,init?:RequestInit):Promise<T> {
     (response.status===403?"Not authorized for this action. ":
       response.status===409?"Workflow restriction: ":"")+
     (value.detail||value.message||value.error||"Request failed ("+response.status+")"));
-  return value as T;
+  return value as unknown as T;
 }
 const api=(path:string)=>"/api/enterprise/commerce/line-quotes"+path;
 

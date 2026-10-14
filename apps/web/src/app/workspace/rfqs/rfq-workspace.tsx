@@ -431,6 +431,14 @@ export function RfqWorkspace() {
               <p className="desk-caution">Unit prices are not landed costs; freight, duties,
                 exchange rates, quality and terms need independent review.</p>
             </section>}
+            {items.length > 0 && lineOffers.length > 0 &&
+              <div className="desk-quote-launch">
+                <div><strong>Build customer quotation</strong>
+                  <p>Use verified supplier line prices and independent review.
+                    Multi-item sales order conversion remains disabled.</p></div>
+                <Link href={"/workspace/enterprise/line-quotes?rfqId="+selected.id}
+                  className="desk-primary">Prepare line quote →</Link>
+              </div>}
             <div className="desk-offer-header"><div><p className="desk-eyebrow">COMPARISON MATRIX</p><h3>Legacy supplier offers</h3></div>
               {selected.status === "SOURCING" && items.length <= 1 && lineOffers.length === 0 &&
                 <button onClick={() => { setMessage(""); setShowOffer(true); }}>＋ Add offer</button>}</div>
