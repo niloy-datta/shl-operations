@@ -176,3 +176,10 @@
 .desk-item-controls button:hover { border-color:#20a88d; color:#047e6e; }
 .desk-item-controls button:disabled { cursor:not-allowed; opacity:.5; }
 @media(max-width:420px) { .desk-item-title { flex-direction:column; gap:6px; } }
+
+/* Revision-aware sourcing offer cards */
+.desk-line-prices { margin:24px 0 26px; }
+.desk-line-history { margin-top:13px; border:1px solid #dcebe5; background:#f6fbf8; padding:12px; border-radius:9px; }
+.desk-line-history>strong { display:block; color:#174b43; margin-bottom:8px; font-size:12px; }
+.desk-line-history p { font-size:11px; margin:9px 0; color:#536b6a; line-height:1.6; overflow-wrap:anywhere; }
+.desk-line-warning { color:#a75b0e!important; font-weight:700; }
