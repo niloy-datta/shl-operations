@@ -127,6 +127,13 @@ public class RfqLineOffersController {
         if (!"SOURCING".equals(status))
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                 "Supplier quote revisions can only be submitted during sourcing");
+        Long lockedQuotes=db.queryForObject("""
+            SELECT count(*) FROM customer_line_quotes
+            WHERE rfq_id=? AND status IN ('SUBMITTED','APPROVED')
+            """,Long.class,rfqId);
+        if(lockedQuotes!=null && lockedQuotes>0)
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Customer quotation under review; supplier price changes are frozen");
         Long legacy=db.queryForObject(
             "SELECT count(*) FROM supplier_offers WHERE rfq_id=?",Long.class,rfqId);
         if (legacy!=null && legacy>0)

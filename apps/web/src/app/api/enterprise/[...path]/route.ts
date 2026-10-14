@@ -7,6 +7,7 @@ const regex = (pattern: string) => new RegExp("^" + pattern + "$");
 const paths: Record<string, RegExp[]> = {
   GET: [
     regex("commerce/(quotes|orders|purchase-orders)(/" + id + ")?"),
+    regex("commerce/line-quotes(/" + id + ")?"),
     regex("logistics/shipments(/" + id + "(/milestones)?)?"),
     regex("logistics/consignees(/" + id + ")?"),
     regex("entities(/" + id + "(/contacts)?)?"),
@@ -15,6 +16,8 @@ const paths: Record<string, RegExp[]> = {
   ],
   POST: [
     regex("commerce/(quotes|orders|purchase-orders)"),
+    regex("commerce/line-quotes"),
+    regex("commerce/line-quotes/" + id + "/(submit|review)"),
     regex("logistics/shipments"), regex("logistics/consignees"), regex("finance/invoices"),
     regex("entities(/" + id + "/contacts)?"),
     regex("finance/invoices/" + id + "/payments"),
@@ -45,7 +48,7 @@ async function relay(request: Request, context: Context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const incoming = new URL(request.url);
   const query = new URLSearchParams();
-  for (const key of ["page", "size", "q", "customerId"]) {
+  for (const key of ["page", "size", "q", "customerId", "rfqId"]) {
     const value = incoming.searchParams.get(key);
     if (value !== null) query.set(key, value.slice(0, 120));
   }
