@@ -141,19 +141,31 @@ export function GrowthDesk({module}:{module:Module}){
   }
   async function details(item:Item){
     setActive(item);setDialog("details");setNotes([]);setError("");
-    if(module==="projects")try{
-      setNotes(await fetchJson<Item[]>(api+"projects/"+item.id+"/notes"));
-    }catch{setError("Unable to load project notes.");}
+    try{
+      setNotes(await fetchJson<Item[]>(api+module+"/"+item.id+
+        (module==="leads"?"/activity":"/notes")));
+    }catch{setError("Unable to load activity records.");}
   }
   async function addNote(event:FormEvent<HTMLFormElement>){
     event.preventDefault();if(!active)return;
     setBusy(true);setError("");
-    const form=new FormData(event.currentTarget);
+    const formElement=event.currentTarget;
+    const form=new FormData(formElement);
+    const path=api+module+"/"+active.id+(module==="leads"?"/activity":"/notes");
+    const note=String(form.get("note")??"").trim();
+    const payload=module==="leads"?{
+      activityType:String(form.get("activityType")??"NOTE"),
+      note,nextFollowUp:String(form.get("nextFollowUp")??"")||null
+    }:{note};
     try{
-      await post<Item>(api+"projects/"+active.id+"/notes",{note:String(form.get("note")??"").trim()});
-      setNotes(await fetchJson<Item[]>(api+"projects/"+active.id+"/notes"));
-      event.currentTarget.reset();
-    }catch(e){setError(e instanceof Error?e.message:"Could not add note.");}
+      await post<Item>(path,payload);
+      setNotes(await fetchJson<Item[]>(path));
+      if(module==="leads"){
+        setActive(await fetchJson<Item>(api+"leads/"+active.id));
+        reload();
+      }
+      formElement.reset();
+    }catch(e){setError(e instanceof Error?e.message:"Could not record activity.");}
     finally{setBusy(false);}
   }
   async function logout(){
@@ -299,16 +311,36 @@ export function GrowthDesk({module}:{module:Module}){
                 <button key={next} disabled={busy} onClick={()=>void status(active,next)}>
                   {next.replaceAll("_"," ")} ↗</button>)}</div>
             </div>}
-            {module==="projects"&&<section className="gx-notes">
-              <h3>Project activity notes</h3>
-              <form onSubmit={e=>void addNote(e)}><textarea name="note" rows={3}
-                maxLength={2000} required placeholder="Record operational updates and decisions…"/>
-                <button className="en-primary" type="submit" disabled={busy}>Add note →</button>
+            <section className="gx-notes">
+              <h3>{module==="leads"?"Lead follow-up history":"Project activity notes"}</h3>
+              <form onSubmit={e=>void addNote(e)}>
+                {module==="leads"&&<div className="gx-two">
+                  <Field name="activityType" label="Interaction type">
+                    <select name="activityType" defaultValue="NOTE">
+                      {["NOTE","CALL","EMAIL","WECHAT","MEETING","OTHER"].map(type=><option key={type} value={type}>{type}</option>)}
+                    </select>
+                  </Field>
+                  <Field name="nextFollowUp" label="Next follow-up (optional)" type="date">
+                    <input type="date" name="nextFollowUp"
+                      min={new Date().toISOString().slice(0,10)}
+                      disabled={["WON","LOST"].includes(String(active.status))}/>
+                  </Field>
+                </div>}
+                <textarea name="note" rows={3} maxLength={2000} required
+                  placeholder={module==="leads"?"Summarize the last call, email or next action (no message is sent)…":"Record operational updates and decisions…"} />
+                <button className="en-primary" type="submit" disabled={busy}>
+                  {busy?"Saving…":module==="leads"?"Log follow-up →":"Add note →"}
+                </button>
               </form>
-              {notes.length===0&&<p className="en-help">No notes recorded yet.</p>}
-              {notes.map(note=><article key={String(note.id)}><span>{t(note.author)} · {date(note.created_at)}</span>
-                <p>{t(note.note)}</p></article>)}
-            </section>}
+              {notes.length===0&&<p className="en-help">No activity recorded yet.</p>}
+              {notes.map(note=><article key={String(note.id)}>
+                <span>{t(note.actor??note.author)} · {date(note.created_at)}
+                  {module==="leads"?" · "+t(note.activity_type):""}
+                  {note.next_follow_up?" · Next: "+date(note.next_follow_up):""}</span>
+                <p>{t(note.note)}</p>
+              </article>)}
+              {module==="leads"&&<p className="en-help">These are internal activity records only. No email, WeCom or external message is sent.</p>}
+            </section>
           </>}
         </div>
       </section>
