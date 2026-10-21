@@ -8,6 +8,8 @@ const paths: Record<string, RegExp[]> = {
   GET: [
     regex("commerce/(quotes|orders|purchase-orders)(/" + id + ")?"),
     regex("commerce/line-quotes(/" + id + ")?"),
+    regex("commerce/line-orders(/" + id + ")?"),
+    regex("commerce/line-orders/purchase-orders/" + id),
     regex("logistics/shipments(/" + id + "(/milestones)?)?"),
     regex("logistics/consignees(/" + id + ")?"),
     regex("entities(/" + id + "(/contacts)?)?"),
@@ -19,6 +21,8 @@ const paths: Record<string, RegExp[]> = {
     regex("commerce/(quotes|orders|purchase-orders)"),
     regex("commerce/line-quotes"),
     regex("commerce/line-quotes/" + id + "/(submit|review)"),
+    regex("commerce/line-orders"),
+    regex("commerce/line-orders/" + id + "/purchase-orders"),
     regex("logistics/shipments"), regex("logistics/consignees"), regex("finance/invoices"),
     regex("entities(/" + id + "/contacts)?"),
     regex("finance/invoices/" + id + "/payments"),
@@ -26,6 +30,8 @@ const paths: Record<string, RegExp[]> = {
   ],
   PATCH: [
     regex("commerce/(quotes|orders|purchase-orders)/" + id + "/status"),
+    regex("commerce/line-orders/" + id + "/status"),
+    regex("commerce/line-orders/purchase-orders/" + id + "/status"),
     regex("logistics/shipments/" + id + "/status"),
     regex("logistics/shipments/" + id + "/consignee"),
     regex("logistics/consignees/" + id),
