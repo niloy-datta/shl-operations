@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import {LineOrderPanel} from "./line-order-panel";
 
 type Rfq={ id:string;reference:string;subject:string;currency:string;status:string;customerName:string };
 type Requirement={id:string;lineNumber:number;productName:string;specifications:string|null;
@@ -243,10 +244,11 @@ export function LineQuoteDesk({rfqId}:{rfqId:string}) {
                   {selected.quote.review_notes&&" "+selected.quote.review_notes}</p>}
               </div>
               <p className="lq-disclaimer">Approvers must be ADMIN or MANAGEMENT
-                and cannot review their own quotation. Approved versions remain
-                separate from legacy sales orders until line-aware PO/fulfillment is implemented.</p>
+                and cannot review their own quotation. Approved versions can create separately audited line-aware sales orders. Shipment
+                and invoice integration still require further approval and development.</p>
             </div>}
           </section>
+          <LineOrderPanel rfqId={rfqId} quotes={quotes}/>
         </>}
       </>}
     </div>

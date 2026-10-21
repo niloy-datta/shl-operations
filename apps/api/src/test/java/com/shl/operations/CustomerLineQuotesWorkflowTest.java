@@ -39,6 +39,7 @@ class CustomerLineQuotesWorkflowTest {
     @Autowired RfqLineOffersController supplierPrices;
     @Autowired CustomerLineQuotesController quotes;
     @Autowired CommerceController oldCommerce;
+    @Autowired LineOrdersController lineOrders;
     @Autowired JdbcTemplate db;
 
     private UUID inquiry() {
@@ -170,4 +171,103 @@ class CustomerLineQuotesWorkflowTest {
             UUID.randomUUID(),null,List.of())))
             .isInstanceOf(AccessDeniedException.class);
     }
+
+    @Test @WithMockUser(username="order-author",roles="BD")
+    void approvedMultiSupplierQuoteBecomesAuditedSalesOrderAndMatchedPurchaseOrders() {
+        UUID rfq=inquiry();
+        UUID plate=item(rfq,"ASTM steel plate","10","PCS");
+        UUID coil=item(rfq,"Industrial coil","5","MT");
+        UUID supplierOne=supplier(),supplierTwo=supplier();
+        rfqs.changeStatus(rfq,new TradingController.StatusInput("SOURCING"));
+        UUID priceOne=source(rfq,plate,supplierOne,"100");
+        UUID priceTwo=source(rfq,coil,supplierTwo,"200");
+        var approved=quotes.create(new CustomerLineQuotesController.Create(
+            rfq,java.time.LocalDate.now().plusDays(25),List.of(
+                new CustomerLineQuotesController.SelectedLine(plate,priceOne,new BigDecimal("125")),
+                new CustomerLineQuotesController.SelectedLine(coil,priceTwo,new BigDecimal("240"))
+            )));
+        UUID quote=(UUID)approved.quote().get("id");
+        assertThatThrownBy(()->lineOrders.create(new LineOrdersController.FromQuote(quote)))
+            .isInstanceOf(ResponseStatusException.class);
+        quotes.submit(quote);
+        var actor=SecurityContextHolder.getContext().getAuthentication();
+        try {
+            switchUser("quote-manager","MANAGEMENT");
+            quotes.review(quote,new CustomerLineQuotesController.Review("APPROVED","Verified prices"));
+        } finally {SecurityContextHolder.getContext().setAuthentication(actor);}
+
+        var sale=lineOrders.create(new LineOrdersController.FromQuote(quote)).getBody();
+        assertThat(sale).isNotNull();
+        UUID orderId=(UUID)sale.order().get("id");
+        assertThat((BigDecimal)sale.order().get("total_amount"))
+            .isEqualByComparingTo("2450.00");
+        assertThat(sale.lines()).hasSize(2);
+        assertThatThrownBy(()->lineOrders.create(new LineOrdersController.FromQuote(quote)))
+            .isInstanceOf(ResponseStatusException.class)
+            .hasMessageContaining("already has");
+        assertThatThrownBy(()->lineOrders.createPurchase(orderId,
+            new LineOrdersController.SupplierSelection(supplierOne)))
+            .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(()->lineOrders.status(orderId,
+            new LineOrdersController.Transition("CONFIRMED")))
+            .isInstanceOf(AccessDeniedException.class);
+        try {
+            switchUser("independent-manager","MANAGEMENT");
+            assertThat(lineOrders.status(orderId,
+                new LineOrdersController.Transition("CONFIRMED")).order().get("status"))
+                .isEqualTo("CONFIRMED");
+            assertThatThrownBy(()->lineOrders.createPurchase(orderId,
+                new LineOrdersController.SupplierSelection(UUID.randomUUID())))
+                .isInstanceOf(ResponseStatusException.class);
+            var po1=lineOrders.createPurchase(orderId,
+                new LineOrdersController.SupplierSelection(supplierOne)).getBody();
+            var po2=lineOrders.createPurchase(orderId,
+                new LineOrdersController.SupplierSelection(supplierTwo)).getBody();
+            assertThat(po1).isNotNull();
+            assertThat(po2).isNotNull();
+            assertThat((BigDecimal)po1.purchase().get("total_amount"))
+                .isEqualByComparingTo("1000.00");
+            assertThat((BigDecimal)po2.purchase().get("total_amount"))
+                .isEqualByComparingTo("1000.00");
+            assertThat(po1.lines()).hasSize(1);
+            assertThat(po2.lines()).hasSize(1);
+            UUID poId=(UUID)po1.purchase().get("id");
+            assertThatThrownBy(()->lineOrders.createPurchase(orderId,
+                new LineOrdersController.SupplierSelection(supplierOne)))
+                .isInstanceOf(ResponseStatusException.class);
+            assertThatThrownBy(()->lineOrders.purchaseStatus(poId,
+                new LineOrdersController.Transition("ISSUED")))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("creator cannot");
+            switchUser("second-manager","ADMIN");
+            assertThat(lineOrders.purchaseStatus(poId,
+                new LineOrdersController.Transition("ISSUED")).purchase().get("status"))
+                .isEqualTo("ISSUED");
+            assertThatThrownBy(()->lineOrders.status(orderId,
+                new LineOrdersController.Transition("CANCELLED")))
+                .isInstanceOf(ResponseStatusException.class);
+            assertThatThrownBy(()->db.update("""
+                UPDATE line_sales_order_items SET sell_unit_price=1 WHERE sales_order_id=?
+                """,orderId)).isInstanceOf(org.springframework.dao.DataAccessException.class);
+            assertThatThrownBy(()->db.update("""
+                UPDATE line_purchase_order_items SET unit_cost=1 WHERE purchase_order_id=?
+                """,poId)).isInstanceOf(org.springframework.dao.DataAccessException.class);
+            assertThat(lineOrders.detail(orderId).purchaseOrders()).hasSize(2);
+            Long legacy=db.queryForObject("SELECT count(*) FROM sales_orders WHERE rfq_id=?",
+                Long.class,rfq);
+            assertThat(legacy).isZero();
+        } finally {SecurityContextHolder.getContext().setAuthentication(actor);}
+    }
+
+    @Test @WithMockUser(username="data-reviewer",roles="FINANCE")
+    void financeCannotReadSupplierLineOrderSourcesOrCreateLinePurchase() {
+        assertThatThrownBy(()->lineOrders.list(null,0,20))
+            .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(()->lineOrders.create(
+            new LineOrdersController.FromQuote(UUID.randomUUID())))
+            .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(()->lineOrders.purchase(
+            UUID.randomUUID())).isInstanceOf(AccessDeniedException.class);
+    }
+
 }

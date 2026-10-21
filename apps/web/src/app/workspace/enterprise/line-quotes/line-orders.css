@@ -1,0 +1,16 @@
+.lo-panel{margin-top:24px}
+.lo-panel button:focus-visible{outline:3px solid #35bdb6;outline-offset:3px}
+.lo-order{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:15px 0;border-bottom:1px solid #dfe9ee;flex-wrap:wrap}
+.lo-order>div{display:grid;gap:6px}
+.lo-order strong{font-size:13px;color:#163e4b}
+.lo-order small{font-size:11px;color:#607b8f}
+.lo-order button{padding:10px 16px;border:1px solid #b9d4d9;border-radius:9px;background:#f0f8f8;color:#086668;font-size:12px;font-weight:800;cursor:pointer}
+.lo-order button:disabled{opacity:.45;cursor:not-allowed}
+.lo-notice{background:#e6f6f0;padding:13px;border-radius:10px;color:#176449;font-size:12px}
+.lo-details{margin-top:22px;padding:22px;border-radius:14px;border:1px solid #dcebee;background:#f8fbfc}
+.lo-details>header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.lo-details h3{font-size:16px;color:#183b4c}
+.lo-allocations{margin-top:20px;padding-top:15px;border-top:1px solid #e1e9ed}
+.lo-actions{margin:20px 0;display:flex;gap:12px;flex-wrap:wrap}
+.lo-actions button{max-width:100%}
+@media(max-width:700px){.lo-details{padding:12px}.lo-order{align-items:stretch;flex-direction:column}.lo-order button{width:100%}.lo-actions button{width:100%}}
