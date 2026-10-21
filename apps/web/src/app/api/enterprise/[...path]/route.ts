@@ -12,6 +12,7 @@ const paths: Record<string, RegExp[]> = {
     regex("logistics/consignees(/" + id + ")?"),
     regex("entities(/" + id + "(/contacts)?)?"),
     regex("finance/(invoices(/" + id + "(/payments)?)?|summary)"),
+    regex("dedup/candidates"),
     regex("tasks"), regex("staff"), regex("staff/options"), regex("audit")
   ],
   POST: [
@@ -48,7 +49,7 @@ async function relay(request: Request, context: Context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const incoming = new URL(request.url);
   const query = new URLSearchParams();
-  for (const key of ["page", "size", "q", "customerId", "rfqId"]) {
+  for (const key of ["page", "size", "q", "customerId", "rfqId", "entity"]) {
     const value = incoming.searchParams.get(key);
     if (value !== null) query.set(key, value.slice(0, 120));
   }
