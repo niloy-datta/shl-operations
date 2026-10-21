@@ -26,7 +26,7 @@
 - [ ] **10 — Lead conversion automation (P1).** Reviewed lead→customer→RFQ→project mapping with idempotency.
 
 ### 3. Sourcing and quotations (11–15)
-- [ ] **11 — Structured RFQ line items (P0).** Partially delivered: audited per-RFQ item requirements, per-item supplier quotation revisions and draft/submitted/approved customer line quotation pricing with provisional margin and independent review. **Not complete:** attachment storage, line-aware sales orders, supplier PO line matching and shipment/invoicing allocation; legacy commercial conversion stays blocked.
+- [ ] **11 — Structured RFQ line items (P0).** Partially delivered: audited per-RFQ item requirements, per-item supplier quotation revisions and draft/submitted/approved customer line quotation pricing with provisional margin and independent review. **V17 progress:** independently approved customer quotes create immutable line-aware sales orders, manager confirmation and supplier-specific immutable PO snapshots with separate issuance approval. **Not complete:** attachment storage, shipment/invoicing line allocations, amendments and supplier evidence review. Legacy conversion remains isolated.
 - [ ] **12 — Supplier quotation revisions (P0).** Partially delivered: immutable per-line supplier pricing, sequential revisions, latest-price comparison and audit trail. Attachment references, documentary evidence review and vendor validation still pending.
 - [ ] **13 — Landed-cost comparison (P1).** Incoterms, freight, insurance, duty and currency assumptions separately sourced.
 - [ ] **14 — Sourcing evaluation approval (P1).** Multi-review scoring and four-eyes selection.
