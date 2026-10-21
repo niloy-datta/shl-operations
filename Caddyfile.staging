@@ -1,0 +1,12 @@
+# Staging only — DNS must resolve for automatic HTTPS certificates.
+{$SHL_STAGING_DOMAIN} {
+  encode zstd gzip
+  reverse_proxy web:3000
+  header {
+    -Server
+    X-Content-Type-Options nosniff
+    X-Frame-Options DENY
+    Referrer-Policy strict-origin-when-cross-origin
+    Strict-Transport-Security "max-age=31536000"
+  }
+}
