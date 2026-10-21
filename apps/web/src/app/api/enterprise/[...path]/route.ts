@@ -15,6 +15,8 @@ const paths: Record<string, RegExp[]> = {
     regex("logistics/consignees(/" + id + ")?"),
     regex("entities(/" + id + "(/contacts)?)?"),
     regex("finance/(invoices(/" + id + "(/payments)?)?|summary)"),
+    regex("finance/line-billing(/" + id + ")?"),
+    regex("finance/line-billing/eligible-orders"),
     regex("dedup/candidates"),
     regex("tasks"), regex("staff"), regex("staff/options"), regex("audit")
   ],
@@ -25,6 +27,7 @@ const paths: Record<string, RegExp[]> = {
     regex("commerce/line-orders"),
     regex("commerce/line-orders/" + id + "/purchase-orders"),
     regex("logistics/shipments"), regex("logistics/consignees"), regex("finance/invoices"),
+    regex("finance/line-billing"),
     regex("logistics/line-shipments"),
     regex("entities(/" + id + "/contacts)?"),
     regex("finance/invoices/" + id + "/payments"),
@@ -40,6 +43,7 @@ const paths: Record<string, RegExp[]> = {
     regex("logistics/consignees/" + id),
     regex("entities/" + id + "(/contacts/" + id + ")?"),
     regex("finance/invoices/" + id + "/status"),
+    regex("finance/line-billing/" + id + "/review"),
     regex("tasks/" + id + "/status"),
     regex("staff/" + id + "/access")
   ]
