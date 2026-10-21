@@ -35,3 +35,26 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate recovery scripts
         run: bash -n scripts/backup-local.sh scripts/restore-drill-local.sh scripts/predeploy-check.sh scripts/backup-encrypted-offsite.sh scripts/restore-encrypted-drill.sh
+      - name: Validate isolated staging topology (synthetic env)
+        env:
+          SHL_STAGING_DOMAIN: staging.example.test
+          POSTGRES_DB: shl_staging
+          POSTGRES_USER: shl_staging_app
+          POSTGRES_PASSWORD: synthetic-only-sample-password-not-real
+          BOOTSTRAP_ADMIN_USERNAME: staging_admin
+          BOOTSTRAP_ADMIN_PASSWORD: synthetic-only-separate-password-not-real
+          MFA_ENCRYPTION_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        run: |
+          docker compose -f compose.staging.yaml config --format json | python3 -c '
+          import json,sys
+          cfg=json.load(sys.stdin)["services"]
+          assert not cfg["db"].get("ports"), "Database must not publish ports"
+          assert not cfg["api"].get("ports"), "API must not publish ports"
+          assert not cfg["web"].get("ports"), "Web must not publish ports"
+          assert cfg["api"]["environment"]["MFA_ENFORCEMENT_ENABLED"] == "true"
+          assert cfg["api"]["environment"]["SHL_DEPLOYMENT_MODE"] == "development"
+          assert cfg["web"]["environment"]["SHL_PUBLIC_ORIGIN"] == "https://staging.example.test"
+          assert cfg["api"]["environment"]["SHL_WEBSITE_INTAKE_SECRET"] == ""
+          assert cfg["api"]["environment"]["COMMISSION_AUTHORIZED_USERS"] == ""
+          '
+

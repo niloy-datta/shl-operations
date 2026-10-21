@@ -1,0 +1,74 @@
+# Synthetic-data staging template only — not a production deployment.
+services:
+  db:
+    image: postgres:17.6
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - postgres_staging_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [data]
+    security_opt: ["no-new-privileges:true"]
+  api:
+    build: ./apps/api
+    restart: unless-stopped
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:?Set POSTGRES_DB}
+      DB_USERNAME: ${POSTGRES_USER:?Set POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:?Set BOOTSTRAP_ADMIN_USERNAME}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?Set BOOTSTRAP_ADMIN_PASSWORD}
+      MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY:?Set MFA_ENCRYPTION_KEY}
+      MFA_ENFORCEMENT_ENABLED: "true"
+      SHL_DEPLOYMENT_MODE: development
+      COMMISSION_AUTHORIZED_USERS: ""
+      SHL_WEBSITE_INTAKE_SECRET: ""
+    depends_on:
+      db: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    networks: [data, application]
+    security_opt: ["no-new-privileges:true"]
+  web:
+    build: ./apps/web
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: http://api:8080
+      SHL_PUBLIC_ORIGIN: https://${SHL_STAGING_DOMAIN:?Set SHL_STAGING_DOMAIN}
+    depends_on:
+      api: {condition: service_healthy}
+    expose: ["3000"]
+    networks: [application]
+    security_opt: ["no-new-privileges:true"]
+  caddy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    environment:
+      SHL_STAGING_DOMAIN: ${SHL_STAGING_DOMAIN:?Set SHL_STAGING_DOMAIN}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - ./Caddyfile.staging:/etc/caddy/Caddyfile:ro
+      - caddy_staging_data:/data
+      - caddy_staging_config:/config
+    depends_on: [web]
+    networks: [edge, application]
+    security_opt: ["no-new-privileges:true"]
+volumes:
+  postgres_staging_data:
+  caddy_staging_data:
+  caddy_staging_config:
+networks:
+  edge: {}
+  application: {internal: true}
+  data: {internal: true}
