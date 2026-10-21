@@ -1,0 +1,23 @@
+/* Fast, scoped navigation: no private record search or unapproved API calls. */
+.qs-launch{display:inline-flex;align-items:center;gap:9px;border:1px solid #dbe5ef;border-radius:9px;background:#f8fafc;color:#426075;padding:10px 13px;font-size:11px;font-weight:750;white-space:nowrap}
+.qs-launch:hover{background:#edf4fc;border-color:#bed1e9}
+.qs-launch>span:first-child{font-size:18px;line-height:13px;color:#376dca}
+.qs-launch kbd{border-radius:5px;background:#eaf0f8;color:#657a94;padding:3px 6px;font-size:10px;margin-left:8px;font-family:inherit}
+.qs-overlay{position:fixed;inset:0;z-index:5000;display:flex;align-items:flex-start;justify-content:center;padding:13vh 18px 18px}
+.qs-scrim{position:absolute;inset:0;background:#071426aa;border:0;border-radius:0;width:100%;cursor:default}
+.qs-dialog{width:min(100%,610px);position:relative;z-index:1;border-radius:17px;overflow:hidden;background:#fff;box-shadow:0 28px 110px #010d24a0;border:1px solid #d7e3ef;color:#182e44}
+.qs-search-row{height:72px;padding:13px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #e9eef4}
+.qs-search-row>span{font-size:25px;color:#4373bd}
+.qs-search-row input{flex:1;min-width:0;border:0;outline:none!important;color:#203953;font-size:14px;background:transparent}
+.qs-search-row input::placeholder{color:#91a4b7}
+.qs-close{padding:6px 9px;border:1px solid #d9e3ed;border-radius:6px;font-size:11px;color:#778ba2;background:#f8fafc}
+.qs-results{padding:8px;max-height:min(56vh,520px);overflow-y:auto}
+.qs-result{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 15px;border-radius:9px;color:#2c4159}
+.qs-result:hover,.qs-result:focus-visible{background:#eef4ff}
+.qs-result span{display:grid;gap:5px}
+.qs-result strong{font-size:12px;font-weight:800}
+.qs-result small{font-size:10px;color:#8496a9}
+.qs-result b{color:#7693b4}
+.qs-no-result{padding:35px 20px;text-align:center;font-size:12px;color:#7b8ea4}
+.qs-help{margin:0;padding:14px 20px;font-size:10px;line-height:1.6;color:#8ca0b4;border-top:1px solid #edf1f5;background:#fbfcfe}
+@media(max-width:700px){.qs-launch{margin-left:auto;padding:9px 11px}.qs-launch kbd,.qs-launch>span:nth-child(2){display:none}.qs-overlay{padding:7vh 10px 12px}.qs-search-row{height:60px}}
