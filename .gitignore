@@ -14,3 +14,8 @@
 *.agekey
 *.age.key
 .recovery-secrets/
+
+# Isolated staging credentials (never commit actual values)
+.env.staging
+.env.staging.*
+!.env.staging.example
