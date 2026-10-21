@@ -1,6 +1,7 @@
 "use client";
 
 import {useCallback,useEffect,useState} from "react";
+import {LineShipmentPanel} from "./line-shipment-panel";
 
 type Role={username:string;role:string};
 type LineOrder={id:string;reference:string;status:string;currency:string;
@@ -149,8 +150,9 @@ export function LineOrderPanel({rfqId,quotes}:{rfqId:string;quotes:Quote[]}){
                 "PATCH",{status:"ISSUED"})}>Approve & issue PO →</button>}
         </div>)}
       </div>}
+      <LineShipmentPanel orderId={active.order.id} purchaseOrders={active.purchaseOrders} me={me}/>
       <p className="lq-disclaimer">This development workflow requires independent approvals.
-        Shipment allocations, documents, invoicing and payment execution are not linked yet.</p>
+        Shipment booking and staff milestones are available; external tracking, documents, invoicing and payments are not connected.</p>
     </div>}
   </section>;
 }
