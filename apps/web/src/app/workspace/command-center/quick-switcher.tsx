@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 
 const destinations = [
   { name: "Executive command center", group: "Overview", href: "/workspace/command-center", tags: "dashboard management boudi" },
@@ -28,6 +28,8 @@ export function QuickSwitcher() {
   const [term, setTerm] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const launchRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
+  const hasOpened = useRef(false);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -41,9 +43,20 @@ export function QuickSwitcher() {
   }, []);
 
   useEffect(() => {
-    if (open) inputRef.current?.focus();
-    else launchRef.current?.focus();
+    if (open) {
+      hasOpened.current = true;
+      inputRef.current?.focus();
+    } else if (hasOpened.current) launchRef.current?.focus();
   }, [open]);
+
+  function keepFocusInside(event: ReactKeyboardEvent<HTMLElement>) {
+    if (event.key !== "Tab") return;
+    const elements = dialogRef.current?.querySelectorAll<HTMLElement>("input:not([disabled]), button:not([disabled]), a[href]");
+    if (!elements?.length) return;
+    const first = elements[0], last = elements[elements.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }
 
   const value = term.trim().toLocaleLowerCase();
   const matching = destinations.filter(item =>
@@ -58,7 +71,7 @@ export function QuickSwitcher() {
       <button type="button" className="qs-scrim" onClick={() => setOpen(false)}
         aria-label="Close module search" tabIndex={-1}/>
       <section id="qs-dialog" role="dialog" aria-modal="true" aria-label="Find a workspace module"
-        className="qs-dialog">
+        className="qs-dialog" ref={dialogRef} onKeyDown={keepFocusInside}>
         <div className="qs-search-row">
           <span aria-hidden="true">⌕</span>
           <input ref={inputRef} value={term} onChange={e => setTerm(e.target.value)} type="search"
