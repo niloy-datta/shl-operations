@@ -41,6 +41,7 @@ class CustomerLineQuotesWorkflowTest {
     @Autowired CommerceController oldCommerce;
     @Autowired LineOrdersController lineOrders;
     @Autowired LineShipmentController shipmentFlow;
+    @Autowired LineBillingReviewController billingFlow;
     @Autowired JdbcTemplate db;
 
     private UUID inquiry() {
@@ -340,6 +341,81 @@ class CustomerLineQuotesWorkflowTest {
             assertThat(count).isZero();
             switchUser("unauthorized-bd","BD");
             assertThatThrownBy(()->shipmentFlow.list(orderId,0,20))
+                .isInstanceOf(AccessDeniedException.class);
+        } finally {SecurityContextHolder.getContext().setAuthentication(initial);}
+    }
+
+
+    @Test @WithMockUser(username="billing-quote-author",roles="BD")
+    void deliveredLineOrderGeneratesReviewedButUnpostedBillingCandidate() {
+        UUID rfq=inquiry(),product=item(rfq,"Cargo industrial parts","8","PCS"),supplier=supplier();
+        rfqs.changeStatus(rfq,new TradingController.StatusInput("SOURCING"));
+        UUID supplierQuote=source(rfq,product,supplier,"50");
+        UUID quote=(UUID)quotes.create(new CustomerLineQuotesController.Create(
+            rfq,null,List.of(new CustomerLineQuotesController.SelectedLine(
+                product,supplierQuote,new BigDecimal("75"))))).quote().get("id");
+        quotes.submit(quote);
+        var initial=SecurityContextHolder.getContext().getAuthentication();
+        try {
+            switchUser("billing-quote-reviewer","MANAGEMENT");
+            quotes.review(quote,new CustomerLineQuotesController.Review("APPROVED","Quote checked"));
+            switchUser("billing-quote-author","BD");
+            UUID orderId=(UUID)lineOrders.create(new LineOrdersController.FromQuote(quote))
+                .getBody().order().get("id");
+            switchUser("billing-order-manager","MANAGEMENT");
+            lineOrders.status(orderId,new LineOrdersController.Transition("CONFIRMED"));
+            assertThatThrownBy(()->billingFlow.create(new LineBillingReviewController.Create(
+                orderId,java.time.LocalDate.now().plusDays(30))))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("delivered shipment");
+
+            UUID poId=(UUID)lineOrders.createPurchase(orderId,
+                new LineOrdersController.SupplierSelection(supplier)).getBody()
+                .purchase().get("id");
+            switchUser("second-procurement-manager","ADMIN");
+            lineOrders.purchaseStatus(poId,new LineOrdersController.Transition("ISSUED"));
+            switchUser("shipment-operator","LOGISTICS");
+            UUID shipmentId=(UUID)shipmentFlow.create(new LineShipmentController.Booking(
+                poId,"Shanghai","Rotterdam",null,null,null,null)).getBody()
+                .shipment().get("id");
+            shipmentFlow.change(shipmentId,
+                new LineShipmentController.Status("IN_TRANSIT","Actual cargo departure"));
+            shipmentFlow.change(shipmentId,
+                new LineShipmentController.Status("DELIVERED","Delivery observed"));
+
+            switchUser("finance-preparer","FINANCE");
+            assertThat(billingFlow.eligibleOrders())
+                .anyMatch(x->orderId.equals(x.get("id")));
+            var billing=billingFlow.create(new LineBillingReviewController.Create(
+                orderId,java.time.LocalDate.now().plusDays(30))).getBody();
+            assertThat(billing).isNotNull();
+            UUID billingId=(UUID)billing.billing().get("id");
+            assertThat((BigDecimal)billing.billing().get("amount"))
+                .isEqualByComparingTo("600.00");
+            assertThat(billing.lines()).hasSize(1);
+            assertThat(billingFlow.eligibleOrders())
+                .noneMatch(x->orderId.equals(x.get("id")));
+            assertThatThrownBy(()->billingFlow.create(new LineBillingReviewController.Create(
+                orderId,null))).isInstanceOf(ResponseStatusException.class);
+            assertThatThrownBy(()->billingFlow.review(billingId,
+                new LineBillingReviewController.Review("REVIEWED","Self review")))
+                .isInstanceOf(AccessDeniedException.class);
+            assertThatThrownBy(()->db.update("""
+                UPDATE line_billing_candidate_items SET line_total=1 WHERE billing_id=?
+                """,billingId)).isInstanceOf(org.springframework.dao.DataAccessException.class);
+            switchUser("finance-review-manager","MANAGEMENT");
+            assertThat(billingFlow.review(billingId,
+                new LineBillingReviewController.Review("REVIEWED",
+                    "Ready for future legal tax review, not posted")).billing().get("status"))
+                .isEqualTo("REVIEWED");
+            assertThatThrownBy(()->billingFlow.review(billingId,
+                new LineBillingReviewController.Review("VOID","Repeat review")))
+                .isInstanceOf(ResponseStatusException.class);
+            Long legacy=db.queryForObject("SELECT count(*) FROM invoices WHERE sales_order_id=?",
+                Long.class,orderId);
+            assertThat(legacy).isZero();
+            switchUser("unrelated-bd","BD");
+            assertThatThrownBy(()->billingFlow.list(0,20))
                 .isInstanceOf(AccessDeniedException.class);
         } finally {SecurityContextHolder.getContext().setAuthentication(initial);}
     }

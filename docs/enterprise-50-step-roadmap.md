@@ -48,7 +48,7 @@
 
 ### 6. Finance and control (26–30)
 - [ ] **26 — Double-entry general ledger (P0).** Periods, chart of accounts, balanced immutable postings and journal approvals.
-- [ ] **27 — Customer/supplier subledgers (P0).** Invoice allocations, credits, debits and ageing by original currency.
+- [ ] **27 — Customer/supplier subledgers (P0).** V19 partial: internal line-aware billing review candidates from fully delivered supplier POs, immutable sell-price snapshots and independent review; no legal invoices or GL postings. Pending invoice allocations, credits/debits, ageing, tax policy and subledger journals.
 - [ ] **28 — Bank reconciliation (P1).** Import-only statement matching with exception review and audit controls.
 - [ ] **29 — FX/landed-cost evidence (P1).** Rates with sources and timestamps; no unapproved cross-currency totals.
 - [ ] **30 — Tax/compliance treatment (P1).** Configurable tax rules reviewed by qualified jurisdiction specialists.
