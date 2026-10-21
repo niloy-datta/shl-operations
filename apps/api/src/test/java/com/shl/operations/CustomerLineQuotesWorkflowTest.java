@@ -40,6 +40,7 @@ class CustomerLineQuotesWorkflowTest {
     @Autowired CustomerLineQuotesController quotes;
     @Autowired CommerceController oldCommerce;
     @Autowired LineOrdersController lineOrders;
+    @Autowired LineShipmentController shipmentFlow;
     @Autowired JdbcTemplate db;
 
     private UUID inquiry() {
@@ -268,6 +269,79 @@ class CustomerLineQuotesWorkflowTest {
             .isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(()->lineOrders.purchase(
             UUID.randomUUID())).isInstanceOf(AccessDeniedException.class);
+    }
+
+
+    @Test @WithMockUser(username="line-booking-author",roles="BD")
+    void issuedSupplierPoCreatesAuditedAndImmutableShipmentMilestones() {
+        UUID rfq=inquiry(),product=item(rfq,"Trade cargo","6","MT"),supplier=supplier();
+        rfqs.changeStatus(rfq,new TradingController.StatusInput("SOURCING"));
+        UUID revision=source(rfq,product,supplier,"120");
+        var draft=quotes.create(new CustomerLineQuotesController.Create(
+            rfq,null,List.of(new CustomerLineQuotesController.SelectedLine(
+                product,revision,new BigDecimal("145")))));
+        UUID quote=(UUID)draft.quote().get("id");
+        quotes.submit(quote);
+        var initial=SecurityContextHolder.getContext().getAuthentication();
+        try {
+            switchUser("independent-quote-reviewer","MANAGEMENT");
+            quotes.review(quote,new CustomerLineQuotesController.Review(
+                "APPROVED","Approved test quotation"));
+            switchUser("line-booking-author","BD");
+            UUID orderId=(UUID)lineOrders.create(
+                new LineOrdersController.FromQuote(quote)).getBody().order().get("id");
+            switchUser("order-manager","MANAGEMENT");
+            lineOrders.status(orderId,new LineOrdersController.Transition("CONFIRMED"));
+            UUID poId=(UUID)lineOrders.createPurchase(orderId,
+                new LineOrdersController.SupplierSelection(supplier))
+                .getBody().purchase().get("id");
+            assertThatThrownBy(()->shipmentFlow.create(new LineShipmentController.Booking(
+                poId,"China","Netherlands",null,null,null,null)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Only issued");
+            switchUser("po-approver","ADMIN");
+            lineOrders.purchaseStatus(poId,new LineOrdersController.Transition("ISSUED"));
+            switchUser("dispatch-operator","LOGISTICS");
+            var booking=new LineShipmentController.Booking(poId,
+                "Shanghai, CN","Rotterdam, NL","Carrier One","BL-TEST",
+                java.time.LocalDate.now(),java.time.LocalDate.now().plusDays(20));
+            var created=shipmentFlow.create(booking).getBody();
+            UUID shipmentId=(UUID)created.shipment().get("id");
+            assertThat(created.lines()).hasSize(1);
+            assertThat(created.milestones()).hasSize(1);
+            assertThat(created.shipment().get("status")).isEqualTo("BOOKED");
+            assertThat(shipmentFlow.list(orderId,0,20).content())
+                .anyMatch(x->shipmentId.equals(x.get("id")));
+            assertThatThrownBy(()->shipmentFlow.create(booking))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("already has");
+            assertThatThrownBy(()->shipmentFlow.create(new LineShipmentController.Booking(
+                poId,"Same port","Same port",null,null,null,null)))
+                .isInstanceOf(ResponseStatusException.class);
+            assertThat(shipmentFlow.change(shipmentId,new LineShipmentController.Status(
+                "IN_TRANSIT","Actual departure recorded")).shipment().get("atd")).isNotNull();
+            assertThatThrownBy(()->shipmentFlow.change(shipmentId,
+                new LineShipmentController.Status("IN_TRANSIT","Repeat")))
+                .isInstanceOf(ResponseStatusException.class);
+            assertThat(shipmentFlow.change(shipmentId,new LineShipmentController.Status(
+                "DELIVERED","Delivery confirmed by operator")).shipment().get("ata")).isNotNull();
+            assertThat(shipmentFlow.detail(shipmentId).milestones()).hasSize(3);
+            assertThatThrownBy(()->db.update("""
+                UPDATE line_shipment_items SET quantity=1 WHERE shipment_id=?
+                """,shipmentId)).isInstanceOf(org.springframework.dao.DataAccessException.class);
+            assertThatThrownBy(()->db.update("""
+                DELETE FROM line_shipment_events WHERE shipment_id=?
+                """,shipmentId)).isInstanceOf(org.springframework.dao.DataAccessException.class);
+            assertThatThrownBy(()->shipmentFlow.change(shipmentId,
+                new LineShipmentController.Status("CANCELLED","Too late")))
+                .isInstanceOf(ResponseStatusException.class);
+            Long count=db.queryForObject("SELECT count(*) FROM shipments WHERE sales_order_id=?",
+                Long.class,orderId);
+            assertThat(count).isZero();
+            switchUser("unauthorized-bd","BD");
+            assertThatThrownBy(()->shipmentFlow.list(orderId,0,20))
+                .isInstanceOf(AccessDeniedException.class);
+        } finally {SecurityContextHolder.getContext().setAuthentication(initial);}
     }
 
 }
