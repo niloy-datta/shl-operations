@@ -11,6 +11,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.server.ResponseStatusException;
@@ -32,6 +38,7 @@ class WebsiteLeadIntakeTest {
     }
     @Autowired WebsiteLeadIntakeController intake;
     @Autowired JdbcTemplate db;
+    @Autowired WebApplicationContext webContext;
 
     static String sign(String timestamp,byte[] payload) {
         try {
@@ -93,5 +100,26 @@ class WebsiteLeadIntakeTest {
         assertThatThrownBy(()->intake.receive(now,sign(now,malformed),malformed))
             .isInstanceOf(ResponseStatusException.class)
             .hasMessageContaining("400");
+    }
+
+    @Test void httpRouteRequiresHmacEvenWithoutStaffSession() throws Exception {
+        MockMvc mvc=MockMvcBuilders.webAppContextSetup(webContext).apply(springSecurity()).build();
+        byte[] body=payload("sub_"+UUID.randomUUID().toString().replace("-",""),"HTTP route");
+        String now=String.valueOf(Instant.now().getEpochSecond());
+        mvc.perform(post("/api/integrations/website/leads")
+            .contentType("application/json").content(body)
+            .header("X-SHL-Timestamp",now)
+            .header("X-SHL-Signature","sha256="+"0".repeat(64)))
+            .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/integrations/website/leads")
+            .contentType("application/json").content(body)
+            .header("X-SHL-Timestamp",now)
+            .header("X-SHL-Signature",sign(now,body)))
+            .andExpect(status().isCreated());
+        mvc.perform(post("/api/integrations/website/leads")
+            .contentType("application/json").content(body)
+            .header("X-SHL-Timestamp",now)
+            .header("X-SHL-Signature",sign(now,body)))
+            .andExpect(status().isOk());
     }
 }
