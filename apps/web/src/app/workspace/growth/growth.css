@@ -34,3 +34,24 @@
 .gx-notes article{border-bottom:1px solid #e5ecf4;padding:15px 0}.gx-notes article span{font-size:10px;color:#7290a2}.gx-notes article p{font-size:12px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}
 @media(max-width:900px){.gx-banner{padding:27px;flex-wrap:wrap}.gx-metric{min-width:120px}.gx-toolbar{flex-wrap:wrap}.gx-search{width:100%}.gx-search input{flex:1;min-width:0}}
 @media(max-width:540px){.gx-two,.gx-detail-grid{grid-template-columns:1fr}.gx-pagination{flex-wrap:wrap}.gx-banner{margin-top:0}.gx-dialog-body,.gx-dialog-header{padding:22px}}
+
+/* Admin-only lead routing panel, sharing enterprise spacing and focus treatments. */
+.lr-panel{padding:23px;margin:0 0 25px}
+.lr-header{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.lr-header h2{font-size:22px;letter-spacing:-.6px;margin:7px 0}
+.lr-header p:not(.en-eyebrow){font-size:12px;color:#687d90;line-height:1.55}
+.lr-header-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.lr-header-actions>strong{font-size:14px;color:#193d59}
+.lr-workloads{display:flex;flex-wrap:wrap;gap:9px;margin:18px 0}
+.lr-workloads>span{display:flex;gap:12px;align-items:center;background:#eff6f9;padding:8px 12px;border-radius:9px;font-size:12px}
+.lr-workloads small{color:#55748b}
+.lr-reason{display:grid;gap:7px;font-size:12px;font-weight:750;color:#28445a;margin-bottom:14px}
+.lr-reason input,.lr-lead select{max-width:100%;padding:10px 11px;border:1px solid #cad8e3;border-radius:9px;background:white;color:#19364b}
+.lr-reason input:focus-visible,.lr-lead select:focus-visible,.lr-lead button:focus-visible{outline:3px solid #3b91cb;outline-offset:2px}
+.lr-lead{display:grid;grid-template-columns:minmax(200px,1fr) minmax(170px,230px) auto;gap:10px;align-items:center;border-top:1px solid #e7eff4;padding:13px 0}
+.lr-lead-info{display:grid;gap:4px;min-width:0;font-size:13px}
+.lr-lead-info small{color:#60798b;overflow-wrap:anywhere}
+.lr-lead button{border:0;background:#126b71;color:white;border-radius:9px;padding:10px 14px;font-weight:750;cursor:pointer}
+.lr-lead button:disabled{opacity:.45;cursor:not-allowed}
+.lr-history{margin-top:20px}
+@media(max-width:700px){.lr-lead{grid-template-columns:1fr}.lr-header-actions{width:100%}.lr-header-actions .en-primary{width:100%}}

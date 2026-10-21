@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {useCallback,useEffect,useState,type FormEvent,type ReactNode} from "react";
 import {useRouter} from "next/navigation";
+import {LeadRoutingPanel,LeadAssignmentHistory} from "./lead-routing-panel";
 
 type Module="leads"|"projects";
 type Item=Record<string,unknown>;
@@ -231,6 +232,8 @@ export function GrowthDesk({module}:{module:Module}){
             <div className="gx-metric"><strong>{items.totalElements.toLocaleString()}</strong>
               <small>{module==="leads"?"TOTAL LEADS":"PROJECT RECORDS"}</small></div>
           </section>
+          {module==="leads"&&!!me&&["ADMIN","MANAGEMENT"].includes(me.role)&&
+            <LeadRoutingPanel onAssigned={reload}/>}
           <section className="en-panel gx-list">
             <div className="gx-toolbar">
               <div><strong>{module==="leads"?"Opportunities":"Project register"}</strong>
@@ -341,6 +344,8 @@ export function GrowthDesk({module}:{module:Module}){
               </article>)}
               {module==="leads"&&<p className="en-help">These are internal activity records only. No email, WeCom or external message is sent.</p>}
             </section>
+            {module==="leads"&&!!me&&["ADMIN","MANAGEMENT"].includes(me.role)&&
+              <LeadAssignmentHistory leadId={String(active.id)}/>}
           </>}
         </div>
       </section>
