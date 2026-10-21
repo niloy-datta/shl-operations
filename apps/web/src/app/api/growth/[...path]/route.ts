@@ -4,8 +4,8 @@ type Context={params:Promise<{path:string[]}>};
 const uuid="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
 const pattern=(v:string)=>new RegExp("^"+v+"$");
 const allowed:Record<string,RegExp[]>={
-  GET:[pattern("leads(/"+uuid+"(/activity)?)?"),pattern("projects(/"+uuid+"(/notes)?)?")],
-  POST:[pattern("leads"),pattern("leads/"+uuid+"/activity"),pattern("projects"),pattern("projects/"+uuid+"/notes")],
+  GET:[pattern("leads(/"+uuid+"(/activity)?)?"),pattern("leads/queue"),pattern("leads/workload"),pattern("leads/"+uuid+"/assignments"),pattern("projects(/"+uuid+"(/notes)?)?")],
+  POST:[pattern("leads"),pattern("leads/"+uuid+"/activity"),pattern("leads/"+uuid+"/assign"),pattern("leads/queue/assign-next"),pattern("projects"),pattern("projects/"+uuid+"/notes")],
   PATCH:[pattern("leads/"+uuid+"/status"),pattern("projects/"+uuid+"/status")]
 };
 async function relay(request:Request,context:Context){
