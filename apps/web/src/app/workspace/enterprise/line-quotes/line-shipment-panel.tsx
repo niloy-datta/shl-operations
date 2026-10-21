@@ -34,12 +34,13 @@ export function LineShipmentPanel({orderId,purchaseOrders,me}:{
   const [note,setNote]=useState("");
   const reload=useCallback(()=>setTick(n=>n+1),[]);
   useEffect(()=>{
+    if(!me||!["ADMIN","MANAGEMENT","SOURCING","LOGISTICS"].includes(me.role))return;
     let mounted=true;
     req<Page>(route+"?salesOrderId="+encodeURIComponent(orderId))
       .then(p=>{if(mounted){setItems(p.content);setError("");}})
       .catch(e=>{if(mounted)setError(e instanceof Error?e.message:"Unable to load shipments");});
     return()=>{mounted=false;};
-  },[orderId,tick]);
+  },[orderId,tick,me]);
   const canWrite=!!me&&["ADMIN","MANAGEMENT","LOGISTICS"].includes(me.role);
   const already=new Set(items.map(s=>s.purchase_order_id));
 
