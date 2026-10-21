@@ -20,6 +20,7 @@ const menu=[
   {label:"Finance",href:"/workspace/enterprise/invoices",symbol:"◇"},
   {label:"Projects",href:"/workspace/growth/projects",symbol:"⬡"},
   {label:"Company registry",href:"/workspace/entities",symbol:"♧"},
+  {label:"Duplicate review",href:"/workspace/dedup",symbol:"⌕"},
   {label:"Due date alerts",href:"/workspace/alerts",symbol:"◉"},
   {label:"Audit trail",href:"/workspace/enterprise/audit",symbol:"☷"},
 ];
