@@ -4,6 +4,11 @@ Independent internal application. The existing `shl-global` website is untouched
 
 **Security note:** The source GitHub repository is currently public. The application is not ready for production; do not commit business data, credentials, commission details, or customer documents. Review privacy and security requirements before loading SHL records.
 
+**GitHub Pages deployment status (2026-10-22):** The read-only [Enterprise Experience preview](https://niloy-datta.github.io/shl-operations-preview/enterprise.html) is deployed by [the separate public Pages repository](https://github.com/niloy-datta/shl-operations-preview). Its workflow validates static files before publishing. **No operational ERP, API, staff sessions, PostgreSQL or customer data have been deployed to GitHub Pages.** See [deployment boundaries](docs/github-preview-release.md).
+
+
+**Current V17–V19 milestone:** Approved multi-line customer quotes can create audited line sales orders, one supplier-specific PO per selected supplier, one staff-tracked shipment per issued PO, and an internal *unposted* billing review candidate after full delivery. Independent approval, immutable source snapshots and Testcontainers checks are included. Real legal invoices, bank payments and shipping docs are **not** connected to these new line flows.
+
 **Phase-two development:** [New enterprise modules and release gates](docs/phase-two-release.md) · [50-feature roadmap](docs/enterprise-50-step-roadmap.md). Business entity registry, executive command-center source and CRM lead timeline are merged into `main` as development features; they are not yet publicly deployed as a functional ERP. The safe [interactive enterprise design tour](https://shl-operations-enterprise-preview.vercel.app/enterprise.html) is a static showcase only, not a live ERP deployment.
 
 ## Static GitHub Pages preview
@@ -12,7 +17,7 @@ The read-only visual demo is in [`docs/demo`](docs/demo) and is published from a
 
 GitHub Pages sites are publicly accessible. See [the preview](https://niloy-datta.github.io/shl-operations-preview/) for the static interface demo.
 
-## Security-focused release improvements (review in progress)
+## Security-focused release improvements (development code)
 
 Production startup now has a fail-closed deployment-mode guard, and opt-in encrypted S3 backup and isolated restore scripts are available. These are implementation building blocks, not a deployed service, disaster recovery certification or permission to use real SHL data. See [release hardening](docs/production-hardening.md).
 
@@ -35,7 +40,7 @@ A connected foundation covers quotation approval, sales/purchase orders, shipmen
 
 For a local PostgreSQL archive use `bash scripts/backup-local.sh`, then test restoring it with `bash scripts/restore-drill-local.sh backups/<archive>.dump`. Never store backups in Git.
 
-**This is not production ready.** MFA is optional, secure account recovery and enforced MFA are pending, as are edge login defenses and proper accounting, secure documents, automated restore drills and independent security review are still required. Do not load real SHL company data yet.
+**This is not production ready.** Mandatory-MFA enrollment enforcement is implemented as an opt-in staging configuration; approved account recovery, factor reset governance, independent security review, properly protected infrastructure and complete double-entry accounting are still pending. Shipping documents, GL postings and payments are not enabled for new line workflows. Do not load real SHL company data yet.
 
 ## Implemented in the current development milestone
 
