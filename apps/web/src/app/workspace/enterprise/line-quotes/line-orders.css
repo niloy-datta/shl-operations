@@ -14,3 +14,15 @@
 .lo-actions{margin:20px 0;display:flex;gap:12px;flex-wrap:wrap}
 .lo-actions button{max-width:100%}
 @media(max-width:700px){.lo-details{padding:12px}.lo-order{align-items:stretch;flex-direction:column}.lo-order button{width:100%}.lo-actions button{width:100%}}
+
+.lo-shipment{margin-top:25px}
+.lo-shipment h3{margin:0 0 10px;font-size:16px}
+.lo-shipment-form{background:white;padding:18px;border-radius:13px;border:1px solid #dae9ed;margin:13px 0}
+.lo-shipment-form>strong{display:block;font-size:13px;color:#1c5161;margin-bottom:15px}
+.lo-shipment-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.lo-shipment-fields label,.lo-shipment-history label{display:grid;gap:6px;font-size:11px;font-weight:750;color:#557187}
+.lo-shipment-fields input,.lo-shipment-history input{min-width:0;width:100%;padding:10px;border:1px solid #cadbe1;border-radius:8px}
+.lo-shipment-history{background:#edf5f6;border:1px solid #dce9e8;border-radius:12px;padding:18px;margin-top:18px}
+.lo-shipment-history>p{font-size:12px;line-height:1.65;color:#476476}
+@media(max-width:850px){.lo-shipment-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:550px){.lo-shipment-fields{grid-template-columns:1fr}}

@@ -11,6 +11,7 @@ const paths: Record<string, RegExp[]> = {
     regex("commerce/line-orders(/" + id + ")?"),
     regex("commerce/line-orders/purchase-orders/" + id),
     regex("logistics/shipments(/" + id + "(/milestones)?)?"),
+    regex("logistics/line-shipments(/" + id + ")?"),
     regex("logistics/consignees(/" + id + ")?"),
     regex("entities(/" + id + "(/contacts)?)?"),
     regex("finance/(invoices(/" + id + "(/payments)?)?|summary)"),
@@ -24,6 +25,7 @@ const paths: Record<string, RegExp[]> = {
     regex("commerce/line-orders"),
     regex("commerce/line-orders/" + id + "/purchase-orders"),
     regex("logistics/shipments"), regex("logistics/consignees"), regex("finance/invoices"),
+    regex("logistics/line-shipments"),
     regex("entities(/" + id + "/contacts)?"),
     regex("finance/invoices/" + id + "/payments"),
     regex("tasks"), regex("staff"), regex("staff/password")
@@ -33,6 +35,7 @@ const paths: Record<string, RegExp[]> = {
     regex("commerce/line-orders/" + id + "/status"),
     regex("commerce/line-orders/purchase-orders/" + id + "/status"),
     regex("logistics/shipments/" + id + "/status"),
+    regex("logistics/line-shipments/" + id + "/status"),
     regex("logistics/shipments/" + id + "/consignee"),
     regex("logistics/consignees/" + id),
     regex("entities/" + id + "(/contacts/" + id + ")?"),
@@ -55,7 +58,7 @@ async function relay(request: Request, context: Context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const incoming = new URL(request.url);
   const query = new URLSearchParams();
-  for (const key of ["page", "size", "q", "customerId", "rfqId", "entity"]) {
+  for (const key of ["page", "size", "q", "customerId", "rfqId", "entity", "salesOrderId"]) {
     const value = incoming.searchParams.get(key);
     if (value !== null) query.set(key, value.slice(0, 120));
   }
