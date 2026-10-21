@@ -69,6 +69,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/staff/password", "/api/staff/options").authenticated()
                 .requestMatchers("/api/staff/**", "/api/staff").hasRole("ADMIN")
                 .requestMatchers("/api/audit/**", "/api/audit").hasAnyRole("ADMIN","MANAGEMENT")
+                .requestMatchers(HttpMethod.GET, "/api/dedup/candidates")
+                    .hasAnyRole("ADMIN","MANAGEMENT")
                 .requestMatchers("/api/command-center/**").hasAnyRole("ADMIN","MANAGEMENT")
                 .requestMatchers("/api/entities/**", "/api/entities")
                     .hasAnyRole("ADMIN","MANAGEMENT","BD","SOURCING")

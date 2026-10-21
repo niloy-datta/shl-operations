@@ -1,0 +1,38 @@
+.du-page{min-height:100vh;background:#f3f7fa;color:#15334b;padding:clamp(20px,4vw,55px);font-family:Arial,Helvetica,sans-serif}
+.du-page *{box-sizing:border-box}
+.du-top{display:flex;gap:28px;justify-content:space-between;align-items:flex-end;max-width:1160px;margin:0 auto 28px}
+.du-back{font-size:13px;color:#275b7a;text-decoration:none;font-weight:700}
+.du-eyebrow{font-weight:800;letter-spacing:2px;font-size:10px;color:#078e8c;margin:36px 0 8px}
+.du-top h1{font-size:clamp(33px,5vw,54px);line-height:1.05;letter-spacing:-2px;margin:0}
+.du-top h1 span{color:#168d88}
+.du-top p:not(.du-eyebrow){color:#5d7687;font-size:14px;max-width:620px;line-height:1.7}
+.du-safety{padding:17px 24px;border-radius:12px;background:#e3f5f1;border:1px solid #b6ded2;display:grid;gap:5px;min-width:215px}
+.du-safety strong{font-size:14px}.du-safety span{font-size:11px;color:#547a71}
+.du-panel{max-width:1160px;margin:auto;background:white;border:1px solid #e2eaf0;border-radius:18px;padding:25px;box-shadow:0 14px 50px #132b4610}
+.du-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.du-tabs{display:flex;gap:7px;flex-wrap:wrap}
+.du-tabs button,.du-refresh,.du-footer button{padding:10px 15px;border-radius:9px;border:1px solid #cadbe6;background:white;font-weight:750;color:#2b5269;cursor:pointer}
+.du-tabs button[aria-pressed=true]{color:white;border-color:#126b71;background:#126b71}
+.du-refresh{background:#f4f8fa}
+.du-intro{display:flex;justify-content:space-between;gap:18px;align-items:center;margin:24px 0 13px}
+.du-intro h2{font-size:20px;margin:0 0 7px}
+.du-intro p{font-size:12px;color:#678294;line-height:1.6;margin:0}
+.du-intro>strong{white-space:nowrap;font-size:12px;color:#0c6567;background:#e7f6f5;border-radius:10px;padding:11px}
+.du-card{border-top:1px solid #e9eff4;padding:22px 3px}
+.du-card-head{display:flex;gap:12px;align-items:center;font-size:12px;color:#658295}
+.du-category{font-size:10px;letter-spacing:1px;color:#056d70;font-weight:800}
+.du-card h3{font-size:15px;font-weight:750;overflow-wrap:anywhere;margin:11px 0}
+.du-card summary{font-size:12px;color:#3d697d;cursor:pointer}
+.du-members{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
+.du-members code{font-size:11px;background:#f1f6f9;border:1px solid #dce8ef;border-radius:6px;padding:7px;overflow-wrap:anywhere}
+.du-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid #e6edf2;padding:20px 0 0;font-size:12px;color:#6c8193}
+.du-footer>div{display:flex;gap:9px}
+.du-footer button:disabled{opacity:.4;cursor:not-allowed}
+.du-empty{font-size:14px;color:#59798a;padding:35px 8px}
+.du-error{padding:14px;background:#fdeaea;color:#9b3030;border-radius:8px;margin:12px 0}
+.du-guidance{max-width:1160px;margin:23px auto;display:flex;justify-content:space-between;align-items:center;gap:20px;padding:24px;border-radius:14px;background:#163549;color:white}
+.du-guidance h2{font-size:18px;margin:0 0 9px}
+.du-guidance p{font-size:12px;line-height:1.75;max-width:740px;color:#c7d6dc;margin:0}
+.du-guidance a{white-space:nowrap;color:#b8f9ef;font-size:13px;font-weight:750}
+.du-page button:focus-visible,.du-page a:focus-visible,.du-page summary:focus-visible{outline:3px solid #37aba6;outline-offset:3px}
+@media(max-width:700px){.du-top,.du-guidance,.du-intro{flex-direction:column;align-items:flex-start}.du-panel{padding:15px}.du-safety{width:100%}.du-footer{flex-wrap:wrap}}

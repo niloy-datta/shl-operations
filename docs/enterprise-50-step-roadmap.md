@@ -16,7 +16,7 @@
 - [x] **02 — Scalable consignee selector (P0).** Server-side customer-bound filter/search, paginated selection and backend verification. Large-scale 100k performance remains unbenchmarked.
 - [x] **03 — Business entity directory (P0).** HQ/partner/customer/supplier entity types, country/branch/registration details and immutable parent identity link. Broader organization hierarchy remains future scope.
 - [x] **04 — Multiple company contacts (P0).** Department-specific buying, finance, logistics, management and compliance roles with a single active primary contact each. Consent-aware messaging remains in item 08/46.
-- [ ] **05 — Safe deduplication (P1).** Customer/supplier/consignee duplicate reports and reviewed merges with preserved foreign keys.
+- [ ] **05 — Safe deduplication (P1).** Partially delivered: manager-only exact-key candidate reports for customers, suppliers and customer-scoped consignees, with a read-only review desk. Pending: verified merges, foreign-key-preserving approvals, rollback ledger and scale tests. See [dedup review](dedup-review.md).
 
 ### 2. Lead intake and team workflow (06–10)
 - [ ] **06 — Public website lead intake (P0).** Signed authenticated integration with spam protection, rate limits and validation; keep public site unchanged until approved.
