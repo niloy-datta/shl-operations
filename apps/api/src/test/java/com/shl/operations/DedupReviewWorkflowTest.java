@@ -41,7 +41,8 @@ class DedupReviewWorkflowTest {
             second,"same buyer"," "+email.toUpperCase()+" ","bd");
         var rows=review.candidates("customers",0,50).content();
         assertThat(rows).anyMatch(x->"EMAIL".equals(x.get("match_type"))
-            && ((String)x.get("member_ids")).contains(first.toString(),second.toString()));
+            && ((String)x.get("member_ids")).contains(first.toString())
+                && ((String)x.get("member_ids")).contains(second.toString()));
         assertThat(rows).anyMatch(x->"NAME_AND_COUNTRY".equals(x.get("match_type")));
         assertThat(db.queryForObject("SELECT count(*) FROM customers WHERE id IN (?,?)",
             Long.class,first,second)).isEqualTo(2);
