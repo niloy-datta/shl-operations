@@ -50,7 +50,6 @@ export function LineOrderPanel({rfqId,quotes}:{rfqId:string;quotes:Quote[]}){
   },[]);
   useEffect(()=>{
     let alive=true;
-    setLoading(true);
     request<Page>(prefix+"?"+new URLSearchParams({rfqId,size:"50"}))
       .then(data=>{if(alive){setOrders(data.content);setMessage("");}})
       .catch(e=>{if(alive)setMessage(e instanceof Error?e.message:"Failed to load orders");})
