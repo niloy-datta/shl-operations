@@ -20,7 +20,7 @@
 
 ### 2. Lead intake and team workflow (06–10)
 - [ ] **06 — Public website lead intake (P0).** Signed authenticated integration with spam protection, rate limits and validation; keep public site unchanged until approved.
-- [ ] **07 — Lead ownership routing (P0).** Queue, territories, workload balancing and ownership history.
+- [ ] **07 — Lead ownership routing (P0).** Partially delivered: manager-only unassigned queue, audited manual ownership transfers, active BD workload display, manager-triggered least-loaded assignment, and append-only ownership history (V16). Pending: approved territory coverage model, multi-queue policy, concurrency/load validation and business sign-off. See [routing slice](lead-ownership-routing.md).
 - [ ] **08 — Follow-up timeline (P0).** Partially delivered: append-only lead interaction notes (call/email/WeChat/meeting), next follow-up scheduling and audit history. Explicit communication consent records and outbound messaging remain pending.
 - [ ] **09 — Opportunity scoring (P1).** Transparent explainable qualification and confidence; no invented probabilities.
 - [ ] **10 — Lead conversion automation (P1).** Reviewed lead→customer→RFQ→project mapping with idempotency.
