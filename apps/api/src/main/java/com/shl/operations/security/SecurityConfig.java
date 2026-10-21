@@ -61,6 +61,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(a -> a
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/sessions").permitAll()
+                // Machine-only route: a per-request raw-body HMAC is verified by the controller.
+                .requestMatchers(HttpMethod.POST, "/api/integrations/website/leads").permitAll()
                 .requestMatchers("/api/auth/sessions/**", "/api/auth/sessions", "/api/auth/mfa/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/me").authenticated()
                 
