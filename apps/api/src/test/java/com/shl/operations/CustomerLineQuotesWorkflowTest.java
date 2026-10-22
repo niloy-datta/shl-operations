@@ -42,6 +42,7 @@ class CustomerLineQuotesWorkflowTest {
     @Autowired LineOrdersController lineOrders;
     @Autowired LineShipmentController shipmentFlow;
     @Autowired LineShippingDocumentsController documents;
+    @Autowired OperationalAlertsController alerts;
     @Autowired LineBillingReviewController billingFlow;
     @Autowired JdbcTemplate db;
 
@@ -309,6 +310,10 @@ class CustomerLineQuotesWorkflowTest {
                 java.time.LocalDate.now(),java.time.LocalDate.now().plusDays(20));
             var created=shipmentFlow.create(booking).getBody();
             UUID shipmentId=(UUID)created.shipment().get("id");
+            assertThat(alerts.feed().items())
+                .anyMatch(a->"SHIPMENT_DOCUMENTS".equals(a.source())
+                    && created.shipment().get("reference").equals(a.reference())
+                    && a.title().contains("5 shipping document"));
             assertThat(documents.list(shipmentId)).hasSize(5)
                 .allMatch(x->"MISSING".equals(x.status()));
             assertThatThrownBy(()->documents.change(shipmentId,"TRANSPORT_DOCUMENT",
@@ -362,6 +367,9 @@ class CustomerLineQuotesWorkflowTest {
             assertThat(shipmentFlow.change(shipmentId,new LineShipmentController.Status(
                 "DELIVERED","Delivery confirmed by operator")).shipment().get("ata")).isNotNull();
             assertThat(shipmentFlow.detail(shipmentId).milestones()).hasSize(3);
+            assertThat(alerts.feed().items())
+                .noneMatch(a->"SHIPMENT_DOCUMENTS".equals(a.source())
+                    && created.shipment().get("reference").equals(a.reference()));
             assertThatThrownBy(()->db.update("""
                 UPDATE line_shipment_items SET quantity=1 WHERE shipment_id=?
                 """,shipmentId)).isInstanceOf(org.springframework.dao.DataAccessException.class);
@@ -377,6 +385,8 @@ class CustomerLineQuotesWorkflowTest {
             switchUser("unauthorized-bd","BD");
             assertThatThrownBy(()->documents.list(shipmentId))
                 .isInstanceOf(AccessDeniedException.class);
+            assertThat(alerts.feed().items())
+                .noneMatch(a->"SHIPMENT_DOCUMENTS".equals(a.source()));
             assertThatThrownBy(()->shipmentFlow.list(orderId,0,20))
                 .isInstanceOf(AccessDeniedException.class);
         } finally {SecurityContextHolder.getContext().setAuthentication(initial);}
