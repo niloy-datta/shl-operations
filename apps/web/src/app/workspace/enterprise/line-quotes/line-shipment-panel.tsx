@@ -1,6 +1,7 @@
 "use client";
 
 import {useCallback,useEffect,useState,type FormEvent} from "react";
+import {ShipmentDocumentChecklist} from "./shipment-document-checklist";
 
 type Purchase={id:string;reference:string;status:string;supplier_name:string};
 type Shipment={id:string;reference:string;purchase_order_id:string;po_reference:string;
@@ -102,6 +103,8 @@ export function LineShipmentPanel({orderId,purchaseOrders,me}:{
         <strong>{m.event}</strong> · {m.actor} · {new Date(m.occurred_at).toLocaleString("en-GB")}
         {m.notes?" — "+m.notes:""}
       </p>)}
+      <ShipmentDocumentChecklist key={selected.shipment.id} shipmentId={selected.shipment.id}
+        canWrite={canWrite&&selected.shipment.status!=="CANCELLED"}/>
       {canWrite&&["BOOKED","IN_TRANSIT"].includes(selected.shipment.status)&&<>
         <label>Milestone note (optional)<input value={note} maxLength={300}
           onChange={e=>setNote(e.target.value)} disabled={busy}/></label>
