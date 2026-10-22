@@ -41,7 +41,7 @@
 
 ### 5. Freight / shipping operations (21–25)
 - [ ] **21 — Secure shipping document vault (P0).** Private object storage, malware scans, signed URLs, strict file limits and audit events.
-- [ ] **22 — Shipping-document checklist (P0).** V20 partial: manual, role-checked missing/requested/reported-received requirement tracker for BL/AWB, invoice, packing list, COO and insurance; append-only change history. Missing-evidence alerts, secure files, independent verification and sign-off remain pending. See [V20 slice](line-shipment-document-checklist-v20.md).
+- [ ] **22 — Shipping-document checklist (P0).** V20–V21 partial: manual, role-checked five-item requirement tracker with append-only history and ETD-triggered operational alerts for documents not yet reported received. Secure file vault, actual evidence validation, opt-out policies, and independent sign-off remain pending. See [V20–V21 slice](line-shipment-document-checklist-v20.md).
 - [ ] **23 — Container tracking (P1).** Partially delivered V18: manual shipment booking from issued line POs with ETD/ETA, departure/delivery timestamps, immutable source-line allocation and append-only status events. Pending carrier/vessel/container reference model, verified external tracking feeds, source timestamps and claims workflows.
 - [ ] **24 — Milestone exceptions (P1).** Customs hold, transshipment, damage and dispute case handling.
 - [ ] **25 — Delivery proof and acceptance (P1).** Signed POD, customer acknowledgement and linked claim workflow.
