@@ -41,6 +41,7 @@ class CustomerLineQuotesWorkflowTest {
     @Autowired CommerceController oldCommerce;
     @Autowired LineOrdersController lineOrders;
     @Autowired LineShipmentController shipmentFlow;
+    @Autowired LineShippingDocumentsController documents;
     @Autowired LineBillingReviewController billingFlow;
     @Autowired JdbcTemplate db;
 
@@ -308,6 +309,40 @@ class CustomerLineQuotesWorkflowTest {
                 java.time.LocalDate.now(),java.time.LocalDate.now().plusDays(20));
             var created=shipmentFlow.create(booking).getBody();
             UUID shipmentId=(UUID)created.shipment().get("id");
+            assertThat(documents.list(shipmentId)).hasSize(5)
+                .allMatch(x->"MISSING".equals(x.status()));
+            assertThatThrownBy(()->documents.change(shipmentId,"TRANSPORT_DOCUMENT",
+                new LineShippingDocumentsController.Change("REPORTED_RECEIVED",null,null)))
+                .isInstanceOf(ResponseStatusException.class);
+            documents.change(shipmentId,"TRANSPORT_DOCUMENT",
+                new LineShippingDocumentsController.Change("REQUESTED",null,"Requested from carrier"));
+            assertThat(documents.change(shipmentId,"TRANSPORT_DOCUMENT",
+                new LineShippingDocumentsController.Change("REPORTED_RECEIVED","BL-TEST-REF",
+                    "Self-reported carrier reference")))
+                .anyMatch(x->"TRANSPORT_DOCUMENT".equals(x.kind())
+                    &&"REPORTED_RECEIVED".equals(x.status()));
+            assertThatThrownBy(()->documents.change(shipmentId,"TRANSPORT_DOCUMENT",
+                new LineShippingDocumentsController.Change("REPORTED_RECEIVED","BL-TEST-REF",
+                    "Self-reported carrier reference")))
+                .isInstanceOf(ResponseStatusException.class);
+            assertThatThrownBy(()->documents.change(shipmentId,"TRANSPORT_DOCUMENT",
+                new LineShippingDocumentsController.Change("MISSING",null,null)))
+                .isInstanceOf(ResponseStatusException.class);
+            documents.change(shipmentId,"TRANSPORT_DOCUMENT",
+                new LineShippingDocumentsController.Change("MISSING",null,"Incorrect reported reference"));
+            assertThat(db.queryForObject("""
+                SELECT count(*) FROM line_shipment_document_events
+                WHERE shipment_id=? AND kind='TRANSPORT_DOCUMENT'
+                """,Integer.class,shipmentId)).isEqualTo(3);
+            assertThatThrownBy(()->db.update("""
+                DELETE FROM line_shipment_document_events WHERE shipment_id=?
+                """,shipmentId)).isInstanceOf(org.springframework.dao.DataAccessException.class);
+            switchUser("line-sourcing-reader","SOURCING");
+            assertThat(documents.list(shipmentId)).hasSize(5);
+            assertThatThrownBy(()->documents.change(shipmentId,"PACKING_LIST",
+                new LineShippingDocumentsController.Change("REQUESTED",null,null)))
+                .isInstanceOf(AccessDeniedException.class);
+            switchUser("dispatch-operator","LOGISTICS");
             assertThat(created.lines()).hasSize(1);
             assertThat(created.milestones()).hasSize(1);
             assertThat(created.shipment().get("status")).isEqualTo("BOOKED");
@@ -340,6 +375,8 @@ class CustomerLineQuotesWorkflowTest {
                 Long.class,orderId);
             assertThat(count).isZero();
             switchUser("unauthorized-bd","BD");
+            assertThatThrownBy(()->documents.list(shipmentId))
+                .isInstanceOf(AccessDeniedException.class);
             assertThatThrownBy(()->shipmentFlow.list(orderId,0,20))
                 .isInstanceOf(AccessDeniedException.class);
         } finally {SecurityContextHolder.getContext().setAuthentication(initial);}
