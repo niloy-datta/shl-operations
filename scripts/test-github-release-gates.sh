@@ -16,7 +16,7 @@ if [[ "${1:-}" == api ]]; then
   case "$target" in
     repos/*/branches/*/protection)
       [[ "${MOCK_PROTECTED:-yes}" == yes ]] || exit 1
-      printf '{"required_pull_request_reviews":%s,"required_status_checks":%s}\n' "${MOCK_REVIEWS:-{}}" "${MOCK_CHECKS:-{}}"
+      printf '{"required_pull_request_reviews":%s,"required_status_checks":%s}\n' "${MOCK_REVIEWS:-null}" "${MOCK_CHECKS:-null}"
       ;;
     repos/*)
       [[ "${MOCK_VISIBILITY_ERROR:-no}" == no ]] || exit 1
