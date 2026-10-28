@@ -1,0 +1,47 @@
+name: GitHub release gates
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/check-github-release-gates.sh'
+      - 'scripts/test-github-release-gates.sh'
+      - '.github/workflows/github-release-gates.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/check-github-release-gates.sh'
+      - 'scripts/test-github-release-gates.sh'
+      - '.github/workflows/github-release-gates.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-tests:
+    name: Offline release gate tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bash syntax
+        run: |
+          bash -n scripts/check-github-release-gates.sh
+          bash -n scripts/test-github-release-gates.sh
+      - name: Test fail-closed behavior
+        run: bash scripts/test-github-release-gates.sh
+
+  live-configuration-check:
+    name: Live GitHub configuration audit
+    if: github.event_name == 'workflow_dispatch'
+    needs: offline-tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SHL_GITHUB_REPO: ${{ github.repository }}
+      SHL_RELEASE_BRANCH: main
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check repository visibility and branch policies
+        run: bash scripts/check-github-release-gates.sh
