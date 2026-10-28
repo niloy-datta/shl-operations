@@ -47,6 +47,9 @@ run_case() {
 }
 
 run_case 'private protected with reviews/checks' 0 env MOCK_REVIEWS='{"required_approving_review_count":1}' MOCK_CHECKS='{"contexts":["ci"]}'
+run_case 'empty review policy is blocked' 1 env MOCK_REVIEWS='{}' MOCK_CHECKS='{"contexts":["ci"]}'
+run_case 'zero approvals is blocked' 1 env MOCK_REVIEWS='{"required_approving_review_count":0}' MOCK_CHECKS='{"contexts":["ci"]}'
+run_case 'empty status check list is blocked' 1 env MOCK_REVIEWS='{"required_approving_review_count":1}' MOCK_CHECKS='{"contexts":[]}'
 run_case 'public repository is blocked' 1 env MOCK_VISIBILITY=public MOCK_REVIEWS='{}' MOCK_CHECKS='{}'
 run_case 'missing protection is blocked' 1 env MOCK_PROTECTED=no
 run_case 'missing reviews is blocked' 1 env MOCK_REVIEWS=null MOCK_CHECKS='{}'
