@@ -5,6 +5,10 @@ set -euo pipefail
 REPO="${SHL_GITHUB_REPO:-niloy-datta/shl-operations}"
 BRANCH="${SHL_RELEASE_BRANCH:-main}"
 
+if ! command -v jq >/dev/null 2>&1; then
+  echo 'BLOCKED: jq is not installed.' >&2
+  exit 2
+fi
 if ! command -v gh >/dev/null 2>&1; then
   echo 'BLOCKED: GitHub CLI (gh) is not installed.' >&2
   exit 2
@@ -30,15 +34,15 @@ fi
 
 if protection=$(gh api "repos/$REPO/branches/$BRANCH/protection" 2>/dev/null); then
   pass "Branch $BRANCH protection is configured."
-  if grep -Eq '"required_pull_request_reviews"[[:space:]]*:[[:space:]]*\{' <<<"$protection"; then
-    pass 'Pull-request reviews are required.'
+  if jq -e '.required_pull_request_reviews != null and (.required_pull_request_reviews.required_approving_review_count // 0) >= 1' >/dev/null <<<"$protection"; then
+    pass 'At least one pull-request approval is required.'
   else
-    block 'Required pull-request reviews could not be verified.'
+    block 'At least one required pull-request approval could not be verified.'
   fi
-  if grep -Eq '"required_status_checks"[[:space:]]*:[[:space:]]*\{' <<<"$protection"; then
-    pass 'Required status checks are configured.'
+  if jq -e '.required_status_checks != null and (((.required_status_checks.contexts // []) | length) > 0 or ((.required_status_checks.checks // []) | length) > 0)' >/dev/null <<<"$protection"; then
+    pass 'At least one required status check is configured.'
   else
-    block 'Required status checks could not be verified.'
+    block 'No required status checks could be verified.'
   fi
 else
   block "Cannot verify branch $BRANCH protection; missing rules or insufficient permission."
