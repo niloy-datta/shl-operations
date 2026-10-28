@@ -30,12 +30,12 @@ fi
 
 if protection=$(gh api "repos/$REPO/branches/$BRANCH/protection" 2>/dev/null); then
   pass "Branch $BRANCH protection is configured."
-  if grep -Eq '"required_pull_request_reviews"[[:space:]]*:[[:space:]]*\\{' <<<"$protection"; then
+  if grep -Eq '"required_pull_request_reviews"[[:space:]]*:[[:space:]]*\{' <<<"$protection"; then
     pass 'Pull-request reviews are required.'
   else
     block 'Required pull-request reviews could not be verified.'
   fi
-  if grep -Eq '"required_status_checks"[[:space:]]*:[[:space:]]*\\{' <<<"$protection"; then
+  if grep -Eq '"required_status_checks"[[:space:]]*:[[:space:]]*\{' <<<"$protection"; then
     pass 'Required status checks are configured.'
   else
     block 'Required status checks could not be verified.'
