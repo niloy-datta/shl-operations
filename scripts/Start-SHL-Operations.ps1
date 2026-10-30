@@ -72,7 +72,7 @@ try {
         }
 
         $envContents = Get-Content -LiteralPath '.env' -Raw
-        if ($envContents -match '(?m)^\\s*(POSTGRES_PASSWORD|BOOTSTRAP_ADMIN_PASSWORD|MFA_ENCRYPTION_KEY)\\s*=\\s*replace-with-') {
+        if ($envContents -match '(?m)^\s*(POSTGRES_PASSWORD|BOOTSTRAP_ADMIN_PASSWORD|MFA_ENCRYPTION_KEY)\s*=\s*replace-with-') {
             throw 'Replace the .env example placeholders with strong random secrets before starting.'
         }
 
