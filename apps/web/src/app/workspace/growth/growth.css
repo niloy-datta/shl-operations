@@ -55,3 +55,14 @@
 .lr-lead button:disabled{opacity:.45;cursor:not-allowed}
 .lr-history{margin-top:20px}
 @media(max-width:700px){.lr-lead{grid-template-columns:1fr}.lr-header-actions{width:100%}.lr-header-actions .en-primary{width:100%}}
+
+/* Read-only lead triage; visually distinct from financial or conversion approvals. */
+.gx-qualification{margin-top:24px;padding:20px 22px;border:1px solid #cce9e6;border-radius:13px;background:#f3faf9;color:#164153}
+.gx-qualification-head{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.gx-qualification-head small{display:block;color:#167d77;font-size:10px;font-weight:800;letter-spacing:1.1px}
+.gx-qualification-head h3{font-size:17px;line-height:1.3;margin:6px 0}
+.gx-qualification-head strong{font-size:14px;color:#075c58;font-variant-numeric:tabular-nums}
+.gx-qualification p{font-size:11px;line-height:1.6;color:#54727b}
+.gx-qualification h4{font-size:12px;margin:18px 0 6px}
+.gx-qualification ul{padding-left:20px;margin:6px 0}
+.gx-qualification li{font-size:12px;line-height:1.7;margin:2px 0}

@@ -8,6 +8,7 @@ import {LeadRoutingPanel,LeadAssignmentHistory} from "./lead-routing-panel";
 type Module="leads"|"projects";
 type Item=Record<string,unknown>;
 type User={username:string;role:string};
+type Qualification={leadId:string;score:number|null;band:string;signals:string[];nextActions:string[];disclaimer:string};
 type Page={content:Item[];totalElements:number;totalPages:number};
 type Lookup={id:string;text:string;extra?:string};
 const roles=["ADMIN","MANAGEMENT","BD"];
@@ -71,6 +72,7 @@ export function GrowthDesk({module}:{module:Module}){
     customers:[],staff:[],leads:[],orders:[]
   });
   const [notes,setNotes]=useState<Item[]>([]);
+  const [qualification,setQualification]=useState<Qualification|null>(null);
   const reload=useCallback(()=>setTick(n=>n+1),[]);
 
   useEffect(()=>{
@@ -141,11 +143,15 @@ export function GrowthDesk({module}:{module:Module}){
     finally{setBusy(false);}
   }
   async function details(item:Item){
-    setActive(item);setDialog("details");setNotes([]);setError("");
+    setActive(item);setDialog("details");setNotes([]);setQualification(null);setError("");
     try{
       setNotes(await fetchJson<Item[]>(api+module+"/"+item.id+
         (module==="leads"?"/activity":"/notes")));
     }catch{setError("Unable to load activity records.");}
+    if(module==="leads"){
+      try{setQualification(await fetchJson<Qualification>(api+"leads/"+item.id+"/qualification"));}
+      catch{setError("Unable to load lead qualification signals.");}
+    }
   }
   async function addNote(event:FormEvent<HTMLFormElement>){
     event.preventDefault();if(!active)return;
@@ -163,6 +169,7 @@ export function GrowthDesk({module}:{module:Module}){
       setNotes(await fetchJson<Item[]>(path));
       if(module==="leads"){
         setActive(await fetchJson<Item>(api+"leads/"+active.id));
+        setQualification(await fetchJson<Qualification>(api+"leads/"+active.id+"/qualification"));
         reload();
       }
       formElement.reset();
@@ -309,6 +316,19 @@ export function GrowthDesk({module}:{module:Module}){
               <div key={key}><small>{key.replaceAll("_"," ").toUpperCase()}</small><strong>
                 {key.endsWith("_date")||key==="next_follow_up"?date(value):t(value)}</strong></div>)}</div>
             {active.description&&<p className="gx-description">{t(active.description)}</p>}
+            {module==="leads"&&qualification&&<section className="gx-qualification" aria-label="Lead qualification triage">
+              <div className="gx-qualification-head">
+                <div><small>EXPLAINABLE · RULE-BASED</small><h3>Lead readiness signals</h3></div>
+                <strong>{qualification.score===null?"Closed":qualification.score+" / 100 · "+qualification.band}</strong>
+              </div>
+              <p>{qualification.disclaimer}</p>
+              {qualification.signals.length>0&&<div><h4>Recorded signals</h4><ul>
+                {qualification.signals.map(signal=><li key={signal}>{signal}</li>)}
+              </ul></div>}
+              {qualification.nextActions.length>0&&<div><h4>Suggested follow-ups</h4><ul>
+                {qualification.nextActions.map(action=><li key={action}>{action}</li>)}
+              </ul></div>}
+            </section>}
             {canWrite&&(stages[module][String(active.status)]??[]).length>0&&<div className="gx-actions">
               <strong>Next workflow action</strong><div>{stages[module][String(active.status)].map(next=>
                 <button key={next} disabled={busy} onClick={()=>void status(active,next)}>
