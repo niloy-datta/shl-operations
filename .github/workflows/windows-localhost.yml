@@ -1,0 +1,33 @@
+name: Windows localhost launcher
+on:
+  push:
+    paths:
+      - 'scripts/Start-SHL-Operations.ps1'
+      - '.github/workflows/windows-localhost.yml'
+  pull_request:
+    paths:
+      - 'scripts/Start-SHL-Operations.ps1'
+      - '.github/workflows/windows-localhost.yml'
+
+jobs:
+  syntax:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check launcher PowerShell syntax and action availability
+        shell: pwsh
+        run: |
+          $path = Resolve-Path 'scripts/Start-SHL-Operations.ps1'
+          $tokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile($path.Path, [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count -gt 0) {
+            $parseErrors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          $command = Get-Command $path.Path
+          $choices = $command.Parameters['Action'].Attributes | Where-Object { $_ -is [System.Management.Automation.ValidateSetAttribute] }
+          foreach ($action in @('Start', 'Check', 'Status', 'Logs', 'Stop')) {
+            if ($choices.ValidValues -notcontains $action) { throw "Missing action: $action" }
+          }
+          Write-Host 'Launcher syntax and action interface OK.'
