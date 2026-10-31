@@ -328,7 +328,7 @@ export function GrowthDesk({module}:{module:Module}){
               {qualification.nextActions.length>0&&<div><h4>Suggested follow-ups</h4><ul>
                 {qualification.nextActions.map(action=><li key={action}>{action}</li>)}
               </ul></div>}
-            </section>
+            </section>}
             {canWrite&&(stages[module][String(active.status)]??[]).length>0&&<div className="gx-actions">
               <strong>Next workflow action</strong><div>{stages[module][String(active.status)].map(next=>
                 <button key={next} disabled={busy} onClick={()=>void status(active,next)}>
