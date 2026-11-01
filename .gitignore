@@ -23,6 +23,7 @@ apps/api/target/
 # IDEs & OS
 .idea/
 .vscode/
+.claude/data/
 *.swp
 *.swo
 .DS_Store

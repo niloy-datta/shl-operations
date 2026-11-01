@@ -1,0 +1,52 @@
+.lo-panel{margin-top:24px}
+.lo-panel button:focus-visible{outline:3px solid #35bdb6;outline-offset:3px}
+.lo-order{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:15px 0;border-bottom:1px solid #dfe9ee;flex-wrap:wrap}
+.lo-order>div{display:grid;gap:6px}
+.lo-order strong{font-size:13px;color:#163e4b}
+.lo-order small{font-size:11px;color:#607b8f}
+.lo-order button{padding:10px 16px;border:1px solid #b9d4d9;border-radius:9px;background:#f0f8f8;color:#086668;font-size:12px;font-weight:800;cursor:pointer}
+.lo-order button:disabled{opacity:.45;cursor:not-allowed}
+.lo-notice{background:#e6f6f0;padding:13px;border-radius:10px;color:#176449;font-size:12px}
+.lo-details{margin-top:22px;padding:22px;border-radius:14px;border:1px solid #dcebee;background:#f8fbfc}
+.lo-details>header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.lo-details h3{font-size:16px;color:#183b4c}
+.lo-allocations{margin-top:20px;padding-top:15px;border-top:1px solid #e1e9ed}
+.lo-actions{margin:20px 0;display:flex;gap:12px;flex-wrap:wrap}
+.lo-actions button{max-width:100%}
+@media(max-width:700px){.lo-details{padding:12px}.lo-order{align-items:stretch;flex-direction:column}.lo-order button{width:100%}.lo-actions button{width:100%}}
+
+.lo-shipment{margin-top:25px}
+.lo-shipment h3{margin:0 0 10px;font-size:16px}
+.lo-shipment-form{background:white;padding:18px;border-radius:13px;border:1px solid #dae9ed;margin:13px 0}
+.lo-shipment-form>strong{display:block;font-size:13px;color:#1c5161;margin-bottom:15px}
+.lo-shipment-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.lo-shipment-fields label,.lo-shipment-history label{display:grid;gap:6px;font-size:11px;font-weight:750;color:#557187}
+.lo-shipment-fields input,.lo-shipment-history input{min-width:0;width:100%;padding:10px;border:1px solid #cadbe1;border-radius:8px}
+.lo-shipment-history{background:#edf5f6;border:1px solid #dce9e8;border-radius:12px;padding:18px;margin-top:18px}
+.lo-shipment-history>p{font-size:12px;line-height:1.65;color:#476476}
+@media(max-width:850px){.lo-shipment-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:550px){.lo-shipment-fields{grid-template-columns:1fr}}
+
+/* V20: readable, keyboard-accessible manual shipment evidence tracker. */
+.lo-docs{margin-top:24px;padding-top:18px;border-top:1px solid #cfdee4}
+.lo-docs-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.lo-docs-head h4{margin:0 0 6px;font-size:15px;color:#143c48}
+.lo-docs-head p{margin:0;font-size:12px;color:#567485;max-width:520px}
+.lo-docs-head>span{font-size:12px;font-weight:800;color:#155e68}
+.lo-docs-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
+.lo-doc{padding:14px;border:1px solid #d0e2e5;background:#fff;border-radius:12px;min-width:0}
+.lo-doc-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.lo-doc-top strong{font-size:13px;color:#1f4454}
+.lo-doc-status{border-radius:99px;padding:5px 8px;font-size:10px;font-weight:800;background:#f1f5f9;color:#475569}
+.lo-doc-reported_received{background:#eaf7f3;color:#17694e}
+.lo-doc-requested{background:#fff5dd;color:#765416}
+.lo-doc p{font-size:11px;color:#486779;overflow-wrap:anywhere}
+.lo-doc small{display:block;margin-top:6px;font-size:10px;color:#657e8e}
+.lo-doc>button,.lo-doc-form button{border:1px solid #b6d4dd;border-radius:8px;background:#eff8f9;color:#075a63;padding:8px 10px;margin-top:10px;font-size:11px;font-weight:750;cursor:pointer}
+.lo-doc-form{display:grid;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid #dce8e9}
+.lo-doc-form label{display:grid;gap:5px;font-size:11px;color:#476777;font-weight:700}
+.lo-doc-form select,.lo-doc-form input{width:100%;min-width:0;padding:9px;border-radius:8px;border:1px solid #b9d2d9;background:#fff}
+.lo-doc-form>div{display:flex;gap:8px;flex-wrap:wrap}
+.lo-doc button:focus-visible,.lo-doc input:focus-visible,.lo-doc select:focus-visible{outline:3px solid #14b8a6;outline-offset:2px}
+.lo-doc button:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:700px){.lo-docs-grid{grid-template-columns:1fr}}
