@@ -24,12 +24,16 @@ const money=(n:number,c:string)=>new Intl.NumberFormat("en-US",{
 async function json<T>(path:string,init?:RequestInit):Promise<T> {
   const response=await fetch(path,{cache:"no-store",...init});
   if(response.status===401){window.location.assign("/login");throw new Error("Session expired");}
-  const value=await response.json().catch(()=>({})) as {detail?:string;message?:string;error?:string};
+  let value:unknown;
+  try{value=await response.json();}catch{if(response.ok)throw new Error("The quotation service returned invalid JSON.");value={};}
+  const detail=value as {detail?:string;message?:string;error?:string};
   if(!response.ok)throw new Error(
+    response.status===404?"Service not connected yet. Quotation data is unavailable.":
+    response.status>=500?"The quotation service encountered a server error.":
     (response.status===403?"Not authorized for this action. ":
       response.status===409?"Workflow restriction: ":"")+
-    (value.detail||value.message||value.error||"Request failed ("+response.status+")"));
-  return value as unknown as T;
+    (detail.detail||detail.message||detail.error||"Request failed ("+response.status+")"));
+  return value as T;
 }
 const api=(path:string)=>"/api/enterprise/commerce/line-quotes"+path;
 
@@ -52,16 +56,18 @@ export function LineQuoteDesk({rfqId}:{rfqId:string}) {
   useEffect(()=>{
     if(!valid)return;
     let active=true;
+    const controller=new AbortController();setLoading(true);setRfq(null);setMessage("");
     Promise.all([
-      json<Rfq>("/api/trading/rfqs/"+rfqId),
-      json<Requirement[]>("/api/trading/rfqs/"+rfqId+"/items"),
-      json<SupplierPrice[]>("/api/trading/rfqs/"+rfqId+"/line-offers"),
-      json<Quote[]>(api("?rfqId="+encodeURIComponent(rfqId)))
+      json<Rfq>("/api/trading/rfqs/"+rfqId,{signal:controller.signal}),
+      json<Requirement[]>("/api/trading/rfqs/"+rfqId+"/items",{signal:controller.signal}),
+      json<SupplierPrice[]>("/api/trading/rfqs/"+rfqId+"/line-offers",{signal:controller.signal}),
+      json<Quote[]>(api("?rfqId="+encodeURIComponent(rfqId)),{signal:controller.signal})
     ]).then(([r,i,p,q])=>{
+      if(!r||typeof r.status!=="string"||!Array.isArray(i)||!Array.isArray(p)||!Array.isArray(q))throw new Error("The quotation service returned data in an unexpected format.");
       if(active){setRfq(r);setItems(i);setPrices(p);setQuotes(q);setMessage("");}
     }).catch(e=>{if(active)setMessage(e instanceof Error?e.message:"Unable to load quotation");})
       .finally(()=>{if(active)setLoading(false);});
-    return ()=>{active=false};
+    return ()=>{active=false;controller.abort();};
   },[valid,rfqId,revision]);
 
   const economics=useMemo(()=>{
@@ -132,6 +138,7 @@ export function LineQuoteDesk({rfqId}:{rfqId:string}) {
         <Link className="lq-action" href="/workspace/rfqs">Browse RFQs →</Link>
       </section>:<>
         {message&&<div className="lq-error" role="alert">{message}
+          {!rfq&&!loading&&<button type="button" onClick={()=>setRevision(n=>n+1)}>Retry</button>}
           <button type="button" onClick={()=>setMessage("")}>Dismiss</button></div>}
         {loading?<p className="lq-muted">Loading saved customer requirements…</p>:rfq&&<>
           <div className="lq-kpis">

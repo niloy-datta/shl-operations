@@ -1,23 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { isContactPage, isTotals, readService, RequestError, type Contact, type ContactPage, type ServiceIssue, type Totals } from "@/lib/frontend-service";
 
-type Contact = {
-  id: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-  country: string | null;
-  createdAt: string;
-};
-type ContactPage = { content: Contact[]; totalElements: number; totalPages: number };
-type Totals = { customers: number; suppliers: number; rfqs: number };
 type View = "overview" | "customers" | "suppliers";
 type IconName = "grid" | "users" | "building" | "arrow" | "plus" | "search" | "refresh" |
   "logout" | "edit" | "download" | "check" | "lock" | "layers" | "package" | "ship" | "chart" | "close";
-const emptyPage: ContactPage = { content: [], totalElements: 0, totalPages: 0 };
 const primaryViews: { key: View; label: string; icon: IconName }[] = [
   { key: "overview", label: "Overview", icon: "grid" },
   { key: "customers", label: "Customers", icon: "users" },
@@ -75,60 +65,79 @@ export function Workspace() {
     return () => window.cancelAnimationFrame(frame);
   }, []);
   const [totals, setTotals] = useState<Totals | null>(null);
-  const [data, setData] = useState<ContactPage>(emptyPage);
+  const [data, setData] = useState<ContactPage | null>(null);
   const [page, setPage] = useState(0);
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
+  const [dashboardError, setDashboardError] = useState<ServiceIssue | null>(null);
+  const [directoryError, setDirectoryError] = useState<ServiceIssue | null>(null);
+  const [writeError, setWriteError] = useState("");
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [dashboardRevision, setDashboardRevision] = useState(0);
+  const [directoryRevision, setDirectoryRevision] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Contact | null>(null);
   const [saving, setSaving] = useState(false);
-  const requestCounter = useRef(0);
+  const saveController = useRef<AbortController | null>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
   const [commissionAccess, setCommissionAccess] = useState(false);
+  const [commissionIssue, setCommissionIssue] = useState<ServiceIssue | null>(null);
+  const [commissionRevision, setCommissionRevision] = useState(0);
   useEffect(() => {
-    let alive=true;
-    fetch("/api/costs/commissions/access",{cache:"no-store"})
-      .then(r=>r.ok?r.json():Promise.resolve({allowed:false}))
-      .then((d:{allowed?:boolean})=>{if(alive)setCommissionAccess(d.allowed===true);})
-      .catch(()=>{});
-    return()=>{alive=false;};
-  },[]);
-
-  const load = useCallback(async () => {
-    const requestNumber = ++requestCounter.current;
-    setLoading(true);
-    setError("");
-    try {
-      const [dashboardResponse, listResponse] = await Promise.all([
-        fetch("/api/data/dashboard", { cache: "no-store" }),
-        view === "overview" ? Promise.resolve(null) :
-          fetch("/api/data/" + view + "?page=" + page + "&size=10&q=" + encodeURIComponent(search), { cache: "no-store" })
-      ]);
-      if (requestNumber !== requestCounter.current) return;
-      if (dashboardResponse.status === 401 || listResponse?.status === 401) {
-        router.replace("/login");
-        return;
-      }
-      if (!dashboardResponse.ok) throw new Error(`Dashboard API request failed (HTTP ${dashboardResponse.status}). The dashboard data service is unavailable.`);
-      if (listResponse && !listResponse.ok) throw new Error(`Directory API request failed (HTTP ${listResponse.status}). Please try again.`);
-      const counts: Totals = await dashboardResponse.json();
-      const records: ContactPage | null = listResponse ? await listResponse.json() : null;
-      if (requestNumber !== requestCounter.current) return;
-      setTotals(counts);
-      if (records) setData(records);
-    } catch (caught) {
-      if (requestNumber === requestCounter.current) setError(caught instanceof Error ? caught.message : "Unable to load records.");
-    } finally {
-      if (requestNumber === requestCounter.current) setLoading(false);
-    }
-  }, [page, router, search, view]);
+    const controller = new AbortController();
+    readService("/api/costs/commissions/access", controller.signal,
+      (value): value is { allowed: boolean } => !!value && typeof value === "object" && typeof (value as { allowed?: unknown }).allowed === "boolean")
+      .then(value => { if (!controller.signal.aborted) { setCommissionAccess(value.allowed); setCommissionIssue(null); } })
+      .catch(caught => {
+        if (controller.signal.aborted) return;
+        setCommissionAccess(false);
+        const issue = caught instanceof RequestError ? caught.issue : { title: "Connection problem", message: "Unable to check commission access." };
+        if (issue.unauthorized) router.replace("/login");
+        else if (issue.title !== "Access restricted") setCommissionIssue(issue);
+      });
+    return () => controller.abort();
+  }, [commissionRevision, router]);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => { void load(); });
-    return () => { window.cancelAnimationFrame(frame); requestCounter.current += 1; };
-  }, [load]);
+    const controller = new AbortController();
+    setDashboardLoading(true); setDashboardError(null); setTotals(null);
+    readService("/api/data/dashboard", controller.signal, isTotals).then(value => { if (!controller.signal.aborted) setTotals(value); }).catch(caught => {
+      if (controller.signal.aborted) return;
+      const issue = caught instanceof RequestError ? caught.issue : { title: "Connection problem", message: "Unable to load the dashboard." };
+      if (issue.unauthorized) router.replace("/login"); else setDashboardError(issue);
+    }).finally(() => { if (!controller.signal.aborted) setDashboardLoading(false); });
+    return () => controller.abort();
+  }, [dashboardRevision, router]);
+
+  useEffect(() => {
+    if (view === "overview") return;
+    const controller = new AbortController();
+    setLoading(true); setDirectoryError(null); setData(null);
+    const url = "/api/data/" + view + "?page=" + page + "&size=10&q=" + encodeURIComponent(search);
+    readService(url, controller.signal, isContactPage).then(value => { if (!controller.signal.aborted) setData(value); }).catch(caught => {
+      if (controller.signal.aborted) return;
+      const issue = caught instanceof RequestError ? caught.issue : { title: "Connection problem", message: "Unable to load the directory." };
+      if (issue.unauthorized) router.replace("/login"); else setDirectoryError(issue);
+    }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [directoryRevision, page, router, search, view]);
+
+  const refreshDashboard = useCallback(() => setDashboardRevision(value => value + 1), []);
+  const refreshDirectory = useCallback(() => setDirectoryRevision(value => value + 1), []);
+  useEffect(() => () => saveController.current?.abort(), []);
+  useEffect(() => {
+    const onPopState = () => {
+      const next = new URLSearchParams(window.location.search).get("view");
+      saveController.current?.abort(); setSaving(false); setFormOpen(false);
+      setView(next === "customers" || next === "suppliers" ? next : "overview");
+      setPage(0); setQuery(""); setSearch(""); setData(null); setDirectoryError(null); setWriteError("");
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   useEffect(() => {
     if (!formOpen) return;
@@ -136,43 +145,80 @@ export function Workspace() {
     window.addEventListener("keydown", onEscape);
     return () => window.removeEventListener("keydown", onEscape);
   }, [formOpen, saving]);
+  useEffect(() => {
+    if (!formOpen && returnFocus.current) {
+      if (returnFocus.current.isConnected) returnFocus.current.focus();
+      returnFocus.current = null;
+    }
+  }, [formOpen]);
 
   function navigate(target: View) {
+    if (target === view) return;
+    window.history.pushState(null, "", target === "overview" ? "/workspace" : "/workspace?view=" + target);
+    saveController.current?.abort();
+    setSaving(false);
     setView(target);
     setPage(0);
     setQuery("");
     setSearch("");
     setFormOpen(false);
-    setData(emptyPage);
+    setData(null);
+    setDirectoryError(null);
+    setWriteError("");
   }
-  function openCreate() { setEditing(null); setFormError(""); setFormOpen(true); }
-  function openEdit(contact: Contact) { setEditing(contact); setFormError(""); setFormOpen(true); }
+  function openCreate() { if (!data || loading || directoryError || writeError) return; returnFocus.current = document.activeElement as HTMLElement; setEditing(null); setFormError(""); setFormOpen(true); }
+  function openEdit(contact: Contact) { if (!data || loading || directoryError || writeError) return; returnFocus.current = document.activeElement as HTMLElement; setEditing(contact); setFormError(""); setFormOpen(true); }
+  function keepFocusInDialog(event: ReactKeyboardEvent<HTMLElement>) {
+    if (event.key !== "Tab") return;
+    const elements = event.currentTarget.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href]');
+    if (!elements.length) return;
+    const first = elements[0], last = elements[elements.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }
 
   async function saveContact(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (view === "overview") return;
-    setSaving(true);
+    if (view === "overview" || !data || loading || directoryError || writeError || saving) return;
     setFormError("");
     const form = new FormData(event.currentTarget);
     const body = Object.fromEntries(["name", "email", "phone", "country"].map(key =>
       [key, String(form.get(key) || "").trim()]));
+    if (!body.name) { setFormError("Enter a name that is not just spaces."); return; }
+    setSaving(true);
+    const controller = new AbortController();
+    saveController.current = controller;
     try {
       const url = "/api/data/" + view + (editing ? "/" + encodeURIComponent(editing.id) : "");
       const response = await fetch(url, {
         method: editing ? "PUT" : "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body), signal: controller.signal
       });
+      if (controller.signal.aborted) return;
       if (response.status === 401) { router.replace("/login"); return; }
-      if (!response.ok) throw new Error(response.status === 400 ? "Please check your details and try again." : "Unable to save this record.");
+      if (!response.ok) {
+        const message = response.status === 400 || response.status === 422 ? "Please check your details and try again." :
+        response.status === 403 ? "You do not have permission to save this record." :
+        response.status === 404 ? "Service not connected yet. This record was not saved." :
+        response.status >= 500 ? "The service encountered an error. This record was not saved." : "Unable to save this record.";
+        if (response.status === 403 || response.status === 404 || response.status >= 500) setWriteError(message);
+        throw new Error(message);
+      }
       setFormOpen(false);
       setEditing(null);
       if (!editing && page !== 0) setPage(0);
-      else void load();
+      else refreshDirectory();
+      refreshDashboard();
     } catch (caught) {
-      setFormError(caught instanceof Error ? caught.message : "Unable to save record.");
+      if (!controller.signal.aborted) {
+        const message = caught instanceof TypeError ? "The service could not be reached. The save could not be confirmed." : caught instanceof Error ? caught.message : "Unable to save record.";
+        if (caught instanceof TypeError) setWriteError(message);
+        setFormError(message);
+      }
     } finally {
-      setSaving(false);
+      if (!controller.signal.aborted) setSaving(false);
+      if (saveController.current === controller) saveController.current = null;
     }
   }
 
@@ -188,7 +234,7 @@ export function Workspace() {
   }
 
   function exportPage() {
-    if (view === "overview" || data.content.length === 0) return;
+    if (view === "overview" || !data || data.content.length === 0) return;
     const fields = ["name", "email", "phone", "country", "createdAt"] as const;
     const escape = (value: string) => {
       const safe = /^[=+\-@\t\r]/.test(value) ? "'" + value : value;
@@ -208,7 +254,9 @@ export function Workspace() {
 
   const title = view === "overview" ? "Overview" : view === "customers" ? "Customers" : "Suppliers";
   const totalRelationships = (totals?.customers ?? 0) + (totals?.suppliers ?? 0);
-  const directoryTotal = view === "customers" ? totals?.customers : totals?.suppliers;
+  const directoryTotal = (view === "customers" ? totals?.customers : totals?.suppliers) ?? (!search ? data?.totalElements : undefined);
+  const directoryAvailable = !!data && !loading && !directoryError;
+  const directoryWritable = directoryAvailable && !writeError;
 
   return <div className="shell">
     <aside className="sidebar" aria-label="Workspace sidebar">
@@ -221,7 +269,7 @@ export function Workspace() {
           className={["nav-item", view === item.key ? "selected" : ""].join(" ")} onClick={() => navigate(item.key)}>
           <Icon name={item.icon} /><span>{item.label}</span>{view === item.key && <span className="active-indicator" />}</button>)}
         <p className="nav-heading future-heading">TRADING OPERATIONS</p>
-        <Link href="/workspace/rfqs" className="nav-item"><Icon name="layers" /><span>RFQ &amp; Sourcing</span><small className="live-module">LIVE</small></Link>
+        <Link href="/workspace/rfqs" className="nav-item"><Icon name="layers" /><span>RFQ &amp; Sourcing</span></Link>
         <p className="nav-heading future-heading">COMING NEXT</p>
         <Link href="/workspace/account" className="nav-item"><Icon name="lock" /><span>My security</span></Link>
         {commissionAccess&&<Link href="/workspace/costs/commissions" className="nav-item">
@@ -230,6 +278,7 @@ export function Workspace() {
           <Icon name={item.icon} /><span>{item.label}</span></Link>)}
       </nav>
       <div className="sidebar-bottom">
+        {commissionIssue && <div role="status"><small>{commissionIssue.title}: commission access could not be checked.</small> <button type="button" onClick={() => setCommissionRevision(value => value + 1)}>Retry</button></div>}
         <div className="side-status"><Icon name="lock" size={15} /><span>Private operations workspace</span></div>
         <div className="account-row"><div className="user-avatar">A</div><div className="account-info"><strong>Administrator</strong><small>SHL workspace</small></div>
           <button className="icon-button signout" type="button" aria-label="Sign out" title="Sign out" onClick={() => void logout()}><Icon name="logout" /></button></div>
@@ -252,24 +301,25 @@ export function Workspace() {
               <div className="hero-art-core"><span>SHL</span><small>GLOBAL OPERATIONS</small></div>
               <div className="hero-node node-one" /><div className="hero-node node-two" /><div className="hero-node node-three" /></div>
           </section>
-          <div className="section-head"><div><p className="section-overline">LIVE DATABASE</p><h2>At a glance</h2></div>
-            <button className="subtle-button" disabled={loading} onClick={() => void load()}><Icon name="refresh" size={15} /> Refresh</button></div>
+          <div className="section-head"><div><p className="section-overline">{totals ? "DATABASE SNAPSHOT" : "DASHBOARD"}</p><h2>At a glance</h2></div>
+            <button className="subtle-button" disabled={dashboardLoading} onClick={refreshDashboard}><Icon name="refresh" size={15} /> Refresh</button></div>
           <div className="metric-grid">
-            <Metric label="Total relationships" value={totals ? totalRelationships : null} icon="layers" detail="Customers + suppliers" loading={loading} />
-            <Metric label="Customers" value={totals?.customers ?? null} icon="users" detail="In your customer directory" loading={loading} />
-            <Metric label="Suppliers" value={totals?.suppliers ?? null} icon="building" detail="In your supplier directory" loading={loading} />
-            <Metric label="RFQ pipeline" value={totals?.rfqs ?? null} icon="layers" detail="Saved sourcing requests" loading={loading} />
+            <Metric label="Total relationships" value={totals ? totalRelationships : null} icon="layers" detail="Customers + suppliers" loading={dashboardLoading} />
+            <Metric label="Customers" value={totals?.customers ?? null} icon="users" detail="In your customer directory" loading={dashboardLoading} />
+            <Metric label="Suppliers" value={totals?.suppliers ?? null} icon="building" detail="In your supplier directory" loading={dashboardLoading} />
+            <Metric label="RFQ pipeline" value={totals?.rfqs ?? null} icon="layers" detail="Saved sourcing requests" loading={dashboardLoading} />
           </div>
-          {error && <ErrorNotice message={error} retry={() => void load()} />}
+          {dashboardError && <ErrorNotice issue={dashboardError} retry={refreshDashboard} />}
+          {error && <p className="notice error" role="alert">{error}</p>}
           <div className="overview-columns">
-            <section className="surface mix-panel"><div className="surface-top"><div><p className="section-overline">RELATIONSHIP MIX</p><h2>Network composition</h2></div><span className="quiet-tag">LIVE TOTALS</span></div>
+            <section className="surface mix-panel"><div className="surface-top"><div><p className="section-overline">RELATIONSHIP MIX</p><h2>Network composition</h2></div><span className="quiet-tag">{totals ? "DATABASE TOTALS" : "UNAVAILABLE"}</span></div>
               <div className="composition-row"><div className="composition-symbol"><Icon name="users" size={21} /></div>
                 <div className="composition-info"><div><strong>Customers</strong><span>{totals ? totals.customers.toLocaleString() : "—"}</span></div>
                   <div className="progress-track"><span style={{ width: totalRelationships ? (100 * (totals?.customers ?? 0) / totalRelationships) + "%" : "0%" }} /></div></div></div>
               <div className="composition-row"><div className="composition-symbol supplier-symbol"><Icon name="building" size={21} /></div>
                 <div className="composition-info"><div><strong>Suppliers</strong><span>{totals ? totals.suppliers.toLocaleString() : "—"}</span></div>
                   <div className="progress-track supplier-progress"><span style={{ width: totalRelationships ? (100 * (totals?.suppliers ?? 0) / totalRelationships) + "%" : "0%" }} /></div></div></div>
-              <p className="surface-note">{totalRelationships === 0 ? "Your network is ready for its first record." : "Calculated from saved customer and supplier records."}</p>
+              <p className="surface-note">{!totals ? (dashboardLoading ? "Loading network data…" : "Network data is unavailable.") : totalRelationships === 0 ? "Your network is ready for its first record." : "Calculated from saved customer and supplier records."}</p>
             </section>
             <section className="surface quick-panel"><div className="surface-top"><div><p className="section-overline">QUICK ACTIONS</p><h2>Keep work moving</h2></div></div>
               <button className="quick-action" onClick={() => navigate("customers")}><div className="quick-icon"><Icon name="users" /></div><div><strong>Customer directory</strong><small>Search and manage customer records</small></div><Icon name="arrow" size={17} /></button>
@@ -282,34 +332,36 @@ export function Workspace() {
           <div className="page-heading"><div><p className="section-overline">RELATIONSHIP MANAGEMENT <span>/</span> {title.toUpperCase()}</p>
             <h1>{title}<span className="heading-period">.</span></h1>
             <p className="muted">Keep every {view === "customers" ? "customer" : "supplier"} relationship organized and accessible.</p></div>
-            <button className="primary" onClick={openCreate}><Icon name="plus" size={17} /> Add {view === "customers" ? "customer" : "supplier"}</button></div>
+            <button className="primary" disabled={!directoryWritable} onClick={openCreate}><Icon name="plus" size={17} /> Add {view === "customers" ? "customer" : "supplier"}</button></div>
           <div className="directory-stats"><div className="directory-icon"><Icon name={view === "customers" ? "users" : "building"} size={23} /></div>
             <div><p className="section-overline">DIRECTORY TOTAL</p><strong>{directoryTotal === undefined || directoryTotal === null ? "—" : directoryTotal.toLocaleString()}</strong></div>
             <span className="directory-tip">Saved records</span></div>
-          {error && <ErrorNotice message={error} retry={() => void load()} />}
+          {directoryError && <ErrorNotice issue={directoryError} retry={refreshDirectory} />}
+          {writeError && <p className="notice error" role="alert">{writeError} Reopen this directory later to check again.</p>}
+          {error && <p className="notice error" role="alert">{error}</p>}
           <section className="surface directory-panel" aria-label={title + " directory"}>
-            <div className="table-toolbar"><div><h2>{title} directory</h2><p className="muted">{loading ? "Loading records…" : data.totalElements.toLocaleString() + " matching records"}</p></div>
+            <div className="table-toolbar"><div><h2>{title} directory</h2><p className="muted">{loading ? "Loading records…" : data ? data.totalElements.toLocaleString() + " matching records" : "Records unavailable"}</p></div>
               <div className="toolbar-actions">
-                <form className="search-form" onSubmit={event => { event.preventDefault(); if (search === query && page === 0) void load(); else { setPage(0); setSearch(query); } }}>
+                <form className="search-form" onSubmit={event => { event.preventDefault(); const term = query.trim(); if (search !== term || page !== 0) { setPage(0); setSearch(term); } }}>
                   <Icon name="search" size={17} /><input aria-label={"Search " + title.toLowerCase()} placeholder="Search by name" value={query} onChange={event => setQuery(event.target.value)} />
                   <button type="submit">Search</button></form>
-                <button className="outline-icon" aria-label="Refresh records" title="Refresh records" disabled={loading} onClick={() => void load()}><Icon name="refresh" size={17} /></button>
-                <button className="outline-icon" aria-label="Export current page to CSV" title="Export current page to CSV" disabled={loading || data.content.length === 0} onClick={exportPage}><Icon name="download" size={17} /></button>
+                <button className="outline-icon" aria-label="Refresh records" title="Refresh records" disabled={loading} onClick={refreshDirectory}><Icon name="refresh" size={17} /></button>
+                <button className="outline-icon" aria-label="Export current page to CSV" title="Export current page to CSV" disabled={!directoryAvailable || !data?.content.length} onClick={exportPage}><Icon name="download" size={17} /></button>
               </div></div>
             <div className="table-wrap" aria-busy={loading}><table><thead><tr><th>NAME</th><th>EMAIL</th><th>PHONE</th><th>COUNTRY</th><th>ADDED</th><th>ACTION</th></tr></thead>
-              <tbody>{!loading && data.content.map(item => <tr key={item.id}><td><div className="person"><span className="initial">{item.name.slice(0, 1).toUpperCase()}</span><strong>{item.name}</strong></div></td>
+              <tbody>{!loading && data?.content.map(item => <tr key={item.id}><td><div className="person"><span className="initial">{item.name.slice(0, 1).toUpperCase()}</span><strong>{item.name}</strong></div></td>
                 <td>{item.email ? <a className="data-link" href={"mailto:" + item.email}>{item.email}</a> : "—"}</td>
                 <td>{item.phone || "—"}</td><td>{item.country || "—"}</td>
-                <td>{new Date(item.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                <td><button className="edit-button" onClick={() => openEdit(item)}><Icon name="edit" size={14} /> Edit</button></td></tr>)}</tbody></table>
+                <td>{Number.isNaN(Date.parse(item.createdAt)) ? "—" : new Date(item.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                <td><button className="edit-button" disabled={!directoryWritable} onClick={() => openEdit(item)}><Icon name="edit" size={14} /> Edit</button></td></tr>)}</tbody></table>
               {loading && <div className="table-state" role="status"><span className="loading-spinner" /> Loading records…</div>}
-              {!loading && !error && data.content.length === 0 && <div className="empty"><div className="empty-illustration"><Icon name={view === "customers" ? "users" : "building"} size={30} /></div>
+              {!loading && data && data.content.length === 0 && <div className="empty"><div className="empty-illustration"><Icon name={view === "customers" ? "users" : "building"} size={30} /></div>
                 <h3>{search ? "No matching records" : "Your directory starts here"}</h3>
                 <p>{search ? "Try another name or clear your search." : "Add your first " + (view === "customers" ? "customer" : "supplier") + " to begin building your network."}</p>
-                {!search && <button className="primary" onClick={openCreate}><Icon name="plus" size={16} /> Add first record</button>}</div>}</div>
-            <div className="pagination"><span>Page {page + 1} of {Math.max(1, data.totalPages)}</span><div className="pager-buttons">
-              <button disabled={page === 0 || loading} onClick={() => setPage(current => Math.max(0, current - 1))}>Previous</button>
-              <button disabled={page + 1 >= data.totalPages || loading} onClick={() => setPage(current => current + 1)}>Next</button></div></div>
+                {!search && <button className="primary" disabled={!directoryWritable} onClick={openCreate}><Icon name="plus" size={16} /> Add first record</button>}</div>}</div>
+            {data && !loading && <div className="pagination"><span>Page {page + 1} of {Math.max(1, data.totalPages)}</span><div className="pager-buttons">
+              <button disabled={page === 0} onClick={() => setPage(current => Math.max(0, current - 1))}>Previous</button>
+              <button disabled={page + 1 >= data.totalPages} onClick={() => setPage(current => current + 1)}>Next</button></div></div>}
           </section>
           <p className="directory-footnote">CSV exports include the visible page only. Changes are saved through the private SHL API.</p>
         </>}
@@ -317,7 +369,7 @@ export function Workspace() {
     </main>
 
     {formOpen && <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !saving) setFormOpen(false); }}>
-      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="form-title">
+      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="form-title" onKeyDown={keepFocusInDialog}>
         <div className="modal-head"><div><p className="section-overline">{editing ? "UPDATE RECORD" : "NEW RELATIONSHIP"}</p><h2 id="form-title">{editing ? "Edit" : "Add"} {view === "customers" ? "customer" : "supplier"}</h2>
           <p className="muted">Keep your contact information up to date.</p></div>
           <button className="close" type="button" disabled={saving} onClick={() => setFormOpen(false)} aria-label="Close dialog"><Icon name="close" /></button></div>
@@ -328,7 +380,7 @@ export function Workspace() {
           <label>Country<input name="country" maxLength={100} defaultValue={editing?.country ?? ""} placeholder="Country" /></label>
           {formError && <p className="notice error" role="alert">{formError}</p>}
           <div className="form-actions"><button type="button" className="secondary" disabled={saving} onClick={() => setFormOpen(false)}>Cancel</button>
-            <button className="primary" type="submit" disabled={saving}>{saving ? "Saving…" : editing ? "Save changes" : "Create record"} <Icon name="arrow" size={15} /></button></div>
+            <button className="primary" type="submit" disabled={saving || !directoryWritable}>{saving ? "Saving…" : editing ? "Save changes" : "Create record"} <Icon name="arrow" size={15} /></button></div>
         </form>
       </section></div>}
   </div>;
@@ -339,6 +391,6 @@ function Metric({ label, value, icon, detail, loading }: { label: string; value:
     <strong aria-live="polite">{loading || value === null ? "—" : value.toLocaleString()}</strong>
     <div className="metric-footer"><span className="metric-foot-dot" /> {detail}</div></article>;
 }
-function ErrorNotice({ message, retry }: { message: string; retry: () => void }) {
-  return <div className="notice error" role="alert">{message}<button onClick={retry}>Retry</button></div>;
+function ErrorNotice({ issue, retry }: { issue: ServiceIssue; retry: () => void }) {
+  return <div className="notice error" role="alert"><span><strong>{issue.title}</strong><br />{issue.message}</span><button type="button" onClick={retry}>Retry</button></div>;
 }

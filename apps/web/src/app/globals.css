@@ -15,7 +15,7 @@ body { margin: 0; background: var(--canvas); color: var(--ink); font-family: Int
 button, input { font: inherit; }
 button { cursor: pointer; }
 button:disabled { opacity: .48; cursor: not-allowed; }
-button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #56bfae; outline-offset: 3px; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #56bfae; outline-offset: 3px; }
 .shell { min-height: 100vh; display: flex; }
 .sidebar { width: 264px; flex: none; background: linear-gradient(170deg, #102440 0%, #0b1930 58%, #081524 100%); color: #dbe8f8; padding: 29px 15px 18px; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
 .brand-row { display: flex; align-items: center; gap: 12px; padding: 0 12px; }
@@ -168,6 +168,7 @@ td:last-child, th:last-child { padding-right: 27px; }
 .pager-buttons button:hover:not(:disabled), .secondary:hover:not(:disabled) { background: #f2f8f7; border-color: #b5ded3; }
 .directory-footnote { color: #9ba6b4; font-size: 11px; margin: 19px 0 0; }
 .notice { display: flex; justify-content: space-between; gap: 12px; padding: 13px 17px; border-radius: 9px; background: #fff4f4; border: 1px solid #fadbdc; margin: 18px 0; font-size: 12px; }
+.notice > span { min-width: 0; line-height: 1.5; }
 .error { color: #b84250; }
 .notice button { background: none; border: 0; color: #a8263b; font-size: 12px; font-weight: 800; }
 .modal-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; overflow-y: auto; padding: 20px; background: #071b30ad; backdrop-filter: blur(5px); }
@@ -223,9 +224,9 @@ td:last-child, th:last-child { padding-right: 27px; }
   .brand-emblem { height: 36px; width: 36px; font-size: 20px; }
   .brand-mark { font-size: 22px; }
   .workspace-pill { position: absolute; right: 15px; top: 5px; padding: 7px 8px; font-size: 8px; }
-  .sidebar nav { display: flex; align-items: center; gap: 6px; margin-top: 17px; }
+  .sidebar nav { display: flex; align-items: center; gap: 6px; margin-top: 17px; max-width: 100%; overflow-x: auto; }
   .nav-heading, .future-heading, .nav-planned, .sidebar-bottom { display: none; }
-  .nav-item { width: auto; padding: 10px 12px; font-size: 11px; margin: 0; gap: 7px; }
+  .nav-item { width: auto; flex: 0 0 auto; white-space: nowrap; padding: 10px 12px; font-size: 11px; margin: 0; gap: 7px; }
   .nav-item svg { height: 15px; width: 15px; }
   .active-indicator { display: none; }
   .topbar { padding: 0 18px; height: 52px; }

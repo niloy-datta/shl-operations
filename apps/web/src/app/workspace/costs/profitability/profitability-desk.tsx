@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import {useRouter} from "next/navigation";
 type Row=Record<string,unknown>;
 type User={username:string;role:string};
@@ -14,26 +14,36 @@ export function ProfitabilityDesk(){
   const [page,setPage]=useState(0),[term,setTerm]=useState(""),[query,setQuery]=useState("");
   const [result,setResult]=useState<Page>({content:[],totalElements:0,totalPages:0});
   const [loading,setLoading]=useState(true),[error,setError]=useState("");
+  const [ready,setReady]=useState(false);
+  const pending=useRef<AbortController|null>(null);
   const load=useCallback(async()=>{
-    setLoading(true);setError("");
+    pending.current?.abort();const controller=new AbortController();pending.current=controller;
+    setLoading(true);setError("");setReady(false);
     try{
-      const auth=await fetch("/api/data/me",{cache:"no-store"});
+      const auth=await fetch("/api/data/me",{cache:"no-store",signal:controller.signal});
       if(auth.status===401){router.replace("/login");return;}
+      if(auth.status===404)throw new Error("Service not connected yet. Account access is unavailable.");
       if(!auth.ok)throw new Error("Unable to verify account.");
-      const profile=await auth.json() as User;setMe(profile);
+      const profile=await auth.json() as User;if(controller.signal.aborted)return;setMe(profile);
       if(!["ADMIN","MANAGEMENT","FINANCE"].includes(profile.role)){
         setError("Restricted to authorized financial users.");return;
       }
       const res=await fetch("/api/costs/profitability?"+new URLSearchParams({
         page:String(page),size:"15",q:term
-      }),{cache:"no-store"});
+      }),{cache:"no-store",signal:controller.signal});
+      if(res.status===401){router.replace("/login");return;}
+      if(res.status===403)throw new Error("Restricted to authorized financial users.");
+      if(res.status===404)throw new Error("Service not connected yet. Profitability reports are unavailable.");
+      if(res.status>=500)throw new Error("The profitability service encountered a server error.");
       if(!res.ok)throw new Error("Unable to load profitability estimates.");
-      setResult(await res.json() as Page);
-    }catch(e){setError(e instanceof Error?e.message:"Unable to load reports.");}
-    finally{setLoading(false);}
+      let data:Page;try{data=await res.json() as Page;}catch{throw new Error("The report service returned invalid JSON.");}
+      if(!data||!Array.isArray(data.content)||typeof data.totalElements!=="number"||typeof data.totalPages!=="number")throw new Error("The report service returned data in an unexpected format.");
+      if(!controller.signal.aborted){setResult(data);setReady(true);}
+    }catch(e){if(!controller.signal.aborted)setError(e instanceof TypeError?"The report service could not be reached.":e instanceof Error?e.message:"Unable to load reports.");}
+    finally{if(!controller.signal.aborted)setLoading(false);}
   },[page,term,router]);
   useEffect(()=>{const frame=requestAnimationFrame(()=>{void load();});
-    return()=>cancelAnimationFrame(frame);},[load]);
+    return()=>{cancelAnimationFrame(frame);pending.current?.abort();};},[load]);
   return <div className="en-app">
     <aside className="en-sidebar"><Link className="en-brand" href="/workspace">
       <span className="en-logo">S</span><span><strong>SHL<span>.</span></strong><small>INTERNATIONAL</small></span>
@@ -62,8 +72,8 @@ export function ProfitabilityDesk(){
           <span className="gx-kicker">EVIDENCE-LED NUMBERS</span>
           <h2>No invented profits. No mixed currencies.</h2>
           <p>Estimates appear only when issued purchase-order quantity matches the approved customer quote and no draft expense remains.</p>
-        </div><div className="gx-metric"><strong>{result.totalElements}</strong><small>PROJECTS</small></div></section>
-        {error&&<div className="en-alert" role="alert">{error}</div>}
+        </div><div className="gx-metric"><strong>{ready&&!loading?result.totalElements:"—"}</strong><small>PROJECTS</small></div></section>
+        {error&&<div className="en-alert" role="alert">{error}<button type="button" onClick={()=>void load()}>Retry</button></div>}
         {me&&["ADMIN","MANAGEMENT","FINANCE"].includes(me.role)&&<section className="en-panel gx-list">
           <div className="gx-toolbar"><div><strong>Project-level financial snapshots</strong>
             <span>Order contract value minus committed purchase cost and approved expenses</span></div>
@@ -74,7 +84,7 @@ export function ProfitabilityDesk(){
           <div className="gx-table-wrap"><table className="gx-table"><thead><tr>
             <th>PROJECT</th><th>CUSTOMER</th><th>ORDER VALUE</th><th>PURCHASE</th><th>APPROVED EXPENSE</th>
             <th>CONTRIBUTION ESTIMATE</th></tr></thead>
-            <tbody>{result.content.map(row=><tr key={String(row.id)}>
+            <tbody>{ready&&!loading&&result.content.map(row=><tr key={String(row.id)}>
               <td><strong>{String(row.reference)}</strong><div className="cx-row-subtitle">{String(row.title)}</div></td>
               <td>{String(row.customer_name)}</td>
               <td>{row.order_value===null?"—":String(row.currency)+" "+currency(row.order_value)}</td>
@@ -84,14 +94,14 @@ export function ProfitabilityDesk(){
                 <span className="gx-stage gx-on_hold">INSUFFICIENT DATA</span>:
                 <strong>{String(row.currency)+" "+currency(row.provisional_contribution)}</strong>}</td>
             </tr>)}</tbody></table>
-            {!loading&&result.content.length===0&&<div className="gx-empty">
+            {!loading&&ready&&result.content.length===0&&<div className="gx-empty">
               <strong>No matching projects</strong><p>Only saved customer projects appear here.</p></div>}
             {loading&&<p className="gx-loading">Loading project evidence…</p>}
           </div>
-          <div className="gx-pagination"><span>Separate source currencies · no FX conversion</span><div>
+          {ready&&!loading&&<div className="gx-pagination"><span>Separate source currencies · no FX conversion</span><div>
             <button onClick={()=>setPage(p=>p-1)} disabled={page===0}>← Previous</button>
             <button onClick={()=>setPage(p=>p+1)} disabled={page+1>=result.totalPages}>Next →</button>
-          </div></div>
+          </div></div>}
         </section>}
         <p className="cx-disclaimer">Important: This is a provisional commercial contribution, not recognized revenue,
           booked profit, cash flow, full cost accounting, tax-adjusted profit, or commission-adjusted margin.

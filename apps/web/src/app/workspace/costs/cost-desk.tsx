@@ -21,11 +21,13 @@ async function get<T>(url:string,opts?:RequestInit):Promise<T>{
   if(response.status===401){window.location.assign("/login");throw new Error("Session expired.");}
   if(!response.ok){
     if(response.status===403)throw new Error("This information requires explicit authorization.");
+    if(response.status===404)throw new Error("Service not connected yet. Financial records are unavailable.");
+    if(response.status>=500)throw new Error("The service encountered a server error. Please try again later.");
     if(response.status===409)throw new Error("Approval conflict: check creator identity and current status.");
     if(response.status===400)throw new Error("Invalid input or linked record.");
     throw new Error("Unable to complete request.");
   }
-  return response.json() as Promise<T>;
+  try{return await response.json() as T;}catch{throw new Error("The service returned invalid JSON.");}
 }
 function Field({label,name,type="text",children,required=false}:{
   label:string;name:string;type?:string;children?:ReactNode;required?:boolean
@@ -41,6 +43,8 @@ export function CostDesk({module}:{module:Module}){
   const [authorized,setAuthorized]=useState<boolean|null>(null);
   const [page,setPage]=useState(0),[term,setTerm]=useState(""),[q,setQ]=useState("");
   const [tick,setTick]=useState(0),[loading,setLoading]=useState(true);
+  const [accessRevision,setAccessRevision]=useState(0),[recordsReady,setRecordsReady]=useState(false);
+  const [accessError,setAccessError]=useState(""),[summaryError,setSummaryError]=useState("");
   const [records,setRecords]=useState<Page>({content:[],totalElements:0,totalPages:0});
   const [projects,setProjects]=useState<Row[]>([]);
   const [summary,setSummary]=useState<Row[]>([]);
@@ -51,27 +55,36 @@ export function CostDesk({module}:{module:Module}){
   const refresh=useCallback(()=>setTick(x=>x+1),[]);
   useEffect(()=>{
     let alive=true;
-    Promise.all([
+    setAccessError("");
+    Promise.allSettled([
       get<User>("/api/data/me"),
       get<{allowed:boolean}>(api+"commissions/access")
-    ]).then(([u,a])=>{if(alive){setMe(u);setAuthorized(a.allowed);}})
-      .catch(e=>{if(alive)setError(e instanceof Error?e.message:"Cannot check access.");});
+    ]).then(([u,a])=>{if(alive){
+      if(u.status==="fulfilled")setMe(u.value);else {setMe(null);setAccessError(u.reason instanceof Error?u.reason.message:"Cannot check account access.");}
+      if(a.status==="fulfilled")setAuthorized(a.value.allowed);else {setAuthorized(null);if(module==="commissions")setAccessError(a.reason instanceof Error?a.reason.message:"Cannot check commission access.");}
+    }});
     return()=>{alive=false;};
-  },[]);
+  },[accessRevision,module]);
   const permitted=module==="commissions"?authorized===true:
     !!me&&["ADMIN","MANAGEMENT","FINANCE"].includes(me.role);
   useEffect(()=>{
-    if(!me||authorized===null||!permitted)return;
+    if(!me||(module==="commissions"&&authorized===null)||!permitted)return;
     let alive=true;
-    const frame=requestAnimationFrame(()=>setLoading(true));
-    Promise.all([
-      get<Page>(api+module+"?"+new URLSearchParams({page:String(page),size:"15",q:term})),
-      module==="expenses"?get<Row[]>(api+"expenses/summary"):Promise.resolve([])
-    ]).then(([r,s])=>{if(alive){setRecords(r);setSummary(s);setError("");}})
+    setLoading(true);setRecordsReady(false);setError("");
+    get<Page>(api+module+"?"+new URLSearchParams({page:String(page),size:"15",q:term}))
+      .then(r=>{if(!Array.isArray(r?.content)||typeof r.totalElements!=="number"||typeof r.totalPages!=="number")throw new Error("The service returned data in an unexpected format.");if(alive){setRecords(r);setRecordsReady(true);}})
       .catch(e=>{if(alive)setError(e instanceof Error?e.message:"Unable to load finance records.");})
       .finally(()=>{if(alive)setLoading(false);});
-    return()=>{alive=false;cancelAnimationFrame(frame);};
+    return()=>{alive=false;};
   },[module,me,authorized,permitted,page,term,tick]);
+
+  useEffect(()=>{
+    if(module!=="expenses"||!me||!permitted)return;
+    let alive=true;setSummary([]);setSummaryError("");
+    get<Row[]>(api+"expenses/summary").then(s=>{if(!Array.isArray(s))throw new Error("The summary returned data in an unexpected format.");if(alive)setSummary(s);})
+      .catch(e=>{if(alive)setSummaryError(e instanceof Error?e.message:"Expense summary unavailable.");});
+    return()=>{alive=false;};
+  },[module,me,permitted,tick]);
 
   async function create(){
     setError("");setModal("create");setActive(null);
@@ -154,13 +167,15 @@ export function CostDesk({module}:{module:Module}){
         <div className="en-heading">
           <div><p className="en-eyebrow">{module==="commissions"?"EXPLICITLY AUTHORIZED USERS ONLY":"CONTROLLED FINANCIAL RECORDS"}</p>
             <h1>{title[module]}<span>.</span></h1><p>{desc[module]}</p></div>
-          {permitted&&<button className="en-primary" onClick={()=>void create()}>＋ New {module==="expenses"?"expense":"commission"}</button>}
+          {permitted&&<button className="en-primary" disabled={!recordsReady||loading} onClick={()=>void create()}>＋ New {module==="expenses"?"expense":"commission"}</button>}
         </div>
         {error&&<div className="en-alert" role="alert">{error}
           <button onClick={()=>{setError("");refresh();}}>Retry</button></div>}
+        {accessError&&<div className="en-alert" role="alert">{accessError}<button onClick={()=>setAccessRevision(v=>v+1)}>Retry</button></div>}
+        {summaryError&&<div className="en-alert" role="alert">{summaryError}<button onClick={refresh}>Retry</button></div>}
         {notice&&<p className="gx-notice" role="status">{notice}</p>}
-        {(!me||authorized===null)&&!error?
-          <div className="en-panel en-loading">Verifying financial permissions…</div>:
+        {!me||(module==="commissions"&&authorized===null)?
+          !accessError?<div className="en-panel en-loading">Verifying financial permissions…</div>:null:
          !permitted?<div className="en-panel en-restricted">
           <h2>Restricted financial data</h2>
           <p>{module==="commissions"?"Your named account is not in the commission access list. Administrator access alone does not grant permission.":
@@ -170,7 +185,7 @@ export function CostDesk({module}:{module:Module}){
               <h2>{module==="commissions"?"Confidential by identity. Accountable by design.":"Know every cost. Protect every margin."}</h2>
               <p>{module==="commissions"?"Commission beneficiary details never appear in ordinary finance reports or audit history.":
                 "Track project costs by original currency. No unverified FX conversion or invented profit estimates."}</p></div>
-            <div className="gx-metric"><strong>{records.totalElements.toLocaleString()}</strong>
+            <div className="gx-metric"><strong>{recordsReady&&!loading?records.totalElements.toLocaleString():"—"}</strong>
               <small>RECORDS</small></div>
           </section>
           {module==="expenses"&&summary.length>0&&<div className="cx-summary">
@@ -181,7 +196,7 @@ export function CostDesk({module}:{module:Module}){
             </div>)}</div>}
           <section className="en-panel gx-list">
             <div className="gx-toolbar"><div><strong>{module==="expenses"?"Expense register":"Restricted commission register"}</strong>
-              <span>{records.totalElements} records · no sample financial data</span></div>
+              <span>{loading?"Loading records…":recordsReady?records.totalElements+" records · no sample financial data":"Records unavailable"}</span></div>
               <form className="gx-search" onSubmit={e=>{e.preventDefault();setPage(0);setTerm(q);}}>
                 <input aria-label="Search records" placeholder="Search reference or project" value={q} onChange={e=>setQ(e.target.value)}/>
                 <button>Search</button>
@@ -189,7 +204,7 @@ export function CostDesk({module}:{module:Module}){
             <div className="gx-table-wrap"><table className="gx-table"><thead><tr>
               {columns[module].map(([key,label])=><th key={key}>{label}</th>)}<th>DETAIL</th>
             </tr></thead><tbody>
-              {records.content.map(record=><tr key={String(record.id)}>
+              {recordsReady&&!loading&&records.content.map(record=><tr key={String(record.id)}>
                 {columns[module].map(([key])=><td key={key}>
                   {key==="status"?<span className={"gx-stage gx-"+String(record.status).toLowerCase()}>{txt(record[key])}</span>:
                    ["amount","commission_amount"].includes(key)?Number(record[key]).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):txt(record[key])}
@@ -197,12 +212,12 @@ export function CostDesk({module}:{module:Module}){
                 <td><button className="gx-open" onClick={()=>void details(record)}>Open ↗</button></td>
               </tr>)}</tbody></table>
               {loading?<p className="gx-loading">Loading protected records…</p>:
-                records.content.length===0?<p className="gx-loading">No matching records. Create one to start the audit trail.</p>:null}
+                recordsReady&&records.content.length===0?<p className="gx-loading">No matching records. Create one to start the audit trail.</p>:null}
             </div>
-            <div className="gx-pagination"><span>Showing up to 15 entries</span><div>
+            {recordsReady&&!loading&&<div className="gx-pagination"><span>Showing up to 15 entries</span><div>
               <button disabled={page===0} onClick={()=>setPage(x=>x-1)}>← Previous</button>
               <button disabled={page+1>=records.totalPages} onClick={()=>setPage(x=>x+1)}>Next →</button>
-            </div></div>
+            </div></div>}
           </section>
         </>}
       </main>

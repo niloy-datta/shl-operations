@@ -20,10 +20,12 @@ async function get<T>(path:string,init?:RequestInit):Promise<T>{
   if(result.status===401){window.location.assign("/login");throw new Error("Sign in again.");}
   if(!result.ok){
     if(result.status===403)throw new Error("Finance or management permissions are required.");
+    if(result.status===404)throw new Error("Service not connected yet. Billing data is unavailable.");
+    if(result.status>=500)throw new Error("The billing service encountered a server error. Please try again later.");
     if(result.status===409)throw new Error("Cannot proceed: check shipping completion and approval state.");
     throw new Error("Billing request failed ("+result.status+").");
   }
-  return result.json() as Promise<T>;
+  try{return await result.json() as T;}catch{throw new Error("The billing service returned invalid JSON.");}
 }
 export function BillingDesk(){
   const [me,setMe]=useState<Me|null>(null);
@@ -34,6 +36,8 @@ export function BillingDesk(){
   const [date,setDate]=useState("");
   const [reviewNotes,setReviewNotes]=useState("");
   const [loading,setLoading]=useState(true);
+  const [eligibleReady,setEligibleReady]=useState(false),[registerReady,setRegisterReady]=useState(false);
+  const [eligibleError,setEligibleError]=useState(""),[registerError,setRegisterError]=useState("");
   const [busy,setBusy]=useState(false);
   const [epoch,setEpoch]=useState(0);
   const [error,setError]=useState("");
@@ -48,14 +52,19 @@ export function BillingDesk(){
   },[]);
   useEffect(()=>{
     let mounted=true;
-    Promise.all([
-      get<Eligible[]>(base+"/eligible-orders"),
-      get<Page>(base+"?"+new URLSearchParams({page:String(page),size:"15"}))
+    const controller=new AbortController();setLoading(true);setEligibleReady(false);setRegisterReady(false);setEligibleError("");setRegisterError("");
+    Promise.allSettled([
+      get<Eligible[]>(base+"/eligible-orders",{signal:controller.signal}),
+      get<Page>(base+"?"+new URLSearchParams({page:String(page),size:"15"}),{signal:controller.signal})
     ]).then(([orders,bills])=>{
-      if(mounted){setEligible(orders);setResults(bills);setError("");}
-    }).catch(e=>{if(mounted)setError(e instanceof Error?e.message:"Unable to load register");})
+      if(!mounted)return;
+      if(orders.status==="fulfilled"&&Array.isArray(orders.value)){setEligible(orders.value);setEligibleReady(true);}
+      else setEligibleError(orders.status==="rejected"&&orders.reason instanceof Error?orders.reason.message:"The eligible orders response is invalid.");
+      if(bills.status==="fulfilled"&&Array.isArray(bills.value.content)&&typeof bills.value.totalElements==="number"&&typeof bills.value.totalPages==="number"){setResults(bills.value);setRegisterReady(true);}
+      else setRegisterError(bills.status==="rejected"&&bills.reason instanceof Error?bills.reason.message:"The billing register response is invalid.");
+    })
       .finally(()=>{if(mounted)setLoading(false);});
-    return()=>{mounted=false;};
+    return()=>{mounted=false;controller.abort();};
   },[epoch,page]);
   const reload=()=>{setLoading(true);setEpoch(x=>x+1);};
   async function action(path:string,method:"POST"|"PATCH",payload:unknown){
@@ -88,14 +97,15 @@ export function BillingDesk(){
       <div className="lb-section-heading"><h2>Eligible delivered sales orders</h2>
         <button type="button" disabled={busy} onClick={reload}>Refresh ↻</button></div>
       {error&&<p className="lb-error" role="alert">{error}</p>}
+      {eligibleError&&<p className="lb-error" role="alert">{eligibleError} <button type="button" onClick={reload}>Retry</button></p>}
       {notice&&<p className="lb-success" role="status">{notice}</p>}
       {loading&&<p>Loading source delivery evidence…</p>}
-      {!loading&&eligible.length===0&&<p className="lb-muted">
+      {!loading&&eligibleReady&&eligible.length===0&&<p className="lb-muted">
         No fully delivered line orders are available for billing review.</p>}
       <label className="lb-date">Proposed payment due date (optional)
         <input type="date" value={date} onChange={e=>setDate(e.target.value)}
           disabled={busy}/></label>
-      {eligible.map(order=><div key={order.id} className="lb-row">
+      {!loading&&eligibleReady&&eligible.map(order=><div key={order.id} className="lb-row">
         <div><strong>{order.reference} · {order.customer_name}</strong>
           <small>Approved sell total: {money(order.total_amount,order.currency)}</small></div>
         <button type="button" disabled={busy}
@@ -105,18 +115,19 @@ export function BillingDesk(){
     </section>
     <section className="lb-panel">
       <div className="lb-section-heading"><h2>Internal billing register</h2>
-        <span>{results.totalElements} records</span></div>
-      {results.content.map(b=><div className="lb-row" key={b.id}>
+        <span>{registerReady&&!loading?results.totalElements+" records":"Records unavailable"}</span></div>
+      {registerError&&<p className="lb-error" role="alert">{registerError} <button type="button" onClick={reload}>Retry</button></p>}
+      {registerReady&&!loading&&results.content.map(b=><div className="lb-row" key={b.id}>
         <div><strong>{b.reference} · {b.customer_name}</strong>
           <small>{b.status} · {b.order_reference} · {money(b.amount,b.currency)}</small></div>
         <button type="button" disabled={busy} onClick={()=>void open(b.id)}>Review →</button>
       </div>)}
-      <div className="lb-pages">
+      {registerReady&&!loading&&<div className="lb-pages">
         <button type="button" disabled={busy||page===0} onClick={()=>setPage(n=>n-1)}>Previous</button>
         <span>Page {page+1} / {Math.max(1,results.totalPages)}</span>
         <button type="button" disabled={busy||page+1>=results.totalPages}
           onClick={()=>setPage(n=>n+1)}>Next</button>
-      </div>
+      </div>}
     </section>
     {selected&&<section className="lb-panel">
       <div className="lb-section-heading"><h2>{selected.billing.reference}</h2>

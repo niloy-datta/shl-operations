@@ -15,6 +15,7 @@ export function ShipmentDocumentChecklist({shipmentId,canWrite}:{
 }){
   const [items,setItems]=useState<Item[]>([]);
   const [loading,setLoading]=useState(true);
+  const [ready,setReady]=useState(false);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
   const [revision,setRevision]=useState(0);
@@ -24,15 +25,21 @@ export function ShipmentDocumentChecklist({shipmentId,canWrite}:{
   const [note,setNote]=useState("");
   useEffect(()=>{
     let active=true;
-    fetch(base+shipmentId+"/documents",{cache:"no-store"})
+    const controller=new AbortController();setLoading(true);setReady(false);setError("");
+    fetch(base+shipmentId+"/documents",{cache:"no-store",signal:controller.signal})
       .then(async response=>{
         if(response.status===401){window.location.assign("/login");return null;}
+        if(response.status===403)throw new Error("You do not have access to the document checklist.");
+        if(response.status===404)throw new Error("Service not connected yet. The document checklist is unavailable.");
+        if(response.status>=500)throw new Error("The document service encountered a server error.");
         if(!response.ok)throw new Error("Unable to read document checklist ("+response.status+").");
-        return response.json() as Promise<Item[]>;
-      }).then(data=>{if(active&&data){setItems(data);setError("");}})
+        let data:unknown;try{data=await response.json();}catch{throw new Error("The document service returned invalid JSON.");}
+        if(!Array.isArray(data))throw new Error("The document service returned data in an unexpected format.");
+        return data as Item[];
+      }).then(data=>{if(active&&data){setItems(data);setReady(true);setError("");}})
       .catch(e=>{if(active)setError(e instanceof Error?e.message:"Unable to load checklist");})
       .finally(()=>{if(active)setLoading(false);});
-    return()=>{active=false;};
+    return()=>{active=false;controller.abort();};
   },[shipmentId,revision]);
   const reported=items.filter(item=>item.status==="REPORTED_RECEIVED").length;
   function edit(item:Item){
@@ -65,11 +72,11 @@ export function ShipmentDocumentChecklist({shipmentId,canWrite}:{
     <div className="lo-docs-head">
       <div><h4>Shipping document checklist</h4>
         <p>Manual tracking only. No uploaded files or independently verified evidence.</p></div>
-      <span>{reported} / {items.length} reported received</span>
+      <span>{ready&&!loading?`${reported} / ${items.length} reported received`:"Checklist unavailable"}</span>
     </div>
-    {error&&<p role="alert" className="lq-error">{error}</p>}
+    {error&&<p role="alert" className="lq-error">{error} <button type="button" onClick={()=>setRevision(n=>n+1)}>Retry</button></p>}
     {loading?<p className="lq-muted">Loading document requirements…</p>:
-      <div className="lo-docs-grid">{items.map(item=>
+      ready&&<div className="lo-docs-grid">{items.map(item=>
         <div className="lo-doc" key={item.kind}>
           <div className="lo-doc-top"><strong>{item.label}</strong>
             <span className={"lo-doc-status lo-doc-"+item.status.toLowerCase()}>

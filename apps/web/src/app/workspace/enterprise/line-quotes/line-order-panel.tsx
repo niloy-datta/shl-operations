@@ -21,10 +21,12 @@ async function request<T>(path:string,init?:RequestInit):Promise<T>{
   if(!response.ok){
     const payload=await response.json().catch(()=>({})) as {error?:string;detail?:string};
     if(response.status===403)throw new Error("Your staff role cannot perform this operation.");
+    if(response.status===404)throw new Error("Service not connected yet. Sales orders are unavailable.");
+    if(response.status>=500)throw new Error("The sales order service encountered a server error.");
     if(response.status===409)throw new Error("Workflow blocked. Verify approvals, dates, allocated lines and duplicate POs.");
     throw new Error(payload.detail||payload.error||"Request failed ("+response.status+")");
   }
-  return response.json() as Promise<T>;
+  try{return await response.json() as T;}catch{throw new Error("The sales order service returned invalid JSON.");}
 }
 const amount=(v:number,c:string)=>new Intl.NumberFormat("en-US",{
   minimumFractionDigits:2,maximumFractionDigits:2
@@ -38,6 +40,7 @@ export function LineOrderPanel({rfqId,quotes}:{rfqId:string;quotes:Quote[]}){
   const [revision,setRevision]=useState(0);
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(true);
+  const [ordersReady,setOrdersReady]=useState(false);
   const [message,setMessage]=useState("");
   const [notice,setNotice]=useState("");
   const reload=useCallback(()=>setRevision(x=>x+1),[]);
@@ -51,11 +54,12 @@ export function LineOrderPanel({rfqId,quotes}:{rfqId:string;quotes:Quote[]}){
   },[]);
   useEffect(()=>{
     let alive=true;
-    request<Page>(prefix+"?"+new URLSearchParams({rfqId,size:"50"}))
-      .then(data=>{if(alive){setOrders(data.content);setMessage("");}})
+    const controller=new AbortController();setLoading(true);setOrdersReady(false);
+    request<Page>(prefix+"?"+new URLSearchParams({rfqId,size:"50"}),{signal:controller.signal})
+      .then(data=>{if(!Array.isArray(data?.content))throw new Error("The orders service returned data in an unexpected format.");if(alive){setOrders(data.content);setOrdersReady(true);setMessage("");}})
       .catch(e=>{if(alive)setMessage(e instanceof Error?e.message:"Failed to load orders");})
       .finally(()=>{if(alive)setLoading(false);});
-    return()=>{alive=false;};
+    return()=>{alive=false;controller.abort();};
   },[rfqId,revision]);
 
   async function view(id:string){
@@ -97,20 +101,20 @@ export function LineOrderPanel({rfqId,quotes}:{rfqId:string;quotes:Quote[]}){
       Each supplier receives its own draft PO. No shipment, invoice or bank transaction is created.</p>
     {message&&<div className="lq-error" role="alert">{message}</div>}
     {notice&&<p className="lo-notice" role="status">{notice}</p>}
-    {approved&&canCreate&&orders.length===0&&<button type="button"
+    {ordersReady&&approved&&canCreate&&orders.length===0&&<button type="button"
       className="lq-action" disabled={busy||loading}
       onClick={()=>void mutate("", "POST",{quoteId:approved.id})}>
       {busy?"Creating…":"Create sales order from approved quote →"}
     </button>}
-    {!approved&&orders.length===0&&!loading&&<p className="lq-muted">
+    {ordersReady&&!approved&&orders.length===0&&!loading&&<p className="lq-muted">
       An independently approved quotation is required before sales order creation.</p>}
     {loading&&<p className="lq-muted">Loading line orders…</p>}
-    {orders.map(o=><div className="lo-order" key={o.id}>
+    {ordersReady&&!loading&&orders.map(o=><div className="lo-order" key={o.id}>
       <div><strong>{o.reference}</strong><small>{o.status} · {amount(o.total_amount,o.currency)}
         {" · "}Created by {o.created_by}</small></div>
       <button type="button" disabled={busy} onClick={()=>void view(o.id)}>Open workflow →</button>
     </div>)}
-    {active&&<div className="lo-details">
+    {ordersReady&&!loading&&active&&<div className="lo-details">
       <header><h3>{active.order.reference}</h3><span className="lq-status">{active.order.status}</span></header>
       <div className="lq-table-wrap"><table className="lq-table">
         <thead><tr><th>PRODUCT</th><th>SUPPLIER</th><th>QUANTITY</th><th>SELL TOTAL</th></tr></thead>

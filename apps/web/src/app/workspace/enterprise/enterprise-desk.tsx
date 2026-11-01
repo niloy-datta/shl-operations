@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 type Module = "quotes" | "orders" | "purchase-orders" | "shipments" | "invoices" | "tasks" | "staff" | "audit";
@@ -102,11 +102,13 @@ async function api<T>(path: string, options?: RequestInit): Promise<T> {
   if (!res.ok) {
     const body=await res.json().catch(()=>({}));
     if (res.status===403) throw new Error("Your account is not permitted to perform this action.");
+    if (res.status===404) throw new Error("Service not connected yet. These records are unavailable.");
+    if (res.status>=500) throw new Error("The service encountered a server error. Please try again later.");
     if (res.status===409) throw new Error("Business rule conflict. Check the record status, links or duplicates.");
     if (res.status===400) throw new Error("Please check the entered values and linked records.");
     throw new Error(typeof body.error==="string" ? body.error : "Request failed ("+res.status+").");
   }
-  return res.json() as Promise<T>;
+  try { return await res.json() as T; } catch { throw new Error("The service returned invalid JSON."); }
 }
 const send = <T,>(path:string, method:"POST"|"PATCH", payload:Row) => api<T>(path,{
   method,headers:{"content-type":"application/json"},body:JSON.stringify(payload)
@@ -173,6 +175,9 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
   const [query,setQuery]=useState("");
   const [term,setTerm]=useState("");
   const [tick,setTick]=useState(0);
+  const [identityRevision,setIdentityRevision]=useState(0);
+  const [listReady,setListReady]=useState(false);
+  const [summaryError,setSummaryError]=useState("");
   const [list,setList]=useState<Page>({content:[],totalElements:0,totalPages:0});
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
@@ -180,6 +185,9 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
   const [modal,setModal]=useState<"create"|"payment"|"access"|"details"|null>(null);
   const [active,setActive]=useState<Row|null>(null);
   const [refs,setRefs]=useState<Record<string,Row[]>>({});
+  const [refsReady,setRefsReady]=useState(false),[refsError,setRefsError]=useState("");
+  const lookupController=useRef<AbortController|null>(null),offerController=useRef<AbortController|null>(null);
+  useEffect(()=>()=>{lookupController.current?.abort();offerController.current?.abort();},[]);
   const [chosenOrder,setChosenOrder]=useState("");
   const [invoiceType,setInvoiceType]=useState("RECEIVABLE");
   const [busy,setBusy]=useState(false);
@@ -189,26 +197,32 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
 
   useEffect(()=>{
     let live=true;
-    api<User>("/api/data/me").then(u=>{if(live)setUser(u);}).catch(e=>{if(live)setError(String(e));});
+    api<User>("/api/data/me").then(u=>{if(live){setUser(u);setError("");}}).catch(e=>{if(live)setError(e instanceof Error?e.message:"Unable to check access.");});
     return ()=>{live=false;};
-  },[]);
+  },[identityRevision]);
 
   useEffect(()=>{
     if (!user || !config.roles.includes(user.role)) return;
     let live=true;
-    const frame=requestAnimationFrame(()=>setLoading(true));
+    setLoading(true); setListReady(false); setError("");
     const qp=new URLSearchParams({page:String(page),size:"15"});
     if(config.search) qp.set("q",term);
-    Promise.all([
-      api<Page>(config.endpoint+"?"+qp.toString()),
-      currentModule==="invoices"?api<Row>("finance/summary"):Promise.resolve(null)
-    ]).then(([items,stats])=>{
+    api<Page>(config.endpoint+"?"+qp.toString()).then(items=>{
+      if(!Array.isArray(items?.content) || typeof items.totalElements!=="number" || typeof items.totalPages!=="number")throw new Error("The service returned data in an unexpected format.");
       if(!live)return;
-      setList(items);setSummary(stats);setError("");
+      setList(items);setListReady(true);
     }).catch(e=>{if(live)setError(e instanceof Error?e.message:"Unable to load records");})
       .finally(()=>{if(live)setLoading(false);});
-    return ()=>{live=false;cancelAnimationFrame(frame);};
+    return ()=>{live=false;};
   },[user,config,currentModule,page,term,tick]);
+
+  useEffect(()=>{
+    if(!user || !config.roles.includes(user.role) || currentModule!=="invoices")return;
+    let live=true; setSummary(null); setSummaryError("");
+    api<Row>("finance/summary").then(value=>{if(live)setSummary(value);})
+      .catch(e=>{if(live)setSummaryError(e instanceof Error?e.message:"Finance summary unavailable.");});
+    return()=>{live=false;};
+  },[user,config,currentModule,tick]);
 
   async function logout() {
     await fetch("/api/auth/logout",{method:"POST"});
@@ -216,7 +230,9 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
     router.refresh();
   }
   async function openCreate() {
-    setModal("create");setActive(null);setError("");setChosenOrder("");setInvoiceType("RECEIVABLE");
+    lookupController.current?.abort();offerController.current?.abort();
+    const controller=new AbortController();lookupController.current=controller;
+    setModal("create");setActive(null);setError("");setRefsError("");setRefsReady(false);setRefs({});setChosenOrder("");setInvoiceType("RECEIVABLE");
     const requirements:Record<Module,string[]> = {
       quotes:["rfqs"],orders:["quotes"],"purchase-orders":["orders"],shipments:["orders","purchase-orders"],
       invoices:["orders","purchase-orders"],tasks:["staff","rfqs","orders","shipments"],staff:[],audit:[]
@@ -228,22 +244,31 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
     };
     try {
       const keys=requirements[currentModule];
-      const results=await Promise.all(keys.map(async key=>{
-        const response=await api<Page|Row[]>(requests[key]);
-        return [key,Array.isArray(response)?response:response.content] as const;
+      const results=await Promise.allSettled(keys.map(async key=>{
+        const response=await api<Page|Row[]>(requests[key],{signal:controller.signal});
+        const rows=Array.isArray(response)?response:response.content;
+        if(!Array.isArray(rows))throw new Error("A linked service returned invalid data.");
+        return [key,rows] as const;
       }));
-      setRefs(Object.fromEntries(results));
-    } catch(e) {setError(e instanceof Error?e.message:"Cannot load linked records");}
+      if(controller.signal.aborted)return;
+      setRefs(Object.fromEntries(results.filter((result):result is PromiseFulfilledResult<readonly [string,Row[]]>=>result.status==="fulfilled").map(result=>result.value)));
+      if(results.some(result=>result.status==="rejected"))setRefsError("A required linked service is unavailable. Close and retry before saving.");
+      else setRefsReady(true);
+    } catch(e) {if(!controller.signal.aborted)setRefsError(e instanceof Error?e.message:"Cannot load linked records");}
   }
   async function selectOrder(id:string) {
+    offerController.current?.abort();
     setChosenOrder(id);
     if (currentModule!=="purchase-orders") return;
+    setRefs(v=>({...v,offers:[]}));
     const order=refs.orders?.find(item=>asText(item.id)===id);
-    if(!order)return;
+    if(!order){setRefsReady(true);return;}
+    const controller=new AbortController();offerController.current=controller;setRefsReady(false);setRefsError("");
     try {
-      const offers=await api<Row[]>("/api/trading/rfqs/"+order.rfq_id+"/offers");
-      setRefs(v=>({...v,offers}));
-    }catch(e){setError(e instanceof Error?e.message:"Could not load supplier offers");}
+      const offers=await api<Row[]>("/api/trading/rfqs/"+order.rfq_id+"/offers",{signal:controller.signal});
+      if(!Array.isArray(offers))throw new Error("The supplier offer service returned invalid data.");
+      if(!controller.signal.aborted){setRefs(v=>({...v,offers}));setRefsReady(true);}
+    }catch(e){if(!controller.signal.aborted)setRefsError(e instanceof Error?e.message:"Could not load supplier offers");}
   }
   async function showDetails(row:Row) {
     setActive(row);setModal("details");setDetail([]);
@@ -418,10 +443,10 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
         <div className="en-heading"><div><p className="en-eyebrow">SHL INTERNATIONAL <span>/</span> ENTERPRISE WORKFLOWS</p>
           <h1>{config.name}<span>.</span></h1><p>{config.subtitle}</p></div>
           {allowed && canCreate && config.create &&
-            <button className="en-primary" onClick={()=>void openCreate()}><span>＋</span> {config.create}</button>}</div>
-        {!user && !error ? <div className="en-panel en-loading">Checking workspace permissions…</div> :
+            <button className="en-primary" disabled={!listReady || loading} onClick={()=>void openCreate()}><span>＋</span> {config.create}</button>}</div>
+        {!user ? error ? <div className="en-alert" role="alert">{error}<button onClick={()=>{setError("");setIdentityRevision(v=>v+1);}}>Retry</button></div> : <div className="en-panel en-loading">Checking workspace permissions…</div> :
         !allowed ? <div className="en-panel en-restricted"><span>◇</span><h2>Access restricted</h2>
-          <p>Your account does not have access to this currentModule. Contact an administrator if your responsibilities require it.</p>
+          <p>Your account does not have access to this module. Contact an administrator if your responsibilities require it.</p>
           <Link href="/workspace">Return to dashboard →</Link></div> :
         <>
           <div className="en-intro">
@@ -431,8 +456,9 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
             <div className="en-orb" aria-hidden="true"><div><strong>SHL</strong><small>OPERATIONS</small></div></div>
           </div>
           {error && <div className="en-alert" role="alert">{error}<button onClick={()=>{setError("");refresh();}}>Retry</button></div>}
+          {summaryError && <div className="en-alert" role="alert">{summaryError}<button onClick={refresh}>Retry</button></div>}
           {notice && <div className="en-success" role="status">✓ {notice}<button onClick={()=>setNotice("")} aria-label="Dismiss notice">×</button></div>}
-          <div className="en-metrics"><div className="en-metric"><span>RECORDS IN MODULE</span><strong>{loading?"—":total.toLocaleString()}</strong><small>From secure database</small></div>
+          <div className="en-metrics"><div className="en-metric"><span>RECORDS IN MODULE</span><strong>{loading||!listReady?"—":total.toLocaleString()}</strong><small>From secure database</small></div>
             <div className="en-metric"><span>WORKFLOW</span><strong className="en-metric-label">Linked</strong><small>All writes are validated by the API</small></div>
             <div className="en-metric"><span>ACCESS LEVEL</span><strong className="en-metric-label">{user?.role}</strong><small>Server-enforced permissions</small></div></div>
           {currentModule==="invoices" && summary && <div className="en-finance-summary">
@@ -442,14 +468,14 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
                 ((summary[type] as Row[])??[]).map((r,i)=><span key={i}>{asText(r.currency)} · {pretty(r.remaining,"amount")} outstanding</span>)}</div>)}
           </div>}
           <section className="en-panel en-directory">
-            <div className="en-panel-header"><div><p className="en-eyebrow">OPERATIONS RECORDS</p><h2>{config.name} directory</h2><small>{loading?"Loading…":total+" saved records"}</small></div>
+            <div className="en-panel-header"><div><p className="en-eyebrow">OPERATIONS RECORDS</p><h2>{config.name} directory</h2><small>{loading?"Loading…":listReady?total+" saved records":"Records unavailable"}</small></div>
               <div className="en-tools">
                 {config.search&&<form onSubmit={e=>{e.preventDefault();setPage(0);setTerm(query);}}>
                   <span>⌕</span><input value={query} onChange={e=>setQuery(e.target.value)} aria-label="Search records" placeholder="Search reference or name"/><button>Find</button></form>}
                 <button className="en-tool-icon" title="Refresh" aria-label="Refresh" onClick={refresh}>↻</button>
               </div></div>
             <div className="en-table-scroll"><table><thead><tr>{config.columns.map(col=><th key={col.key}>{col.label}</th>)}<th>ACTIONS</th></tr></thead>
-              <tbody>{!loading && list.content.map((record,index)=><tr key={String(record.id??index)}>
+              <tbody>{!loading && listReady && list.content.map((record,index)=><tr key={String(record.id??index)}>
                 {config.columns.map(col=><td key={col.key}>{col.key==="status"||col.key==="priority"||col.key==="invoice_type"?
                   <RowBadge value={record[col.key]}/>:
                   <span className={["reference","title","username"].includes(col.key)?"en-strong":""}>{pretty(record[col.key],col.key)}</span>}</td>)}
@@ -458,13 +484,13 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
                   {currentModule==="invoices"&&record.status==="ISSUED"&&<button className="en-action" onClick={()=>{setActive(record);setModal("payment");}}>Pay</button>}
                 </td></tr>)}</tbody></table>
               {loading&&<div className="en-table-empty">Loading your records…</div>}
-              {!loading && list.content.length===0&&<div className="en-table-empty"><span>◇</span><h3>No records found</h3>
+              {!loading && listReady && list.content.length===0&&<div className="en-table-empty"><span>◇</span><h3>No records found</h3>
                 <p>{term?"Try a different search.":"Create your first record to begin this workflow. No demo entries are inserted."}</p></div>}
             </div>
-            <div className="en-pagination"><span>Page {page+1} / {Math.max(1,list.totalPages)}</span><div>
+            {listReady && !loading && <div className="en-pagination"><span>Page {page+1} / {Math.max(1,list.totalPages)}</span><div>
               <button disabled={page===0||loading} onClick={()=>setPage(p=>Math.max(0,p-1))}>Previous</button>
               <button disabled={page+1>=list.totalPages||loading} onClick={()=>setPage(p=>p+1)}>Next</button>
-            </div></div>
+            </div></div>}
           </section>
           <p className="en-disclaimer">Internal development system · Approval, payments and changes require authorized staff. Avoid real company records until production security review.</p>
         </>}
@@ -477,8 +503,9 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
             modal==="payment"?"Record payment":modal==="access"?"Update staff access":config.create}</h2></div>
           <button className="en-modal-close" disabled={busy} aria-label="Close" onClick={()=>setModal(null)}>×</button></header>
         {modal==="create"&&<form className="en-form" onSubmit={e=>void createRecord(e)}>
+          {refsError&&<p className="en-alert" role="alert">{refsError}</p>}{!refsReady&&!refsError&&<p role="status">Loading linked records…</p>}
           {renderFields()}<footer><button type="button" className="en-secondary" onClick={()=>setModal(null)}>Cancel</button>
-            <button className="en-primary" disabled={busy} type="submit">{busy?"Saving…":"Save record →"}</button></footer></form>}
+            <button className="en-primary" disabled={busy||!refsReady} type="submit">{busy?"Saving…":"Save record →"}</button></footer></form>}
         {modal==="payment"&&active&&<form className="en-form" onSubmit={e=>void addPayment(e)}>
           <p className="en-help">Invoice {asText(active.reference)} · {pretty(active.amount,"amount")} {asText(active.currency)}
             {" · "+pretty(active.paid_amount,"amount")+" already allocated"}</p>

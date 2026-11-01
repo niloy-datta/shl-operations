@@ -32,10 +32,12 @@ async function api<T>(path:string,init?:RequestInit):Promise<T>{
   if(!res.ok){
     const data=await res.json().catch(()=>null);
     if(res.status===403)throw new Error("Your account cannot perform this action");
+    if(res.status===404)throw new Error("Service not connected yet. Records are unavailable.");
+    if(res.status>=500)throw new Error("The service encountered a server error. Please try again later.");
     if(res.status===409)throw new Error("Ownership conflict, duplicate primary contact, or invalid state");
     throw new Error(typeof data?.error==="string"?data.error:"Request failed ("+res.status+")");
   }
-  return res.json() as Promise<T>;
+  try{return await res.json() as T;}catch{throw new Error("The service returned invalid JSON.");}
 }
 function save<T>(path:string,method:"POST"|"PATCH",input:object):Promise<T>{
   return api<T>(path,{method,headers:{"content-type":"application/json"},body:JSON.stringify(input)});
@@ -58,6 +60,9 @@ export function EntityRegistry(){
   const [term,setTerm]=useState("");
   const [revision,setRevision]=useState(0);
   const [loading,setLoading]=useState(true);
+  const [entitiesReady,setEntitiesReady]=useState(false),[contactsReady,setContactsReady]=useState(false);
+  const [customerReady,setCustomerReady]=useState(false),[supplierReady,setSupplierReady]=useState(false);
+  const [loadError,setLoadError]=useState(""),[contactsError,setContactsError]=useState(""),[lookupError,setLookupError]=useState("");
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
   const [notice,setNotice]=useState("");
@@ -66,31 +71,41 @@ export function EntityRegistry(){
 
   useEffect(()=>{
     let alive=true;
-    Promise.all([
-      api<{role:string;username:string}>("/api/data/me"),
-      api<Page<Owner>>("/api/data/customers?page=0&size=100"),
-      api<Page<Owner>>("/api/data/suppliers?page=0&size=100")
+    const controller=new AbortController();
+    setLookupError("");setCustomerReady(false);setSupplierReady(false);
+    Promise.allSettled([
+      api<{role:string;username:string}>("/api/data/me",{signal:controller.signal}),
+      api<Page<Owner>>("/api/data/customers?page=0&size=100",{signal:controller.signal}),
+      api<Page<Owner>>("/api/data/suppliers?page=0&size=100",{signal:controller.signal})
     ]).then(([person,customers,suppliers])=>{
       if(!alive)return;
-      setUser(person);setCustomerChoices(customers.content);setSupplierChoices(suppliers.content);
-    }).catch(e=>{if(alive)setError(e instanceof Error?e.message:"Cannot load identity");});
-    return()=>{alive=false;};
-  },[]);
+      const failures:string[]=[];
+      if(person.status==="fulfilled")setUser(person.value);else {setUser(null);failures.push("Account access");}
+      if(customers.status==="fulfilled"&&Array.isArray(customers.value.content)){setCustomerChoices(customers.value.content);setCustomerReady(true);}else failures.push("Customers");
+      if(suppliers.status==="fulfilled"&&Array.isArray(suppliers.value.content)){setSupplierChoices(suppliers.value.content);setSupplierReady(true);}else failures.push("Suppliers");
+      if(failures.length)setLookupError(failures.join(", ")+" service unavailable. Please retry.");
+    });
+    return()=>{alive=false;controller.abort();};
+  },[revision]);
   useEffect(()=>{
     let alive=true;
+    const controller=new AbortController();setLoading(true);setEntitiesReady(false);setLoadError("");
     const q=new URLSearchParams({page:String(page),size:"15",q:term});
-    api<Page<Entity>>(route+"?"+q).then(result=>{
-      if(alive){setEntities(result);setLoading(false);}
-    }).catch(e=>{if(alive){setError(e instanceof Error?e.message:"Cannot load entities");setLoading(false);}});
-    return()=>{alive=false;};
+    api<Page<Entity>>(route+"?"+q,{signal:controller.signal}).then(result=>{
+      if(!Array.isArray(result?.content)||typeof result.totalPages!=="number"||typeof result.totalElements!=="number")throw new Error("The entity service returned data in an unexpected format.");
+      if(alive){setEntities(result);setEntitiesReady(true);}
+    }).catch(e=>{if(alive)setLoadError(e instanceof Error?e.message:"Cannot load entities");})
+      .finally(()=>{if(alive)setLoading(false);});
+    return()=>{alive=false;controller.abort();};
   },[page,term,revision]);
   useEffect(()=>{
     if(!selected)return;
     let alive=true;
-    api<Page<Person>>(route+"/"+selected.id+"/contacts?page="+contactPage+"&size=15")
-      .then(result=>{if(alive)setContacts(result);})
-      .catch(e=>{if(alive)setError(e instanceof Error?e.message:"Cannot load contacts");});
-    return()=>{alive=false;};
+    const controller=new AbortController();setContactsReady(false);setContactsError("");
+    api<Page<Person>>(route+"/"+selected.id+"/contacts?page="+contactPage+"&size=15",{signal:controller.signal})
+      .then(result=>{if(!Array.isArray(result?.content))throw new Error("The contacts service returned data in an unexpected format.");if(alive){setContacts(result);setContactsReady(true);}})
+      .catch(e=>{if(alive)setContactsError(e instanceof Error?e.message:"Cannot load contacts");});
+    return()=>{alive=false;controller.abort();};
   },[selected,contactPage,revision]);
 
   function openNewEntity(){setEntry({...emptyEntry});setEditingEntity(null);setForm("entity");setError("");}
@@ -147,16 +162,17 @@ export function EntityRegistry(){
       <p>A controlled directory of international customers, suppliers, offices and trading partners.
         Keep legal identity, branch locations and buying, finance or logistics contacts aligned.</p>
       <div className="cn-hero-actions">
-        {canWrite&&<button className="cn-primary" onClick={openNewEntity}>+ Add organization</button>}
+        {canWrite&&<button className="cn-primary" disabled={!entitiesReady||loading} onClick={openNewEntity}>+ Add organization</button>}
         <span>Role-controlled · Customer-linked · Audited</span>
       </div>
     </section>
     {error&&<div className="cn-feedback cn-error" role="alert">{error}
       <button onClick={()=>setError("")} aria-label="Dismiss error">×</button></div>}
+    {[loadError,lookupError,contactsError].filter(Boolean).map((issue,index)=><div key={index} className="cn-feedback cn-error" role="alert">{issue}<button type="button" onClick={refresh}>Retry</button></div>)}
     {notice&&<div className="cn-feedback cn-good" role="status">{notice}
       <button onClick={()=>setNotice("")} aria-label="Dismiss notice">×</button></div>}
     <div className="cn-stats">
-      <div><span>REGISTERED ENTITIES</span><strong>{loading?"—":entities.totalElements}</strong><small>Saved organizations</small></div>
+      <div><span>REGISTERED ENTITIES</span><strong>{loading||!entitiesReady?"—":entities.totalElements}</strong><small>Saved organizations</small></div>
       <div><span>DIRECTORY POLICY</span><strong>Controlled</strong><small>Admins and management can edit</small></div>
       <div><span>CONTACT OWNERSHIP</span><strong>Linked</strong><small>Role-specific company contacts</small></div>
     </div>
@@ -171,44 +187,44 @@ export function EntityRegistry(){
       </div>
       <div className="cn-scroll"><table>
         <thead><tr><th>ENTITY</th><th>TYPE</th><th>LOCATION</th><th>STATUS</th><th>ACTIONS</th></tr></thead>
-        <tbody>{entities.content.map(e=><tr key={e.id}>
+        <tbody>{entitiesReady&&!loading&&entities.content.map(e=><tr key={e.id}>
           <td><strong>{e.legal_name}</strong><small>{e.reference} · {e.branch_name??"Main office"}</small></td>
           <td>{e.kind}</td><td>{[e.city,e.country_code].filter(Boolean).join(", ")}</td>
           <td><span className={"cn-pill "+(e.status==="ACTIVE"?"cn-active":"")}>{e.status}</span></td>
           <td className="enregistry-actions">
-            <button onClick={()=>{setSelected(e);setContactPage(0);setContacts({content:[],totalPages:0,totalElements:0});}}>
+            <button onClick={()=>{setContactsReady(false);setSelected(e);setContactPage(0);setContacts({content:[],totalPages:0,totalElements:0});}}>
               Contacts ↗</button>
             {canWrite&&<button onClick={()=>openEditEntity(e)}>Edit</button>}
           </td>
         </tr>)}</tbody>
-      </table>{!loading&&entities.content.length===0&&<p className="cn-empty">No entities found. Create your first record or search again.</p>}
+      </table>{!loading&&entitiesReady&&entities.content.length===0&&<p className="cn-empty">No entities found. Create your first record or search again.</p>}
         {loading&&<p className="cn-empty">Loading…</p>}
       </div>
-      <div className="cn-pager"><span>Page {page+1} of {Math.max(entities.totalPages,1)}</span>
+      {entitiesReady&&!loading&&<div className="cn-pager"><span>Page {page+1} of {Math.max(entities.totalPages,1)}</span>
         <div><button disabled={page===0} onClick={()=>setPage(v=>v-1)}>Previous</button>
           <button disabled={page+1>=entities.totalPages} onClick={()=>setPage(v=>v+1)}>Next</button></div>
-      </div>
+      </div>}
     </section>
     {selected&&<section className="cn-panel">
       <div className="cn-panel-head"><div><p className="cn-eyebrow">{selected.reference} · ROLE CONTACTS</p>
         <h2>{selected.legal_name}</h2><p>{selected.customer_name??selected.supplier_name??"Independent corporate entity"}</p></div>
         <div className="enregistry-head-actions">
-          {canWrite&&<button className="cn-primary" onClick={()=>openContactEdit()}>+ Add contact</button>}
+          {canWrite&&<button className="cn-primary" disabled={!contactsReady} onClick={()=>openContactEdit()}>+ Add contact</button>}
           <button onClick={()=>setSelected(null)}>Close</button>
         </div>
       </div>
       <div className="cn-scroll"><table><thead><tr><th>NAME</th><th>DEPARTMENT</th><th>CONTACT</th><th>STATUS</th><th>ACTIONS</th></tr></thead>
-        <tbody>{contacts.content.map(c=><tr key={c.id}>
+        <tbody>{contactsReady&&contacts.content.map(c=><tr key={c.id}>
           <td><strong>{c.full_name}</strong><small>{c.position_title??"—"}</small></td>
           <td>{c.contact_role}{c.is_primary?" · Primary":""}</td><td>{c.email??c.phone??"—"}</td>
           <td><span className={"cn-pill "+(c.active?"cn-active":"")}>{c.active?"Active":"Inactive"}</span></td>
           <td>{canWrite&&<button onClick={()=>openContactEdit(c)}>Edit ↗</button>}</td>
         </tr>)}</tbody>
-      </table>{contacts.content.length===0&&<p className="cn-empty">No contacts for this organization.</p>}</div>
-      <div className="cn-pager"><span>Page {contactPage+1} of {Math.max(contacts.totalPages,1)}</span>
+      </table>{!contactsReady&&!contactsError&&<p className="cn-empty" role="status">Loading contacts…</p>}{contactsReady&&contacts.content.length===0&&<p className="cn-empty">No contacts for this organization.</p>}</div>
+      {contactsReady&&<div className="cn-pager"><span>Page {contactPage+1} of {Math.max(contacts.totalPages,1)}</span>
         <div><button disabled={contactPage===0} onClick={()=>setContactPage(v=>v-1)}>Previous</button>
           <button disabled={contactPage+1>=contacts.totalPages} onClick={()=>setContactPage(v=>v+1)}>Next</button></div>
-      </div>
+      </div>}
     </section>}
     <p className="cn-footnote">Development-only. Commercial records, contacts and actual business data must not be imported before security review and approvals.</p>
 
@@ -246,7 +262,7 @@ export function EntityRegistry(){
           <label>Record status<select value={entry.status} onChange={e=>editEntry("status",e.target.value as Entry["status"])}>
             <option>ACTIVE</option><option>INACTIVE</option></select></label>
           <footer><button type="button" onClick={()=>setForm(null)}>Cancel</button>
-            <button className="cn-primary" disabled={busy}>{busy?"Saving…":"Save organization →"}</button></footer>
+            <button className="cn-primary" disabled={busy || (!editingEntity && ((entry.kind==="CUSTOMER"&&!customerReady)||(entry.kind==="SUPPLIER"&&!supplierReady)))}>{busy?"Saving…":"Save organization →"}</button></footer>
         </form>:<form onSubmit={e=>void submitContact(e)}>
           <label>Full name<input required maxLength={160} value={person.fullName}
             onChange={e=>editContact("fullName",e.target.value)}/></label>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {useCallback,useEffect,useState,type FormEvent,type ReactNode} from "react";
+import {useCallback,useEffect,useRef,useState,type FormEvent,type ReactNode} from "react";
 import {useRouter} from "next/navigation";
 import {LeadRoutingPanel,LeadAssignmentHistory} from "./lead-routing-panel";
 
@@ -31,11 +31,13 @@ async function fetchJson<T>(path:string,init?:RequestInit):Promise<T>{
   if(res.status===401){window.location.assign("/login");throw new Error("Session expired");}
   if(!res.ok){
     if(res.status===403)throw new Error("Your account is not permitted to perform this action.");
+    if(res.status===404)throw new Error("Service not connected yet. These records are unavailable.");
+    if(res.status>=500)throw new Error("The service encountered a server error. Please try again later.");
     if(res.status===409)throw new Error("Workflow conflict. Check linked customer, owner and current status.");
     if(res.status===400)throw new Error("Check required fields and formatting.");
     throw new Error("Request failed ("+res.status+").");
   }
-  return res.json() as Promise<T>;
+  try{return await res.json() as T;}catch{throw new Error("The service returned invalid JSON.");}
 }
 const post=<T,>(path:string,payload:unknown,method:"POST"|"PATCH"="POST")=>
   fetchJson<T>(path,{method,headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
@@ -64,9 +66,13 @@ export function GrowthDesk({module}:{module:Module}){
   const [items,setItems]=useState<Page>({content:[],totalElements:0,totalPages:0});
   const [page,setPage]=useState(0),[query,setQuery]=useState("");
   const [term,setTerm]=useState(""),[tick,setTick]=useState(0);
+  const [identityRevision,setIdentityRevision]=useState(0),[recordsReady,setRecordsReady]=useState(false);
   const [error,setError]=useState(""),[notice,setNotice]=useState("");
   const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
   const [dialog,setDialog]=useState<"create"|"details"|null>(null);
+  const [refsReady,setRefsReady]=useState(false);
+  const lookupController=useRef<AbortController|null>(null);
+  useEffect(()=>()=>lookupController.current?.abort(),[]);
   const [active,setActive]=useState<Item|null>(null);
   const [refs,setRefs]=useState<{customers:Lookup[];staff:Lookup[];leads:Lookup[];orders:Lookup[]}>({
     customers:[],staff:[],leads:[],orders:[]
@@ -77,20 +83,20 @@ export function GrowthDesk({module}:{module:Module}){
 
   useEffect(()=>{
     let alive=true;
-    fetchJson<User>("/api/data/me").then(x=>{if(alive)setMe(x);})
-      .catch(e=>{if(alive)setError(String(e));});
+    fetchJson<User>("/api/data/me").then(x=>{if(alive){setMe(x);setError("");}})
+      .catch(e=>{if(alive)setError(e instanceof Error?e.message:"Unable to check access.");});
     return()=>{alive=false;};
-  },[]);
+  },[identityRevision]);
   useEffect(()=>{
     if(!me||!["ADMIN","MANAGEMENT","BD","SOURCING","LOGISTICS","FINANCE"].includes(me.role))return;
     if(module==="leads"&&!roles.includes(me.role))return;
     let alive=true;
-    const frame=requestAnimationFrame(()=>setLoading(true));
+    setLoading(true);setRecordsReady(false);setError("");
     fetchJson<Page>(api+module+"?"+new URLSearchParams({page:String(page),size:"15",q:term}))
-      .then(data=>{if(alive){setItems(data);setError("");}})
+      .then(data=>{if(!Array.isArray(data?.content)||typeof data.totalElements!=="number"||typeof data.totalPages!=="number")throw new Error("The service returned data in an unexpected format.");if(alive){setItems(data);setRecordsReady(true);}})
       .catch(e=>{if(alive)setError(e instanceof Error?e.message:"Unable to fetch records.");})
       .finally(()=>{if(alive)setLoading(false);});
-    return()=>{alive=false;cancelAnimationFrame(frame);};
+    return()=>{alive=false;};
   },[me,module,page,term,tick]);
 
   const canWrite=!!me&&roles.includes(me.role);
@@ -100,19 +106,27 @@ export function GrowthDesk({module}:{module:Module}){
     rows.map(x=>({id:String(x.id),text:String(x[key]??x.id),
       extra:extra?String(x[extra]??""):undefined}));
   async function create(){
-    setError("");setNotice("");setActive(null);setDialog("create");
+    lookupController.current?.abort();const controller=new AbortController();lookupController.current=controller;
+    setError("");setNotice("");setActive(null);setDialog("create");setRefsReady(false);setRefs({customers:[],staff:[],leads:[],orders:[]});
     try{
-      const [customerResult,staffResult,leadResult,orderResult]=await Promise.all([
-        fetchJson<Page>("/api/data/customers?size=100"),
-        fetchJson<Item[]>("/api/enterprise/staff/options"),
-        module==="projects"?fetchJson<Page>(api+"leads?size=100"):Promise.resolve(null),
-        module==="projects"?fetchJson<Page>("/api/enterprise/commerce/orders?size=100"):Promise.resolve(null)
+      const [customerResult,staffResult,leadResult,orderResult]=await Promise.allSettled([
+        fetchJson<Page>("/api/data/customers?size=100",{signal:controller.signal}),
+        fetchJson<Item[]>("/api/enterprise/staff/options",{signal:controller.signal}),
+        module==="projects"?fetchJson<Page>(api+"leads?size=100",{signal:controller.signal}):Promise.resolve(null),
+        module==="projects"?fetchJson<Page>("/api/enterprise/commerce/orders?size=100",{signal:controller.signal}):Promise.resolve(null)
       ]);
-      setRefs({customers:lookup(customerResult.content,"name"),staff:lookup(staffResult,"username"),
-        leads:lookup((leadResult?.content??[]).filter(x=>x.status==="WON"),"reference","company_name"),
-        orders:lookup((orderResult?.content??[]).filter(x=>
+      if(controller.signal.aborted)return;
+      const customers=customerResult.status==="fulfilled"&&Array.isArray(customerResult.value?.content)?customerResult.value.content:null;
+      const staff=staffResult.status==="fulfilled"&&Array.isArray(staffResult.value)?staffResult.value:null;
+      const leads=leadResult.status==="fulfilled"&&(leadResult.value===null||Array.isArray(leadResult.value.content))?leadResult.value?.content??[]:null;
+      const orders=orderResult.status==="fulfilled"&&(orderResult.value===null||Array.isArray(orderResult.value.content))?orderResult.value?.content??[]:null;
+      setRefs({customers:lookup(customers??[],"name"),staff:lookup(staff??[],"username"),
+        leads:lookup((leads??[]).filter(x=>x.status==="WON"),"reference","company_name"),
+        orders:lookup((orders??[]).filter(x=>
           ["CONFIRMED","IN_PROGRESS","COMPLETED"].includes(String(x.status))),"reference")});
-    }catch(e){setError(e instanceof Error?e.message:"Unable to load available records.");}
+      if(!customers||!staff||!leads||!orders)setError("A required linked service is unavailable. Close and retry before saving.");
+      else setRefsReady(true);
+    }catch(e){if(!controller.signal.aborted)setError(e instanceof Error?e.message:"Unable to load available records.");}
   }
   async function submit(event:FormEvent<HTMLFormElement>){
     event.preventDefault();setBusy(true);setError("");
@@ -221,14 +235,14 @@ export function GrowthDesk({module}:{module:Module}){
         <Link href="/workspace" className="gx-back">← Dashboard</Link></header>
       <main className="en-content gx-content">
         <div className="en-heading">
-          <div><p className="en-eyebrow">{meta.eyebrow} <span>/</span> LIVE DATA</p>
+          <div><p className="en-eyebrow">{meta.eyebrow} <span>/</span> {recordsReady?"DATABASE RECORDS":"RECORDS"}</p>
             <h1>{meta.title}<span>.</span></h1><p>{meta.subtitle}</p></div>
-          {canWrite&&<button className="en-primary" onClick={()=>void create()}>＋ {meta.action}</button>}
+          {canWrite&&<button className="en-primary" disabled={!recordsReady||loading} onClick={()=>void create()}>＋ {meta.action}</button>}
         </div>
         {error&&<div className="en-alert" role="alert">{error}
-          <button onClick={()=>{setError("");reload();}}>Retry</button></div>}
+          <button onClick={()=>{setError("");if(me)reload();else setIdentityRevision(v=>v+1);}}>Retry</button></div>}
         {notice&&<p className="gx-notice" role="status">{notice}</p>}
-        {!me&&!error?<div className="en-panel en-loading">Checking permissions…</div>:
+        {!me?(!error?<div className="en-panel en-loading">Checking permissions…</div>:null):
          !canView?<div className="en-panel en-restricted"><h2>Restricted access</h2>
           <p>Your account does not have access to these records.</p></div>:<>
           <section className="gx-banner">
@@ -236,7 +250,7 @@ export function GrowthDesk({module}:{module:Module}){
               <h2>{module==="leads"?"Capture opportunities. Build relationships.":"Own every milestone. Deliver with confidence."}</h2>
               <p>{module==="leads"?"Assign ownership, keep follow-ups visible and move qualified leads into jobs.":
                 "Link customers, won leads and sales orders with durable project histories."}</p></div>
-            <div className="gx-metric"><strong>{items.totalElements.toLocaleString()}</strong>
+            <div className="gx-metric"><strong>{recordsReady&&!loading?items.totalElements.toLocaleString():"—"}</strong>
               <small>{module==="leads"?"TOTAL LEADS":"PROJECT RECORDS"}</small></div>
           </section>
           {module==="leads"&&!!me&&["ADMIN","MANAGEMENT"].includes(me.role)&&
@@ -244,7 +258,7 @@ export function GrowthDesk({module}:{module:Module}){
           <section className="en-panel gx-list">
             <div className="gx-toolbar">
               <div><strong>{module==="leads"?"Opportunities":"Project register"}</strong>
-                <span>{items.totalElements} records · page {page+1} of {Math.max(1,items.totalPages)}</span></div>
+                <span>{loading?"Loading records…":recordsReady?`${items.totalElements} records · page ${page+1} of ${Math.max(1,items.totalPages)}`:"Records unavailable"}</span></div>
               <form onSubmit={e=>{e.preventDefault();setPage(0);setTerm(query);}} className="gx-search">
                 <input aria-label="Search records" value={query} onChange={e=>setQuery(e.target.value)}
                   placeholder={module==="leads"?"Search company or topic":"Search job ID or title"}/>
@@ -254,23 +268,23 @@ export function GrowthDesk({module}:{module:Module}){
             <div className="gx-table-wrap"><table className="gx-table"><thead><tr>
               {meta.fields.map(([key,label])=><th key={key}>{label}</th>)}
               <th>RECORD</th></tr></thead><tbody>
-              {items.content.map(record=><tr key={String(record.id)}>
+              {recordsReady&&!loading&&items.content.map(record=><tr key={String(record.id)}>
                 {meta.fields.map(([key])=><td key={key}>
                   {key==="status"?<span className={"gx-stage gx-"+String(record.status).toLowerCase()}>{t(record.status).replaceAll("_"," ")}</span>:
                     key.endsWith("_date")||key==="next_follow_up"?date(record[key]):t(record[key])}
                 </td>)}
                 <td><button className="gx-open" onClick={()=>void details(record)}>Open ↗</button></td>
               </tr>)}</tbody></table>
-              {!loading&&items.content.length===0&&<div className="gx-empty">
+              {!loading&&recordsReady&&items.content.length===0&&<div className="gx-empty">
                 <strong>No {module==="leads"?"leads":"projects"} found</strong>
                 <p>{term?"Try a different search term.":"Use the create action to add your first record."}</p></div>}
               {loading&&<p className="gx-loading">Loading records…</p>}
             </div>
-            <div className="gx-pagination">
+            {recordsReady&&!loading&&<div className="gx-pagination">
               <span>Showing up to 15 real database records per page</span><div>
                 <button disabled={page===0} onClick={()=>setPage(p=>p-1)}>← Previous</button>
                 <button disabled={page+1>=items.totalPages} onClick={()=>setPage(p=>p+1)}>Next →</button>
-              </div></div>
+              </div></div>}
           </section>
         </>}
       </main>
@@ -309,7 +323,7 @@ export function GrowthDesk({module}:{module:Module}){
               <textarea name="description" maxLength={2000} rows={3} placeholder="Add business context…"/>
             </Field>
             <p className="en-help">Records persist in PostgreSQL and changes appear in the audit trail.</p>
-            <button className="en-primary" type="submit" disabled={busy}>{busy?"Saving…":"Save record →"}</button>
+            <button className="en-primary" type="submit" disabled={busy||!refsReady}>{busy?"Saving…":"Save record →"}</button>
           </form>:active&&<>
             <div className="gx-detail-grid">{Object.entries(active).filter(([k])=>!
               ["description","created_at","updated_at"].includes(k)).map(([key,value])=>

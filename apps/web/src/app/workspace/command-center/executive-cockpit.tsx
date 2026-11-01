@@ -37,6 +37,16 @@ function money(v:number|string,unit:string){
   if(!Number.isFinite(amount))return String(v)+" "+unit;
   return new Intl.NumberFormat("en-US",{maximumFractionDigits:2,minimumFractionDigits:2}).format(amount)+" "+unit;
 }
+function isSummary(value:unknown):value is Summary {
+  if(!value||typeof value!=="object")return false;
+  const data=value as Record<string,unknown>;
+  const textFields=(item:unknown,keys:string[])=>!!item&&typeof item==="object"&&keys.every(key=>typeof (item as Record<string,unknown>)[key]==="string");
+  return typeof data.asOfUtc==="string" &&
+    ["customers","suppliers","leadsActive","leadsWon","rfqsOpen","salesOpen","projectsActive","projectsOverdue","shipmentsTransit","shipmentsLate","tasksOverdue","invoicesOverdue"].every(key=>typeof data[key]==="number" && Number.isFinite(data[key])) &&
+    Array.isArray(data.outstandingByCurrency) && data.outstandingByCurrency.every(item=>textFields(item,["currency","invoice_type"]) && item.invoice_count!=null && item.outstanding!=null) &&
+    Array.isArray(data.nextShipments) && data.nextShipments.every(item=>textFields(item,["reference","origin","destination","status"]) && (item.eta===null || typeof item.eta==="string")) &&
+    Array.isArray(data.nextTasks) && data.nextTasks.every(item=>textFields(item,["id","title","priority","status","assignee"]) && (item.due_date===null || typeof item.due_date==="string"));
+}
 export function ExecutiveCockpit(){
   const [summary,setSummary]=useState<Summary|null>(null);
   const [error,setError]=useState("");
@@ -46,15 +56,20 @@ export function ExecutiveCockpit(){
   const refresh=useCallback(()=>{setLoading(true);setTick(v=>v+1);},[]);
   useEffect(()=>{
     let alive=true;
-    fetch("/api/command-center",{cache:"no-store"}).then(async r=>{
+    const controller=new AbortController();
+    fetch("/api/command-center",{cache:"no-store",signal:controller.signal}).then(async r=>{
       if(r.status===401){window.location.assign("/login");return;}
       if(r.status===403){if(alive)setRestricted(true);return;}
-      if(!r.ok)throw new Error("Unable to access live business metrics (HTTP "+r.status+")");
-      const data=await r.json() as Summary;
+      if(r.status===404)throw new Error("Service not connected yet. Operations data is unavailable.");
+      if(r.status>=500)throw new Error("The operations service encountered a server error. Please try again later.");
+      if(!r.ok)throw new Error("Unable to load operations data (HTTP "+r.status+").");
+      let data:unknown;
+      try{data=await r.json();}catch{throw new Error("The operations service returned invalid JSON.");}
+      if(!isSummary(data))throw new Error("The operations service returned data in an unexpected format.");
       if(alive){setSummary(data);setError("");setRestricted(false);}
-    }).catch(e=>{if(alive)setError(e instanceof Error?e.message:"Unable to load metrics");})
+    }).catch(e=>{if(alive)setError(e instanceof TypeError?"The operations service could not be reached. Check your connection and try again.":e instanceof Error?e.message:"Unable to load metrics");})
       .finally(()=>{if(alive)setLoading(false);});
-    return()=>{alive=false;};
+    return()=>{alive=false;controller.abort();};
   },[tick]);
   if(restricted)return <main className="cc-restricted">
     <span>◈</span><h1>Management access required</h1>
@@ -102,7 +117,7 @@ export function ExecutiveCockpit(){
           </div>
           <div className="cc-hero-orbit" aria-hidden="true"><div className="cc-orbit-circle one"/><div className="cc-orbit-circle two"/><div className="cc-orbit-circle three"/><div className="cc-orbit-core"><strong>SHL</strong><span>OPERATIONS</span></div><i className="cc-node a"/><i className="cc-node b"/><i className="cc-node c"/></div>
         </section>
-        <div className="cc-meta"><span><i className="cc-pulse"/> {summary?"DATABASE SNAPSHOT · "+summary.asOfUtc+" UTC":"LIVE ACCESS · AUTHENTICATED DATA"}</span>
+        <div className="cc-meta"><span><i className="cc-pulse"/> {summary?(error?"LAST AVAILABLE SNAPSHOT · ":"DATABASE SNAPSHOT · ")+summary.asOfUtc+" UTC":loading?"LOADING OPERATIONS DATA":"OPERATIONS DATA UNAVAILABLE"}</span>
           <span>No FX conversion or unverified profit assumptions</span></div>
         {error&&<div className="cc-error" role="alert"><span>{error}</span><button type="button" onClick={refresh}>Retry</button></div>}
         {loading&&!summary&&<div className="cc-loading" role="status">Loading secured operations data…</div>}

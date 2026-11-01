@@ -45,12 +45,16 @@ async function json<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error("Session expired.");
   }
   if (!response.ok) {
+    if (response.status === 404) throw new Error("Service not connected yet. RFQ data is unavailable.");
+    if (response.status === 403) throw new Error("Your account does not have access to this service.");
+    if (response.status >= 500) throw new Error("The service encountered a server error. Please try again later.");
     if (response.status === 409) throw new Error("Workflow rule blocked this action. Check its status and supplier offers.");
     if (response.status === 400) throw new Error("Please check the required fields and selected records.");
     throw new Error("Request failed (" + response.status + "). Please retry.");
   }
   if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
+  try { return await response.json() as T; }
+  catch { throw new Error("The service returned invalid JSON."); }
 }
 const money = (amount: number | string, currency: string) =>
   new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(Number(amount)) + " " + currency;
@@ -64,6 +68,9 @@ export function RfqWorkspace() {
   const [page, setPage] = useState(0);
   const [tick, setTick] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [listAvailable, setListAvailable] = useState(false);
+  const [listError, setListError] = useState("");
+  const [statsError, setStatsError] = useState("");
   const [message, setMessage] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Rfq | null>(null);
@@ -78,6 +85,7 @@ export function RfqWorkspace() {
   const [showItem, setShowItem] = useState(false);
   const [events, setEvents] = useState<Event[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [showOffer, setShowOffer] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -90,21 +98,32 @@ export function RfqWorkspace() {
 
   useEffect(() => {
     let live = true;
-    const frame = requestAnimationFrame(() => setLoading(true));
-    Promise.all([
-      json<RfqPage>("/api/trading/rfqs?page=" + page + "&size=10&q=" + encodeURIComponent(term)),
-      json<Stats>("/api/trading/rfqs/stats")
-    ]).then(([records, totals]) => {
-      if (!live) return;
-      setList(records); setStats(totals); setMessage("");
-    }).catch(e => { if (live) setMessage(e instanceof Error ? e.message : "Unable to load RFQs"); })
+    const controller = new AbortController();
+    setLoading(true); setListAvailable(false); setListError("");
+    json<RfqPage>("/api/trading/rfqs?page=" + page + "&size=10&q=" + encodeURIComponent(term), { signal: controller.signal })
+      .then(records => {
+        if (!Array.isArray(records?.content) || typeof records.totalElements !== "number" || typeof records.totalPages !== "number") throw new Error("The RFQ service returned data in an unexpected format.");
+        if (live) { setList(records); setListAvailable(true); }
+      }).catch(e => { if (live) setListError(e instanceof TypeError ? "The RFQ service could not be reached." : e instanceof Error ? e.message : "Unable to load RFQs"); })
       .finally(() => { if (live) setLoading(false); });
-    return () => { live = false; cancelAnimationFrame(frame); };
+    return () => { live = false; controller.abort(); };
   }, [page, term, tick]);
+
+  useEffect(() => {
+    let live = true;
+    const controller = new AbortController();
+    setStats(null); setStatsError("");
+    json<Stats>("/api/trading/rfqs/stats", { signal: controller.signal }).then(totals => {
+      if (!totals || ![totals.total, totals.NEW, totals.SOURCING, totals.READY_FOR_QUOTE, totals.CLOSED].every(value => typeof value === "number" && Number.isFinite(value))) throw new Error("The RFQ summary returned data in an unexpected format.");
+      if (live) setStats(totals);
+    }).catch(e => { if (live) setStatsError(e instanceof TypeError ? "The RFQ summary service could not be reached." : e instanceof Error ? e.message : "Unable to load RFQ totals."); });
+    return () => { live = false; controller.abort(); };
+  }, [tick]);
 
   useEffect(() => {
     if (!selectedId) return;
     let live = true;
+    setDetailError("");
     const frame = requestAnimationFrame(() => setDetailLoading(true));
     Promise.all([
       json<Rfq>("/api/trading/rfqs/" + selectedId),
@@ -116,23 +135,34 @@ export function RfqWorkspace() {
       if (!live) return;
       setSelected(record); setOffers(quotes); setEvents(history); setItems(requirements);
       setLineOffers(pricedLines);
-    }).catch(e => { if (live) setMessage(e instanceof Error ? e.message : "Unable to load details"); })
+    }).catch(e => { if (live) setDetailError(e instanceof Error ? e.message : "Unable to load details"); })
       .finally(() => { if (live) setDetailLoading(false); });
     return () => { live = false; cancelAnimationFrame(frame); };
   }, [selectedId, tick]);
 
   useEffect(() => {
-    if (!showCreate && !showOffer && !showLineOffer) return;
+    if (!showCreate) return;
     let live = true;
+    const controller = new AbortController();
     const timeout = setTimeout(() => {
-      Promise.all([
-        json<ContactPage>("/api/data/customers?size=100&q=" + encodeURIComponent(customerSearch)),
-        json<ContactPage>("/api/data/suppliers?size=100&q=" + encodeURIComponent(supplierSearch))
-      ]).then(([c, s]) => { if (live) { setCustomers(c.content); setSuppliers(s.content); } })
-        .catch(e => { if (live) setMessage(e instanceof Error ? e.message : "Unable to load company directory"); });
+      json<ContactPage>("/api/data/customers?size=100&q=" + encodeURIComponent(customerSearch), { signal: controller.signal })
+        .then(c => { if (live) setCustomers(c.content); })
+        .catch(e => { if (live) { setCustomers([]); setMessage(e instanceof Error ? e.message : "Unable to load customers."); } });
     }, 260);
-    return () => { live = false; clearTimeout(timeout); };
-  }, [showCreate, showOffer, showLineOffer, customerSearch, supplierSearch]);
+    return () => { live = false; clearTimeout(timeout); controller.abort(); };
+  }, [showCreate, customerSearch]);
+
+  useEffect(() => {
+    if (!showOffer && !showLineOffer) return;
+    let live = true;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      json<ContactPage>("/api/data/suppliers?size=100&q=" + encodeURIComponent(supplierSearch), { signal: controller.signal })
+        .then(s => { if (live) setSuppliers(s.content); })
+        .catch(e => { if (live) { setSuppliers([]); setMessage(e instanceof Error ? e.message : "Unable to load suppliers."); } });
+    }, 260);
+    return () => { live = false; clearTimeout(timeout); controller.abort(); };
+  }, [showOffer, showLineOffer, supplierSearch]);
 
   async function createRfq(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -277,7 +307,7 @@ export function RfqWorkspace() {
       <p className="desk-side-label">COMMAND CENTER</p>
       <nav aria-label="Business modules" className="desk-nav">
         <Link href="/workspace"><span>▦</span> Overview</Link>
-        <div className="desk-active"><span>◫</span> RFQ &amp; Sourcing <i>LIVE</i></div>
+        <div className="desk-active" aria-current="page"><span>◫</span> RFQ &amp; Sourcing</div>
         <Link href="/workspace/alerts"><span>◉</span> Due dates &amp; alerts</Link>
         <Link href="/workspace/growth/leads"><span>✧</span> Lead pipeline</Link>
         <Link href="/workspace/growth/projects"><span>▱</span> Projects &amp; jobs</Link>
@@ -303,7 +333,7 @@ export function RfqWorkspace() {
       <div className="desk-content">
         <div className="desk-heading"><div><p className="desk-eyebrow">GLOBAL COMMERCE / SOURCING PIPELINE</p><h1>Trading Desk<span>.</span></h1>
           <p>From customer requests to supplier comparisons. Every decision in one place.</p></div>
-          <button className="desk-primary" onClick={() => { setMessage(""); setShowCreate(true); }}>＋ New RFQ <span>↗</span></button></div>
+          <button className="desk-primary" disabled={!listAvailable || loading} onClick={() => { setMessage(""); setShowCreate(true); }}>＋ New RFQ <span>↗</span></button></div>
 
         <section className="desk-hero"><div className="desk-hero-content"><span className="desk-hero-badge">SHL TRADE INTELLIGENCE</span>
           <h2>One inquiry.<br /><span>Complete visibility.</span></h2>
@@ -312,7 +342,7 @@ export function RfqWorkspace() {
           <div className="desk-orbit" aria-hidden="true"><div className="desk-orbit-ring a" /><div className="desk-orbit-ring b" /><div className="desk-orbit-ring c" /><div className="desk-orbit-core">SHL<small>GLOBAL</small></div><i className="p1"/><i className="p2"/><i className="p3"/></div>
         </section>
 
-        <div className="desk-section-head"><div><p className="desk-eyebrow">LIVE DATABASE</p><h2>Pipeline overview</h2></div>
+        <div className="desk-section-head"><div><p className="desk-eyebrow">{stats ? "DATABASE SNAPSHOT" : "RFQ SUMMARY"}</p><h2>Pipeline overview</h2></div>
           <button className="desk-refresh" onClick={refresh} disabled={loading}>↻ Refresh</button></div>
         <div className="desk-stats">
           <Stat label="Total RFQs" value={stats?.total} tint="blue" icon="▦" />
@@ -320,15 +350,17 @@ export function RfqWorkspace() {
           <Stat label="In sourcing" value={stats?.SOURCING} tint="orange" icon="⬡" />
           <Stat label="Ready for quote" value={stats?.READY_FOR_QUOTE} tint="green" icon="↗" />
         </div>
+        {statsError && <div className="desk-alert" role="alert">{statsError}<button type="button" onClick={refresh}>Retry</button></div>}
+        {listError && <div className="desk-alert" role="alert">{listError}<button type="button" onClick={refresh}>Retry</button></div>}
         {message && <div className="desk-alert" role="alert">{message}<button onClick={() => setMessage("")}>Dismiss</button></div>}
         <section className="desk-board">
-          <div className="desk-board-top"><div><p className="desk-eyebrow">OPERATIONAL WORKSPACE</p><h2>RFQ pipeline</h2><span>{loading ? "Loading…" : list.totalElements + " matching requests"}</span></div>
+          <div className="desk-board-top"><div><p className="desk-eyebrow">OPERATIONAL WORKSPACE</p><h2>RFQ pipeline</h2><span>{loading ? "Loading…" : listAvailable ? list.totalElements + " matching requests" : "Records unavailable"}</span></div>
             <form className="desk-search" onSubmit={e => { e.preventDefault(); setPage(0); setTerm(query); }}>
               <label className="sr-only" htmlFor="desk-query">Search RFQs</label>
               <input id="desk-query" placeholder="Search RFQ, product, customer…" value={query} onChange={e => setQuery(e.target.value)} />
               <button type="submit">Search</button></form></div>
           <div className="desk-table-wrap"><table><thead><tr><th>REFERENCE</th><th>CUSTOMER / REQUEST</th><th>QUANTITY</th><th>OFFERS</th><th>DEADLINE</th><th>STATUS</th><th /></tr></thead>
-            <tbody>{!loading && list.content.map(r => <tr key={r.id}>
+            <tbody>{!loading && listAvailable && list.content.map(r => <tr key={r.id}>
               <td><strong className="desk-ref">{r.reference}</strong></td>
               <td><strong>{r.subject}</strong><small>{r.customerName}</small></td>
               <td>{Number(r.quantity).toLocaleString()} {r.unit}</td>
@@ -338,12 +370,12 @@ export function RfqWorkspace() {
               <td><button className="desk-open" onClick={() => { setSelected(null); setSelectedId(r.id); }}>Review ↗</button></td>
             </tr>)}</tbody></table>
             {loading && <div className="desk-empty">Loading sourcing records…</div>}
-            {!loading && list.content.length === 0 && <div className="desk-empty"><div>◇</div><h3>No RFQs found</h3>
+            {!loading && listAvailable && list.content.length === 0 && <div className="desk-empty"><div>◇</div><h3>No RFQs found</h3>
               <p>{term ? "Try another search term." : "Create your first customer inquiry to begin structured sourcing."}</p>
               {!term && <button className="desk-primary" onClick={() => setShowCreate(true)}>＋ Create first RFQ</button>}</div>}</div>
-          <footer className="desk-pagination"><span>Page {page + 1} / {Math.max(list.totalPages, 1)}</span><div>
+          {listAvailable && !loading && <footer className="desk-pagination"><span>Page {page + 1} / {Math.max(list.totalPages, 1)}</span><div>
             <button disabled={page === 0 || loading} onClick={() => setPage(p => Math.max(0, p - 1))}>Previous</button>
-            <button disabled={page + 1 >= list.totalPages || loading} onClick={() => setPage(p => p + 1)}>Next</button></div></footer>
+            <button disabled={page + 1 >= list.totalPages || loading} onClick={() => setPage(p => p + 1)}>Next</button></div></footer>}
         </section>
         <div className="desk-notice"><span>◇</span> These figures come from saved RFQ records. Connected purchasing, logistics and finance modules are available to authorized staff.</div>
       </div>
@@ -353,7 +385,7 @@ export function RfqWorkspace() {
       <section className="desk-drawer" role="dialog" aria-modal="true" aria-label="RFQ details">
         <header><div><p className="desk-eyebrow">SOURCE & COMPARE</p><h2>{selected?.reference ?? "Loading RFQ…"}</h2></div>
           <button className="desk-close" onClick={() => setSelectedId(null)} aria-label="Close RFQ details">×</button></header>
-        {detailLoading || !selected ? <div className="desk-empty">Loading details…</div> : <>
+        {detailLoading ? <div className="desk-empty" role="status">Loading details…</div> : detailError ? <div className="desk-alert" role="alert">{detailError}<button type="button" onClick={refresh}>Retry</button></div> : !selected ? null : <>
           <div className="desk-drawer-body">
             <div className="desk-detail-lead"><Status stage={selected.status}/><h3>{selected.subject}</h3>
               <p>{selected.customerName}</p><p>{selected.details || "No detailed notes yet."}</p></div>

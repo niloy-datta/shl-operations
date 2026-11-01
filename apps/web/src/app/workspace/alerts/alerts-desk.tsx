@@ -5,31 +5,40 @@ import {useRouter} from "next/navigation";
 
 type Alert={source:string;reference:string;title:string;dueDate:string;urgency:string;url:string};
 type Feed={items:Alert[];overdue:number;dueToday:number;upcoming:number;timezone:string};
-const empty:Feed={items:[],overdue:0,dueToday:0,upcoming:0,timezone:"UTC"};
 export function AlertsDesk(){
   const router=useRouter();
-  const [feed,setFeed]=useState<Feed>(empty);
+  const [feed,setFeed]=useState<Feed|null>(null);
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(true);
   const [filter,setFilter]=useState("ALL");
-  const load=useCallback(async()=>{
-    setLoading(true);
+  const [revision,setRevision]=useState(0);
+  const load=useCallback(()=>setRevision(value=>value+1),[]);
+  useEffect(()=>{
+    const controller=new AbortController();
+    async function request(){
+    setLoading(true);setError("");setFeed(null);
     try{
-      const response=await fetch("/api/alerts",{cache:"no-store"});
+      const response=await fetch("/api/alerts",{cache:"no-store",signal:controller.signal});
       if(response.status===401){router.replace("/login");return;}
-      if(!response.ok)throw new Error("Unable to load operational alerts.");
-      setFeed(await response.json() as Feed);setError("");
-    }catch(e){setError(e instanceof Error?e.message:"Unable to load alerts.");}
-    finally{setLoading(false);}
-  },[router]);
-  useEffect(()=>{const frame=requestAnimationFrame(()=>{void load();});
-    return()=>cancelAnimationFrame(frame);},[load]);
-  const filtered=feed.items.filter(x=>filter==="ALL"||x.urgency===filter);
+      if(response.status===403)throw new Error("You do not have access to operational alerts.");
+      if(response.status===404)throw new Error("Service not connected yet. Operational alerts are unavailable.");
+      if(response.status>=500)throw new Error("The alerts service encountered a server error. Please try again later.");
+      if(!response.ok)throw new Error(`Unable to load operational alerts (HTTP ${response.status}).`);
+      let data:Feed;
+      try{data=await response.json() as Feed;}catch{throw new Error("The alerts service returned invalid JSON.");}
+      if(!data||!Array.isArray(data.items)||!data.items.every(item=>item&&[item.source,item.reference,item.title,item.dueDate,item.urgency,item.url].every(value=>typeof value==="string"))||typeof data.timezone!=="string"||![data.overdue,data.dueToday,data.upcoming].every(value=>typeof value==="number"&&Number.isFinite(value)))throw new Error("The alerts service returned data in an unexpected format.");
+      if(!controller.signal.aborted)setFeed(data);
+    }catch(e){if(!controller.signal.aborted)setError(e instanceof TypeError?"The alerts service could not be reached.":e instanceof Error?e.message:"Unable to load alerts.");}
+    finally{if(!controller.signal.aborted)setLoading(false);}
+    }
+    void request(); return()=>controller.abort();
+  },[revision,router]);
+  const filtered=feed?.items.filter(x=>filter==="ALL"||x.urgency===filter)??[];
   return <div className="en-app">
     <aside className="en-sidebar">
       <Link href="/workspace" className="en-brand"><span className="en-logo">S</span>
         <span><strong>SHL<span>.</span></strong><small>INTERNATIONAL</small></span></Link>
-      <div className="en-edition"><span className="en-dot"/> OPERATIONS OS <span>LIVE</span></div>
+      <div className="en-edition"><span className="en-dot"/> OPERATIONS OS</div>
       <div className="en-nav-scroll"><p className="en-nav-label">BUSINESS OPERATIONS</p>
         <nav aria-label="Alerts navigation">
           {[
@@ -56,30 +65,30 @@ export function AlertsDesk(){
           <p>Live due dates across your permitted workstreams. No fake notifications or automated messages.</p>
         </div><button className="en-primary" disabled={loading} onClick={()=>void load()}>
           {loading?"Refreshing…":"↻ Refresh alerts"}</button></div>
-        {error&&<div className="en-alert" role="alert">{error}</div>}
+        {error&&<div className="en-alert" role="alert">{error}<button type="button" onClick={load}>Retry</button></div>}
         <section className="gx-banner ax-banner"><div>
           <span className="gx-kicker">CONNECTED SHL WORKFLOWS</span>
           <h2>A sharper view of the next seven days.</h2>
-          <p>Overdue items remain visible until resolved. All dates are assessed in {feed.timezone}, with up to 100 entries per response.</p></div>
-          <div className="gx-metric"><strong>{feed.items.length}</strong><small>VISIBLE ACTIONS</small></div>
+          <p>Overdue items remain visible until resolved. {feed ? `Dates are assessed in ${feed.timezone}, with up to 100 entries per response.` : "Alert data is currently unavailable."}</p></div>
+          <div className="gx-metric"><strong>{feed?feed.items.length:"—"}</strong><small>VISIBLE ACTIONS</small></div>
         </section>
         <div className="ax-cards">
           {[
-            {key:"OVERDUE",label:"Overdue",value:feed.overdue,note:"Needs immediate attention"},
-            {key:"DUE_TODAY",label:"Due today",value:feed.dueToday,note:"Priority for the day"},
-            {key:"UPCOMING",label:"Next 7 days",value:feed.upcoming,note:"Get ahead of work"}
+            {key:"OVERDUE",label:"Overdue",value:feed?.overdue,note:"Needs immediate attention"},
+            {key:"DUE_TODAY",label:"Due today",value:feed?.dueToday,note:"Priority for the day"},
+            {key:"UPCOMING",label:"Next 7 days",value:feed?.upcoming,note:"Get ahead of work"}
           ].map(item=><button key={item.key} onClick={()=>setFilter(f=>f===item.key?"ALL":item.key)}
             className={"en-panel ax-card "+(filter===item.key?"ax-selected":"")}>
-            <span>{item.label}</span><strong>{item.value}</strong><small>{item.note}</small>
+            <span>{item.label}</span><strong>{item.value??"—"}</strong><small>{item.note}</small>
           </button>)}
         </div>
         <section className="en-panel gx-list">
           <div className="gx-toolbar"><div><strong>Action queue</strong>
-            <span>{filter==="ALL"?"All visible work":filter.replaceAll("_"," ")} · {filtered.length} entries</span></div>
+            <span>{feed ? `${filter==="ALL"?"All visible work":filter.replaceAll("_"," ")} · ${filtered.length} entries` : "Alerts unavailable"}</span></div>
             <button className="gx-open" onClick={()=>setFilter("ALL")}>Show all</button></div>
           <div className="ax-items">
             {loading&&<p className="gx-loading">Checking deadlines…</p>}
-            {!loading&&filtered.length===0&&<p className="gx-loading">No alerts for this view. Your queue is clear.</p>}
+            {!loading&&feed&&filtered.length===0&&<p className="gx-loading">No alerts for this view. Your queue is clear.</p>}
             {filtered.map((a,i)=><Link key={a.source+"-"+a.reference+"-"+i} href={a.url} className="ax-item">
               <div className={"ax-icon ax-"+a.urgency.toLowerCase()}>{a.urgency==="OVERDUE"?"!":
                 a.urgency==="DUE_TODAY"?"•":"↗"}</div>

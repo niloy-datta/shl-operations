@@ -30,10 +30,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   if (!response.ok) {
     const body=await response.json().catch(()=>null);
     throw new Error(response.status===403?"Permission denied":
+      response.status===404?"Service not connected yet. Records are unavailable.":
+      response.status>=500?"The service encountered a server error. Please try again later.":
       response.status===409?"Conflicting customer or shipment state":
       typeof body?.error==="string"?body.error:"Request failed ("+response.status+")");
   }
-  return response.json() as Promise<T>;
+  try{return await response.json() as T;}catch{throw new Error("The service returned invalid JSON.");}
 }
 function write<T>(path:string, method:"POST"|"PATCH",body:object) {
   return request<T>(path,{method,headers:{"content-type":"application/json"},body:JSON.stringify(body)});
@@ -47,6 +49,8 @@ export function ConsigneeWorkspace() {
   const [page,setPage]=useState(0);
   const [tick,setTick]=useState(0);
   const [loading,setLoading]=useState(true);
+  const [rowsReady,setRowsReady]=useState(false),[customersReady,setCustomersReady]=useState(false),[shipmentServiceReady,setShipmentServiceReady]=useState(false);
+  const [rowsError,setRowsError]=useState(""),[customersError,setCustomersError]=useState(""),[shipmentsError,setShipmentsError]=useState("");
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState("");
   const [notice,setNotice]=useState("");
@@ -59,34 +63,53 @@ export function ConsigneeWorkspace() {
   const [recipientTerm,setRecipientTerm]=useState("");
   const [recipientPage,setRecipientPage]=useState(0);
   const [matching,setMatching]=useState<Page<Consignee>>({content:[],totalElements:0,totalPages:0});
+  const [matchingReady,setMatchingReady]=useState(false),[matchingLoading,setMatchingLoading]=useState(false),[matchingError,setMatchingError]=useState("");
+  const [matchingRevision,setMatchingRevision]=useState(0);
   const refresh=useCallback(()=>setTick(value=>value+1),[]);
 
   useEffect(()=>{
     let live=true;
+    const controller=new AbortController();
     const q=new URLSearchParams({page:String(page),size:"15",q:term});
-    Promise.all([
-      request<Page<Consignee>>("logistics/consignees?"+q),
-      request<Page<Customer>>("/api/data/customers?page=0&size=100"),
-      request<Page<Shipment>>("logistics/shipments?page=0&size=100")
-    ]).then(([consignees,buyers,activeShipments])=>{
-      if(!live)return;
-      setRows(consignees);setCustomers(buyers.content);setShipments(activeShipments.content);
-      setError("");
-    }).catch(err=>{if(live)setError(err instanceof Error?err.message:"Unable to load records");})
+    setLoading(true);setRowsReady(false);setRowsError("");
+    request<Page<Consignee>>("logistics/consignees?"+q,{signal:controller.signal}).then(consignees=>{
+      if(!Array.isArray(consignees?.content)||typeof consignees.totalElements!=="number"||typeof consignees.totalPages!=="number")throw new Error("The consignee service returned data in an unexpected format.");
+      if(live){setRows(consignees);setRowsReady(true);}
+    }).catch(err=>{if(live)setRowsError(err instanceof TypeError?"The consignee service could not be reached.":err instanceof Error?err.message:"Unable to load records");})
       .finally(()=>{if(live)setLoading(false);});
-    return()=>{live=false;};
+    return()=>{live=false;controller.abort();};
   },[page,term,tick]);
+
+  useEffect(()=>{
+    let live=true;const controller=new AbortController();
+    setCustomersReady(false);setCustomersError("");
+    request<Page<Customer>>("/api/data/customers?page=0&size=100",{signal:controller.signal})
+      .then(data=>{if(!Array.isArray(data?.content))throw new Error("The customer service returned data in an unexpected format.");if(live){setCustomers(data.content);setCustomersReady(true);}})
+      .catch(err=>{if(live)setCustomersError(err instanceof TypeError?"The customer service could not be reached.":err instanceof Error?err.message:"Customers unavailable.");});
+    return()=>{live=false;controller.abort();};
+  },[tick]);
+
+  useEffect(()=>{
+    let live=true;const controller=new AbortController();
+    setShipmentServiceReady(false);setShipmentsError("");
+    request<Page<Shipment>>("logistics/shipments?page=0&size=100",{signal:controller.signal})
+      .then(data=>{if(!Array.isArray(data?.content))throw new Error("The shipment service returned data in an unexpected format.");if(live){setShipments(data.content);setShipmentServiceReady(true);}})
+      .catch(err=>{if(live)setShipmentsError(err instanceof TypeError?"The shipment service could not be reached.":err instanceof Error?err.message:"Shipments unavailable.");});
+    return()=>{live=false;controller.abort();};
+  },[tick]);
 
   useEffect(()=>{
     if(!shipping)return;
     let live=true;
+    const controller=new AbortController();setMatchingReady(false);setMatchingLoading(true);setMatchingError("");
     const params=new URLSearchParams({customerId:shipping.customer_id,
       page:String(recipientPage),size:"20",q:recipientTerm});
-    request<Page<Consignee>>("logistics/consignees?"+params)
-      .then(result=>{if(live)setMatching(result);})
-      .catch(err=>{if(live)setError(err instanceof Error?err.message:"Unable to find recipients");});
-    return()=>{live=false;};
-  },[shipping,recipientPage,recipientTerm]);
+    request<Page<Consignee>>("logistics/consignees?"+params,{signal:controller.signal})
+      .then(result=>{if(!Array.isArray(result?.content)||typeof result.totalElements!=="number"||typeof result.totalPages!=="number")throw new Error("The recipient service returned data in an unexpected format.");if(live){setMatching(result);setMatchingReady(true);}})
+      .catch(err=>{if(live)setMatchingError(err instanceof Error?err.message:"Unable to find recipients");})
+      .finally(()=>{if(live)setMatchingLoading(false);});
+    return()=>{live=false;controller.abort();};
+  },[shipping,recipientPage,recipientTerm,matchingRevision]);
 
   function openShipment(shipment:Shipment) {
     setShipping(shipment);setRecipient("");setRecipientQuery("");setRecipientTerm("");
@@ -144,15 +167,16 @@ export function ConsigneeWorkspace() {
       <p>Manage verified receiving parties by customer and link them to shipments before departure.
         Every change is validated and audit-logged.</p>
       <div className="cn-hero-actions">
-        <button onClick={startNew} className="cn-primary">+ Add consignee</button>
+        <button onClick={startNew} disabled={!rowsReady||!customersReady||loading} className="cn-primary">+ Add consignee</button>
         <span>Customer-scoped · Authenticated · Audited</span>
       </div>
     </section>
     {error&&<div className="cn-feedback cn-error" role="alert">{error}<button onClick={()=>setError("")} aria-label="Dismiss error">×</button></div>}
+    {[rowsError,customersError,shipmentsError].filter(Boolean).map((issue,index)=><div key={index} className="cn-feedback cn-error" role="alert">{issue}<button type="button" onClick={refresh}>Retry</button></div>)}
     {notice&&<div className="cn-feedback cn-good" role="status">{notice}<button onClick={()=>setNotice("")} aria-label="Dismiss notice">×</button></div>}
     <div className="cn-stats">
-      <div><span>CONSIGNEE RECORDS</span><strong>{loading?"—":rows.totalElements.toLocaleString()}</strong><small>Database-backed count</small></div>
-      <div><span>SHIPMENTS READY</span><strong>{loading?"—":shipmentsReady.length}</strong><small>First 100 recent shipments</small></div>
+      <div><span>CONSIGNEE RECORDS</span><strong>{loading||!rowsReady?"—":rows.totalElements.toLocaleString()}</strong><small>Database-backed count</small></div>
+      <div><span>SHIPMENTS READY</span><strong>{!shipmentServiceReady?"—":shipmentsReady.length}</strong><small>First 100 recent shipments</small></div>
       <div><span>RECIPIENT CONTROLS</span><strong>Verified</strong><small>Shipment customer must match</small></div>
     </div>
     <section className="cn-panel">
@@ -165,20 +189,20 @@ export function ConsigneeWorkspace() {
       </div>
       <div className="cn-scroll"><table>
         <thead><tr><th>CONSIGNEE</th><th>CUSTOMER</th><th>COUNTRY</th><th>STATUS</th><th>ACTIONS</th></tr></thead>
-        <tbody>{rows.content.map(row=><tr key={row.id}>
+        <tbody>{rowsReady&&!loading&&rows.content.map(row=><tr key={row.id}>
           <td><strong>{row.company_name}</strong><small>{row.code}</small></td>
           <td>{row.customer_name}</td><td>{row.country_code.trim().toUpperCase()}</td>
           <td><span className={"cn-pill "+(row.active?"cn-active":"")}>{row.active?"Active":"Inactive"}</span></td>
-          <td><button onClick={()=>startEdit(row)} type="button">Edit ↗</button></td>
+          <td><button onClick={()=>startEdit(row)} disabled={!customersReady} type="button">Edit ↗</button></td>
         </tr>)}</tbody>
       </table>
-      {!loading&&rows.content.length===0&&<p className="cn-empty">No consignees found. Add the first record or change your search.</p>}
+      {!loading&&rowsReady&&rows.content.length===0&&<p className="cn-empty">No consignees found. Add the first record or change your search.</p>}
       {loading&&rows.content.length===0&&<p className="cn-empty">Loading records…</p>}
       </div>
-      <div className="cn-pager"><span>Page {page+1} of {Math.max(1,rows.totalPages)}</span>
+      {rowsReady&&!loading&&<div className="cn-pager"><span>Page {page+1} of {Math.max(1,rows.totalPages)}</span>
         <div><button onClick={()=>setPage(v=>Math.max(0,v-1))} disabled={page===0}>Previous</button>
           <button onClick={()=>setPage(v=>v+1)} disabled={page+1>=rows.totalPages}>Next</button></div>
-      </div>
+      </div>}
     </section>
     <section className="cn-panel">
       <div className="cn-panel-head">
@@ -186,13 +210,13 @@ export function ConsigneeWorkspace() {
           <p>Only booked shipments can change their consignee.</p></div>
       </div>
       <div className="cn-shipments">
-        {shipmentsReady.slice(0,12).map(shipment=><div key={shipment.id} className="cn-shipment">
+        {shipmentServiceReady&&shipmentsReady.slice(0,12).map(shipment=><div key={shipment.id} className="cn-shipment">
           <div><strong>{shipment.reference}</strong><small>{shipment.consignee_name??"Recipient not assigned"}</small></div>
-          <button type="button" onClick={()=>openShipment(shipment)}>
+          <button type="button" disabled={!rowsReady} onClick={()=>openShipment(shipment)}>
             {shipment.consignee_id?"Change consignee":"Assign consignee"} ↗
           </button>
         </div>)}
-        {!loading&&shipmentsReady.length===0&&<p className="cn-empty">No booked shipments in the recent records.</p>}
+        {shipmentServiceReady&&shipmentsReady.length===0&&<p className="cn-empty">No booked shipments in the recent records.</p>}
       </div>
     </section>
     <p className="cn-footnote">Internal development system. Do not enter live commercial data until the production security review is complete.</p>
@@ -239,21 +263,22 @@ export function ConsigneeWorkspace() {
                 setRecipientTerm(recipientQuery.trim());}}>Find</button>
             </div>
           </label>
-          <label>Consignee<select required value={recipient} onChange={e=>setRecipient(e.target.value)}>
+          {matchingError&&<p className="cn-inline-error" role="alert">{matchingError} <button type="button" onClick={()=>setMatchingRevision(v=>v+1)}>Retry</button></p>}
+          <label>Consignee<select required disabled={!matchingReady||matchingLoading} value={recipient} onChange={e=>setRecipient(e.target.value)}>
             <option value="">Select receiving party</option>
-            {matching.content.filter(c=>c.active).map(c=>
+            {matchingReady&&matching.content.filter(c=>c.active).map(c=>
               <option key={c.id} value={c.id}>{c.company_name} · {c.code}</option>)}
           </select></label>
-          <div className="cn-recipient-pager"><span>{matching.totalElements} matching records</span>
-            <button type="button" disabled={recipientPage===0} onClick={()=>{setRecipient("");
+          <div className="cn-recipient-pager"><span>{matchingLoading?"Loading recipients…":matchingReady?matching.totalElements+" matching records":"Recipients unavailable"}</span>
+            <button type="button" disabled={!matchingReady||recipientPage===0} onClick={()=>{setRecipient("");
               setRecipientPage(p=>Math.max(0,p-1));}}>Previous</button>
-            <button type="button" disabled={recipientPage+1>=matching.totalPages} onClick={()=>{setRecipient("");
+            <button type="button" disabled={!matchingReady||recipientPage+1>=matching.totalPages} onClick={()=>{setRecipient("");
               setRecipientPage(p=>p+1);}}>Next</button>
           </div>
           <p className="cn-hint">Only active recipients with the same customer are eligible. Final validation runs on the server.</p>
           {error&&<p className="cn-inline-error" role="alert">{error}</p>}
           <footer><button type="button" onClick={()=>setShipping(null)} disabled={saving}>Cancel</button>
-            <button type="submit" className="cn-primary" disabled={saving||!recipient}>Assign recipient →</button></footer>
+            <button type="submit" className="cn-primary" disabled={saving||!matchingReady||!recipient}>Assign recipient →</button></footer>
         </form>
       </div>
     </div>}

@@ -18,10 +18,12 @@ async function req<T>(url:string,init?:RequestInit):Promise<T>{
   if(response.status===401){window.location.assign("/login");throw new Error("Session expired");}
   if(!response.ok){
     if(response.status===403)throw new Error("Insufficient permission for shipping records.");
+    if(response.status===404)throw new Error("Service not connected yet. Shipments are unavailable.");
+    if(response.status>=500)throw new Error("The shipment service encountered a server error.");
     if(response.status===409)throw new Error("Shipment step blocked. Confirm PO approval and current status.");
     throw new Error("Shipment request failed ("+response.status+").");
   }
-  return response.json() as Promise<T>;
+  try{return await response.json() as T;}catch{throw new Error("The shipment service returned invalid JSON.");}
 }
 
 export function LineShipmentPanel({orderId,purchaseOrders,me}:{
@@ -32,16 +34,20 @@ export function LineShipmentPanel({orderId,purchaseOrders,me}:{
   const [tick,setTick]=useState(0);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
+  const [ready,setReady]=useState(false),[loading,setLoading]=useState(true);
   const [note,setNote]=useState("");
   const reload=useCallback(()=>setTick(n=>n+1),[]);
   useEffect(()=>{
     if(!me||!["ADMIN","MANAGEMENT","SOURCING","LOGISTICS"].includes(me.role))return;
     let mounted=true;
-    req<Page>(route+"?salesOrderId="+encodeURIComponent(orderId))
-      .then(p=>{if(mounted){setItems(p.content);setError("");}})
-      .catch(e=>{if(mounted)setError(e instanceof Error?e.message:"Unable to load shipments");});
-    return()=>{mounted=false;};
+    const controller=new AbortController();setReady(false);setLoading(true);setError("");
+    req<Page>(route+"?salesOrderId="+encodeURIComponent(orderId),{signal:controller.signal})
+      .then(p=>{if(!Array.isArray(p?.content))throw new Error("The shipment service returned data in an unexpected format.");if(mounted){setItems(p.content);setReady(true);}})
+      .catch(e=>{if(mounted)setError(e instanceof Error?e.message:"Unable to load shipments");})
+      .finally(()=>{if(mounted)setLoading(false);});
+    return()=>{mounted=false;controller.abort();};
   },[orderId,tick,me]);
+  useEffect(()=>{setSelected(null);},[orderId]);
   const canWrite=!!me&&["ADMIN","MANAGEMENT","LOGISTICS"].includes(me.role);
   const already=new Set(items.map(s=>s.purchase_order_id));
 
@@ -76,8 +82,9 @@ export function LineShipmentPanel({orderId,purchaseOrders,me}:{
     <h3>04 / Shipment booking & milestones</h3>
     <p className="lq-muted">One full-allocation shipment per issued supplier PO.
       Tracking updates are entered by staff, not imported from carriers.</p>
-    {error&&<p role="alert" className="lq-error">{error}</p>}
-    {purchaseOrders.filter(p=>p.status==="ISSUED"&&!already.has(p.id)).map(po=>
+    {error&&<p role="alert" className="lq-error">{error} <button type="button" onClick={reload}>Retry</button></p>}
+    {loading&&<p role="status">Loading shipments…</p>}
+    {ready&&!loading&&purchaseOrders.filter(p=>p.status==="ISSUED"&&!already.has(p.id)).map(po=>
       <form className="lo-shipment-form" key={po.id} onSubmit={e=>book(e,po.id)}>
         <strong>{po.reference} · {po.supplier_name}</strong>
         <div className="lo-shipment-fields">
@@ -90,12 +97,12 @@ export function LineShipmentPanel({orderId,purchaseOrders,me}:{
         </div>
         {canWrite&&<button type="submit" disabled={busy} className="lq-action">Book shipment</button>}
       </form>)}
-    {items.map(sh=><div className="lo-order" key={sh.id}>
+    {ready&&!loading&&items.map(sh=><div className="lo-order" key={sh.id}>
       <div><strong>{sh.reference} · {sh.supplier_name}</strong>
         <small>{sh.status} · {sh.origin} → {sh.destination} · ETA {sh.eta||"not set"}</small>
       </div><button type="button" disabled={busy} onClick={()=>void open(sh.id)}>Milestones →</button>
     </div>)}
-    {selected&&<div className="lo-shipment-history">
+    {ready&&!loading&&selected&&<div className="lo-shipment-history">
       <strong>{selected.shipment.reference} / {selected.shipment.status}</strong>
       <p className="lq-muted">{selected.lines.map(l=>
         l.product_name+" — "+l.quantity+" "+l.unit).join(" · ")}</p>

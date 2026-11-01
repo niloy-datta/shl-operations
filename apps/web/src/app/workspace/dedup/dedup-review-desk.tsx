@@ -32,8 +32,13 @@ export function DedupReviewDesk(){
         });
         if(response.status===401){window.location.assign("/login");return;}
         if(response.status===403)throw new Error("This review is restricted to management.");
+        if(response.status===404)throw new Error("Service not connected yet. Duplicate review is unavailable.");
+        if(response.status>=500)throw new Error("The review service encountered a server error. Please retry.");
         if(!response.ok)throw new Error("Could not retrieve candidate groups.");
-        setResults(await response.json() as Page);
+        let data:Page;
+        try{data=await response.json() as Page;}catch{throw new Error("The review service returned invalid JSON.");}
+        if(!data||!Array.isArray(data.content)||typeof data.totalElements!=="number"||typeof data.totalPages!=="number")throw new Error("The review service returned data in an unexpected format.");
+        if(!ctrl.signal.aborted)setResults(data);
       }catch(e){
         if(!ctrl.signal.aborted)setError(e instanceof Error?e.message:"Could not load results.");
       }finally{if(!ctrl.signal.aborted)setLoading(false);}
@@ -66,9 +71,9 @@ export function DedupReviewDesk(){
           <p>Matches are based on normalized exact email or name + country.
              Consignees are never compared across different customers.</p>
         </div>
-        <strong>{results.totalElements} groups</strong>
+        <strong>{loading||error?"—":results.totalElements} groups</strong>
       </div>
-      {error&&<div className="du-error" role="alert">{error}</div>}
+      {error&&<div className="du-error" role="alert">{error} <button type="button" onClick={()=>setRevision(x=>x+1)}>Retry</button></div>}
       {loading&&<p className="du-empty" role="status">Checking for exact duplicate keys…</p>}
       {!loading&&!error&&results.content.length===0&&<p className="du-empty">
         No exact duplicate candidate groups found in this directory.</p>}
@@ -86,12 +91,12 @@ export function DedupReviewDesk(){
             </div>
           </details>
         </article>)}
-      <footer className="du-footer">
+      {!loading&&!error&&<footer className="du-footer">
         <span>Page {page+1} of {Math.max(1,results.totalPages)} · No changes applied</span>
         <div><button type="button" disabled={page===0||loading} onClick={()=>setPage(p=>p-1)}>Previous</button>
         <button type="button" disabled={page+1>=results.totalPages||loading}
           onClick={()=>setPage(p=>p+1)}>Next</button></div>
-      </footer>
+      </footer>}
     </section>
     <section className="du-guidance">
       <div><h2>Before making changes</h2><p>
