@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "npm --prefix apps/web run dev",
+    "dev:api": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-api.ps1",
     "build": "npm --prefix apps/web run build",
     "typecheck": "npm --prefix apps/web run typecheck",
     "lint": "npm --prefix apps/web run lint"
