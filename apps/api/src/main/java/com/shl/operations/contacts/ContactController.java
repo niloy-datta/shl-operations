@@ -5,6 +5,7 @@ import com.shl.operations.enterprise.AuditService;
 import java.net.URI;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Locale;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.CONFLICT;
 
 @RestController @RequestMapping("/api")
 public class ContactController {
@@ -25,19 +27,31 @@ public class ContactController {
         this.customers = customers; this.suppliers = suppliers; this.db = db; this.audit=audit;
     }
     private PageRequest page(int index, int size) {
-        return PageRequest.of(Math.max(0, index), Math.min(100, Math.max(1, size)), Sort.by(Sort.Direction.DESC, "createdAt"));
+        return PageRequest.of(Math.max(0, index), Math.min(100, Math.max(1, size)), Sort.by(Sort.Direction.DESC, "createdAt", "id"));
+    }
+    private String normalize(String value) { return value==null?"":value.trim().toLowerCase(Locale.ROOT); }
+    private void preventDuplicate(String table, ContactInput input, UUID excluded) {
+        // Table names are fixed at the call sites. Serialize matching writes without changing legacy data.
+        String name=normalize(input.name()),email=normalize(input.email()),phone=normalize(input.phone()),country=normalize(input.country());
+        db.queryForList("SELECT pg_advisory_xact_lock(hashtextextended(?,0))",table+"|"+name+"|"+email+"|"+phone+"|"+country);
+        Boolean duplicate=db.queryForObject("SELECT EXISTS(SELECT 1 FROM "+table+
+            " WHERE lower(trim(name))=? AND lower(trim(coalesce(email,'')))=? AND lower(trim(coalesce(phone,'')))=?"+
+            " AND lower(trim(coalesce(country,'')))=? AND id<>?)",Boolean.class,name,email,phone,country,excluded==null?new UUID(0,0):excluded);
+        if(Boolean.TRUE.equals(duplicate))throw new ResponseStatusException(CONFLICT,"An identical contact already exists");
     }
     @GetMapping("/customers") public Page<Customer> customers(@RequestParam(defaultValue = "") String q,
         @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
         return customers.findByNameContainingIgnoreCase(q, page(page, size));
     }
     @PostMapping("/customers") @Transactional public ResponseEntity<Customer> createCustomer(@Valid @RequestBody ContactInput input) {
+        preventDuplicate("customers",input,null);
         Customer saved = customers.save(new Customer(input));
         audit.log("CREATED","CUSTOMER",saved.id,saved.name);
         return ResponseEntity.created(URI.create("/api/customers/" + saved.id)).body(saved);
     }
     @PutMapping("/customers/{id}") @Transactional public Customer updateCustomer(@PathVariable UUID id, @Valid @RequestBody ContactInput input) {
         Customer saved = customers.findById(id).orElseThrow(() -> new ResponseStatusException(NOT_FOUND));
+        preventDuplicate("customers",input,id);
         audit.log("UPDATED","CUSTOMER",id,input.name());
         saved.update(input); return saved;
     }
@@ -46,12 +60,14 @@ public class ContactController {
         return suppliers.findByNameContainingIgnoreCase(q, page(page, size));
     }
     @PostMapping("/suppliers") @Transactional public ResponseEntity<Supplier> createSupplier(@Valid @RequestBody ContactInput input) {
+        preventDuplicate("suppliers",input,null);
         Supplier saved = suppliers.save(new Supplier(input));
         audit.log("CREATED","SUPPLIER",saved.id,saved.name);
         return ResponseEntity.created(URI.create("/api/suppliers/" + saved.id)).body(saved);
     }
     @PutMapping("/suppliers/{id}") @Transactional public Supplier updateSupplier(@PathVariable UUID id, @Valid @RequestBody ContactInput input) {
         Supplier saved = suppliers.findById(id).orElseThrow(() -> new ResponseStatusException(NOT_FOUND));
+        preventDuplicate("suppliers",input,id);
         audit.log("UPDATED","SUPPLIER",id,input.name());
         saved.update(input); return saved;
     }
