@@ -1,4 +1,5 @@
 "use client";
+import { accessDeniedMessage } from "@/lib/frontend-service";
 
 import {useEffect,useState} from "react";
 
@@ -12,7 +13,7 @@ async function requestJson<T>(path:string,init?:RequestInit):Promise<T>{
   const response=await fetch(path,{cache:"no-store",...init});
   if(response.status===401){window.location.assign("/login");throw new Error("Please sign in again.");}
   if(!response.ok){
-    if(response.status===403)throw new Error("Management permission is required.");
+if(response.status===403)throw new Error(await accessDeniedMessage(response,"Management permission is required."));
     if(response.status===404)throw new Error("Service not connected yet. Lead routing is unavailable.");
     if(response.status>=500)throw new Error("The routing service encountered a server error.");
     if(response.status===409)throw new Error("The routing queue changed. Refresh and retry.");

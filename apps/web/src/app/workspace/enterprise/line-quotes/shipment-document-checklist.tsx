@@ -1,4 +1,5 @@
 "use client";
+import { accessDeniedMessage } from "@/lib/frontend-service";
 
 import {useEffect,useState,type FormEvent} from "react";
 
@@ -29,7 +30,7 @@ export function ShipmentDocumentChecklist({shipmentId,canWrite}:{
     fetch(base+shipmentId+"/documents",{cache:"no-store",signal:controller.signal})
       .then(async response=>{
         if(response.status===401){window.location.assign("/login");return null;}
-        if(response.status===403)throw new Error("You do not have access to the document checklist.");
+if(response.status===403)throw new Error(await accessDeniedMessage(response,"You do not have access to the document checklist."));
         if(response.status===404)throw new Error("Service not connected yet. The document checklist is unavailable.");
         if(response.status>=500)throw new Error("The document service encountered a server error.");
         if(!response.ok)throw new Error("Unable to read document checklist ("+response.status+").");

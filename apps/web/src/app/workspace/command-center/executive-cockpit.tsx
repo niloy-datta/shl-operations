@@ -1,4 +1,5 @@
 "use client";
+import { accessDeniedMessage } from "@/lib/frontend-service";
 
 import Link from "next/link";
 import { DailyDesk } from "./daily-desk";
@@ -59,7 +60,11 @@ export function ExecutiveCockpit(){
     const controller=new AbortController();
     fetch("/api/command-center",{cache:"no-store",signal:controller.signal}).then(async r=>{
       if(r.status===401){window.location.assign("/login");return;}
-      if(r.status===403){if(alive)setRestricted(true);return;}
+      if(r.status===403){
+        const message=await accessDeniedMessage(r,"");
+        if(message)throw new Error(message);
+        if(alive)setRestricted(true);return;
+      }
       if(r.status===404)throw new Error("Service not connected yet. Operations data is unavailable.");
       if(r.status>=500)throw new Error("The operations service encountered a server error. Please try again later.");
       if(!r.ok)throw new Error("Unable to load operations data (HTTP "+r.status+").");

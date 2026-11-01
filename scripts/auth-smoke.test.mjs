@@ -34,9 +34,11 @@ test("legacy cookies cannot bypass authentication", async () => {
 });
 
 test("business APIs reject unauthenticated access with JSON", async () => {
-  const response = await request("/api/data/dashboard");
-  assert.equal(response.status, 401);
-  assert.deepEqual(await response.json(), { error: "Sign in required." });
+  for (const path of ["/api/data/dashboard", "/api/data/me", "/api/data/customers", "/api/trading/rfqs", "/api/enterprise/staff", "/api/costs/commissions/access", "/api/auth/sessions", "/api/auth/mfa/status"]) {
+    const response = await request(path, { headers: { authorization: "Bearer forged-browser-token" } });
+    assert.equal(response.status, 401, path);
+    assert.equal((await response.json()).error, "Sign in required.", path);
+  }
 });
 
 test("auth mutations reject cross-origin requests", async () => {

@@ -1,4 +1,5 @@
 "use client";
+import { accessDeniedMessage } from "@/lib/frontend-service";
 
 import Link from "next/link";
 import {useEffect,useState} from "react";
@@ -31,7 +32,7 @@ export function DedupReviewDesk(){
           signal:ctrl.signal,cache:"no-store"
         });
         if(response.status===401){window.location.assign("/login");return;}
-        if(response.status===403)throw new Error("This review is restricted to management.");
+if(response.status===403)throw new Error(await accessDeniedMessage(response,"This review is restricted to management."));
         if(response.status===404)throw new Error("Service not connected yet. Duplicate review is unavailable.");
         if(response.status>=500)throw new Error("The review service encountered a server error. Please retry.");
         if(!response.ok)throw new Error("Could not retrieve candidate groups.");

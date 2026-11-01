@@ -1,4 +1,5 @@
 "use client";
+import { accessDeniedMessage } from "@/lib/frontend-service";
 import Link from "next/link";
 import {useCallback,useEffect,useState} from "react";
 import {useRouter} from "next/navigation";
@@ -20,7 +21,7 @@ export function AlertsDesk(){
     try{
       const response=await fetch("/api/alerts",{cache:"no-store",signal:controller.signal});
       if(response.status===401){router.replace("/login");return;}
-      if(response.status===403)throw new Error("You do not have access to operational alerts.");
+if(response.status===403)throw new Error(await accessDeniedMessage(response,"You do not have access to operational alerts."));
       if(response.status===404)throw new Error("Service not connected yet. Operational alerts are unavailable.");
       if(response.status>=500)throw new Error("The alerts service encountered a server error. Please try again later.");
       if(!response.ok)throw new Error(`Unable to load operational alerts (HTTP ${response.status}).`);

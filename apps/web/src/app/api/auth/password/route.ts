@@ -4,6 +4,7 @@ import { sameOrigin } from "@/lib/session";
 import { getSupabaseConfig } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { verifiedUser } from "@/lib/supabase/user";
+import { revokeBackendSessions } from "@/lib/backend";
 
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
@@ -26,7 +27,9 @@ export async function POST(request: Request) {
   await verifier.auth.signOut({ scope: "local" });
   const update = await client.auth.updateUser({ password: body.newPassword });
   if (update.error) return NextResponse.json({ error: "Unable to update password. Use a different password or sign in again." }, { status: 400 });
+  const session = await client.auth.getSession();
+  const revoked = !!session.data.session && await revokeBackendSessions(session.data.session.access_token, true);
   const signout = await client.auth.signOut({ scope: "global" });
-  if (signout.error) return NextResponse.json({ error: "Password changed, but signing out failed. Please sign out again." }, { status: 503 });
+  if (!revoked || signout.error) return NextResponse.json({ error: "Password changed, but session revocation could not be confirmed. Please sign out again." }, { status: 503 });
   return NextResponse.json({ ok: true });
 }

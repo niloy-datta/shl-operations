@@ -86,6 +86,23 @@ export function Workspace() {
   const [commissionAccess, setCommissionAccess] = useState(false);
   const [commissionIssue, setCommissionIssue] = useState<ServiceIssue | null>(null);
   const [commissionRevision, setCommissionRevision] = useState(0);
+  const [staff, setStaff] = useState<{ username: string; role: string } | null>(null);
+  const [staffIssue, setStaffIssue] = useState<ServiceIssue | null>(null);
+  const [staffRevision, setStaffRevision] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    setStaff(null); setStaffIssue(null);
+    readService("/api/data/me", controller.signal,
+      (value): value is { username: string; role: string } => !!value && typeof value === "object" &&
+        typeof (value as { username?: unknown }).username === "string" && typeof (value as { role?: unknown }).role === "string")
+      .then(value => { if (!controller.signal.aborted) setStaff(value); })
+      .catch(caught => {
+        if (controller.signal.aborted) return;
+        const issue = caught instanceof RequestError ? caught.issue : { title: "Access check unavailable", message: "Staff permissions could not be verified." };
+        if (issue.unauthorized) router.replace("/login"); else setStaffIssue(issue);
+      });
+    return () => controller.abort();
+  }, [staffRevision, router]);
   useEffect(() => {
     const controller = new AbortController();
     readService("/api/costs/commissions/access", controller.signal,
@@ -166,8 +183,8 @@ export function Workspace() {
     setDirectoryError(null);
     setWriteError("");
   }
-  function openCreate() { if (!data || loading || directoryError || writeError) return; returnFocus.current = document.activeElement as HTMLElement; setEditing(null); setFormError(""); setFormOpen(true); }
-  function openEdit(contact: Contact) { if (!data || loading || directoryError || writeError) return; returnFocus.current = document.activeElement as HTMLElement; setEditing(contact); setFormError(""); setFormOpen(true); }
+  function openCreate() { if (!directoryWritable) return; returnFocus.current = document.activeElement as HTMLElement; setEditing(null); setFormError(""); setFormOpen(true); }
+  function openEdit(contact: Contact) { if (!directoryWritable) return; returnFocus.current = document.activeElement as HTMLElement; setEditing(contact); setFormError(""); setFormOpen(true); }
   function keepFocusInDialog(event: ReactKeyboardEvent<HTMLElement>) {
     if (event.key !== "Tab") return;
     const elements = event.currentTarget.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href]');
@@ -179,7 +196,7 @@ export function Workspace() {
 
   async function saveContact(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (view === "overview" || !data || loading || directoryError || writeError || saving) return;
+    if (view === "overview" || !directoryWritable || saving) return;
     setFormError("");
     const form = new FormData(event.currentTarget);
     const body = Object.fromEntries(["name", "email", "phone", "country"].map(key =>
@@ -256,7 +273,7 @@ export function Workspace() {
   const totalRelationships = (totals?.customers ?? 0) + (totals?.suppliers ?? 0);
   const directoryTotal = (view === "customers" ? totals?.customers : totals?.suppliers) ?? (!search ? data?.totalElements : undefined);
   const directoryAvailable = !!data && !loading && !directoryError;
-  const directoryWritable = directoryAvailable && !writeError;
+  const directoryWritable = directoryAvailable && !writeError && !!staff && ["ADMIN", "MANAGEMENT", "BD", "SOURCING"].includes(staff.role);
 
   return <div className="shell">
     <aside className="sidebar" aria-label="Workspace sidebar">
@@ -270,7 +287,7 @@ export function Workspace() {
           <Icon name={item.icon} /><span>{item.label}</span>{view === item.key && <span className="active-indicator" />}</button>)}
         <p className="nav-heading future-heading">TRADING OPERATIONS</p>
         <Link href="/workspace/rfqs" className="nav-item"><Icon name="layers" /><span>RFQ &amp; Sourcing</span></Link>
-        <p className="nav-heading future-heading">COMING NEXT</p>
+        <p className="nav-heading future-heading">BUSINESS MODULES</p>
         <Link href="/workspace/account" className="nav-item"><Icon name="lock" /><span>My security</span></Link>
         {commissionAccess&&<Link href="/workspace/costs/commissions" className="nav-item">
           <Icon name="lock"/><span>Commission vault</span></Link>}
@@ -280,15 +297,16 @@ export function Workspace() {
       <div className="sidebar-bottom">
         {commissionIssue && <div role="status"><small>{commissionIssue.title}: commission access could not be checked.</small> <button type="button" onClick={() => setCommissionRevision(value => value + 1)}>Retry</button></div>}
         <div className="side-status"><Icon name="lock" size={15} /><span>Private operations workspace</span></div>
-        <div className="account-row"><div className="user-avatar">A</div><div className="account-info"><strong>Administrator</strong><small>SHL workspace</small></div>
+        <div className="account-row"><div className="user-avatar">{staff?.username.slice(0, 1).toUpperCase() || "—"}</div><div className="account-info"><strong>{staff?.username || "Staff account"}</strong><small>{staff?.role || "Access not verified"}</small></div>
           <button className="icon-button signout" type="button" aria-label="Sign out" title="Sign out" onClick={() => void logout()}><Icon name="logout" /></button></div>
       </div>
     </aside>
 
     <main className="main-area">
       <header className="topbar"><div className="breadcrumb">SHL Operations <span>/</span> <strong>{title}</strong></div>
-        <div className="topbar-end"><span className="topbar-tag"><span className="status-dot" /> Internal workspace</span><div className="topbar-avatar">A</div></div></header>
+        <div className="topbar-end"><span className="topbar-tag"><span className="status-dot" /> Internal workspace</span><div className="topbar-avatar">{staff?.username.slice(0, 1).toUpperCase() || "—"}</div></div></header>
       <div className="content">
+        {staffIssue && <ErrorNotice issue={staffIssue} retry={() => setStaffRevision(value => value + 1)} />}
         {view === "overview" ? <>
           <section className="welcome-hero">
             <div className="hero-content"><p className="hero-kicker"><span className="hero-kicker-line" /> SHL INTERNATIONAL · OPERATIONS CONTROL</p>

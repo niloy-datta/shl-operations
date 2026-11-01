@@ -13,12 +13,20 @@ const loaded = new Module(filename, module);
 loaded.filename = filename;
 loaded.paths = Module._nodeModulePaths(path.dirname(filename));
 loaded._compile(source, filename);
-const { readService, isTotals, isContactPage } = loaded.exports;
+const { readService, isTotals, isContactPage, accessDeniedMessage } = loaded.exports;
 
 test("frontend services distinguish failures and retain independent results", async t => {
   const originalFetch = global.fetch;
   t.after(() => { global.fetch = originalFetch; });
   const signal = new AbortController().signal;
+
+  await t.test("MFA and unconnected services show actionable states", async () => {
+    global.fetch = async () => Response.json({ code: "MFA_REQUIRED" }, { status: 403 });
+    await assert.rejects(readService("/dashboard", signal, isTotals), error => error.issue.title === "Authenticator verification required");
+    assert.match(await accessDeniedMessage(Response.json({ code: "MFA_REQUIRED" }), "denied"), /workspace\/account/);
+    global.fetch = async () => Response.json({ code: "SERVICE_NOT_CONFIGURED" }, { status: 503 });
+    await assert.rejects(readService("/dashboard", signal, isTotals), error => error.issue.title === "Service not connected yet");
+  });
 
   for (const [status, title] of [[401, "Session expired"], [403, "Access restricted"], [404, "Service not connected yet"], [500, "Service temporarily unavailable"]]) {
     await t.test(`HTTP ${status}`, async () => {

@@ -1,4 +1,5 @@
 "use client";
+import { accessDeniedMessage } from "@/lib/frontend-service";
 
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -46,7 +47,7 @@ async function json<T>(path: string, options?: RequestInit): Promise<T> {
   }
   if (!response.ok) {
     if (response.status === 404) throw new Error("Service not connected yet. RFQ data is unavailable.");
-    if (response.status === 403) throw new Error("Your account does not have access to this service.");
+if (response.status === 403) throw new Error(await accessDeniedMessage(response, "Your account does not have access to this service."));
     if (response.status >= 500) throw new Error("The service encountered a server error. Please try again later.");
     if (response.status === 409) throw new Error("Workflow rule blocked this action. Check its status and supplier offers.");
     if (response.status === 400) throw new Error("Please check the required fields and selected records.");

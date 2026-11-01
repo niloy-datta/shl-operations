@@ -1,4 +1,5 @@
 "use client";
+import { accessDeniedMessage } from "@/lib/frontend-service";
 
 import Link from "next/link";
 import {useCallback,useEffect,useRef,useState,type FormEvent,type ReactNode} from "react";
@@ -30,7 +31,7 @@ async function fetchJson<T>(path:string,init?:RequestInit):Promise<T>{
   const res=await fetch(path,{cache:"no-store",...init});
   if(res.status===401){window.location.assign("/login");throw new Error("Session expired");}
   if(!res.ok){
-    if(res.status===403)throw new Error("Your account is not permitted to perform this action.");
+if(res.status===403)throw new Error(await accessDeniedMessage(res,"Your account is not permitted to perform this action."));
     if(res.status===404)throw new Error("Service not connected yet. These records are unavailable.");
     if(res.status>=500)throw new Error("The service encountered a server error. Please try again later.");
     if(res.status===409)throw new Error("Workflow conflict. Check linked customer, owner and current status.");
@@ -191,9 +192,11 @@ export function GrowthDesk({module}:{module:Module}){
     finally{setBusy(false);}
   }
   async function logout(){
-    const res=await fetch("/api/auth/logout",{method:"POST"});
-    if(res.ok){router.replace("/login");router.refresh();}
-    else setError("Sign-out could not revoke the session. Retry.");
+    try {
+      const res=await fetch("/api/auth/logout",{method:"POST"});
+      if(!res.ok)throw new Error("Sign-out failed");
+      router.replace("/login");router.refresh();
+    } catch { setError("Sign-out could not revoke the session. Retry."); }
   }
 
   return <div className="en-app">

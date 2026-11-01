@@ -1,4 +1,5 @@
 "use client";
+import { accessDeniedMessage } from "@/lib/frontend-service";
 
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -31,7 +32,7 @@ async function api<T>(path:string,init?:RequestInit):Promise<T>{
   if(res.status===401){window.location.assign("/login");throw new Error("Session expired");}
   if(!res.ok){
     const data=await res.json().catch(()=>null);
-    if(res.status===403)throw new Error("Your account cannot perform this action");
+if(res.status===403)throw new Error(await accessDeniedMessage(res,"Your account cannot perform this action"));
     if(res.status===404)throw new Error("Service not connected yet. Records are unavailable.");
     if(res.status>=500)throw new Error("The service encountered a server error. Please try again later.");
     if(res.status===409)throw new Error("Ownership conflict, duplicate primary contact, or invalid state");

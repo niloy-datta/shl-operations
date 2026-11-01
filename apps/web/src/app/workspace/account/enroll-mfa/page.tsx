@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
-import { requireWorkspaceAccess } from "@/lib/workspace-access";
+import { requireIdentityAccess } from "@/lib/workspace-access";
 
 export default async function EnrollMfaPage() {
-  await requireWorkspaceAccess();
+  await requireIdentityAccess();
   redirect("/workspace/account");
 }

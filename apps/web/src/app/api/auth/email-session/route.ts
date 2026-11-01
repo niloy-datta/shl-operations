@@ -18,7 +18,10 @@ export async function POST(request: Request) {
   if (verification.error || !canAccessWorkspace(verification.data.user?.email)) {
     return NextResponse.json({ error: "This email link is invalid, expired or not authorized." }, { status: 401 });
   }
-  const { error } = await client.auth.setSession({ access_token: body.accessToken, refresh_token: body.refreshToken });
-  if (error) return NextResponse.json({ error: "This email link has expired. Request a fresh link." }, { status: 401 });
+  const { data, error } = await client.auth.setSession({ access_token: body.accessToken, refresh_token: body.refreshToken });
+  if (error || !data.user || data.user.id !== verification.data.user?.id || !canAccessWorkspace(data.user.email)) {
+    await client.auth.signOut({ scope: "local" });
+    return NextResponse.json({ error: "This email link has expired. Request a fresh link." }, { status: 401 });
+  }
   return NextResponse.json({ ok: true });
 }

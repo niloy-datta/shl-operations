@@ -14,6 +14,13 @@ export class RequestError extends Error {
   constructor(public issue: ServiceIssue) { super(issue.message); }
 }
 
+export async function accessDeniedMessage(response: Response, fallback: string) {
+  const body = await response.clone().json().catch(() => null);
+  if (body?.code === "MFA_REQUIRED") return "Open My security (/workspace/account) to set up or verify your authenticator, then retry.";
+  if (body?.code === "STAFF_ACCESS_REQUIRED") return "Ask your administrator to link your Supabase identity to an enabled staff account.";
+  return fallback;
+}
+
 export async function readService<T>(url: string, signal: AbortSignal, valid: (value: unknown) => value is T): Promise<T> {
   let response: Response;
   try { response = await fetch(url, { cache: "no-store", signal }); }
@@ -22,9 +29,18 @@ export async function readService<T>(url: string, signal: AbortSignal, valid: (v
     throw new RequestError({ title: "Connection problem", message: "The service could not be reached. Check your connection and try again." });
   }
   if (response.status === 401) throw new RequestError({ title: "Session expired", message: "Please sign in again.", unauthorized: true });
-  if (response.status === 403) throw new RequestError({ title: "Access restricted", message: "You do not have permission to access this service." });
+  if (response.status === 403) {
+    const error = await response.json().catch(() => null);
+    if (error?.code === "MFA_REQUIRED") throw new RequestError({ title: "Authenticator verification required", message: "Open My security to set up or verify your authenticator, then retry." });
+    if (error?.code === "STAFF_ACCESS_REQUIRED") throw new RequestError({ title: "Staff access required", message: "Ask your administrator to link your Supabase identity to an enabled staff account." });
+    throw new RequestError({ title: "Access restricted", message: "You do not have permission to access this service." });
+  }
   if (response.status === 404) throw new RequestError({ title: "Service not connected yet", message: "This service is not available yet. Please try again later." });
-  if (response.status >= 500) throw new RequestError({ title: "Service temporarily unavailable", message: "The service encountered a server error. Please try again later." });
+  if (response.status >= 500) {
+    const body = await response.json().catch(() => null);
+    if (body?.code === "SERVICE_NOT_CONFIGURED") throw new RequestError({ title: "Service not connected yet", message: "The business data service has not been connected. Records are unavailable." });
+    throw new RequestError({ title: "Service temporarily unavailable", message: "The service encountered a server error. Please try again later." });
+  }
   if (!response.ok) throw new RequestError({ title: "Request failed", message: `The service returned HTTP ${response.status}. Please try again.` });
   let value: unknown;
   try { value = await response.json(); }

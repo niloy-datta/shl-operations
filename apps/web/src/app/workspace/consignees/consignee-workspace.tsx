@@ -1,4 +1,5 @@
 "use client";
+import { accessDeniedMessage } from "@/lib/frontend-service";
 
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -29,7 +30,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   if (response.status===401) { window.location.assign("/login"); throw new Error("Session expired"); }
   if (!response.ok) {
     const body=await response.json().catch(()=>null);
-    throw new Error(response.status===403?"Permission denied":
+throw new Error(response.status===403?await accessDeniedMessage(response,"Permission denied"):
       response.status===404?"Service not connected yet. Records are unavailable.":
       response.status>=500?"The service encountered a server error. Please try again later.":
       response.status===409?"Conflicting customer or shipment state":

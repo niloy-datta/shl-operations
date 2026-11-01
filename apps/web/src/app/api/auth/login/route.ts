@@ -20,9 +20,13 @@ export async function POST(request: Request) {
   if (!canAccessWorkspace(body.email.trim())) return NextResponse.json({ error: "Unable to sign in. Check your email and password." }, { status: 401 });
   const { error } = await client.auth.signInWithPassword({ email: body.email.trim(), password: body.password });
   if (error?.code === "email_not_confirmed") return NextResponse.json({ error: "Confirm your email first. Open the account confirmation email in this browser." }, { status: 401 });
+  if (error && (!error.status || error.status >= 500)) return NextResponse.json({ error: "The sign-in service is temporarily unavailable. Please retry later." }, { status: 503 });
   if (error) return NextResponse.json({ error: error.status === 429 ? "Too many attempts. Please try again later." : "Unable to sign in. Check your email and password." }, { status: error.status === 429 ? 429 : 401 });
   const factors = await client.auth.mfa.listFactors();
-  if (factors.error) return NextResponse.json({ error: "Unable to verify account security." }, { status: 503 });
+  if (factors.error) {
+    await client.auth.signOut({ scope: "local" });
+    return NextResponse.json({ error: "Unable to verify account security." }, { status: 503 });
+  }
   const verifiedFactors = factors.data.all.filter(factor => factor.status === "verified");
   if (verifiedFactors.length) {
     const factor = factors.data.totp.find(item => item.status === "verified");
@@ -30,9 +34,15 @@ export async function POST(request: Request) {
       await client.auth.signOut({ scope: "local" });
       return NextResponse.json({ error: "This account requires a sign-in method that is not available here. Contact your administrator." }, { status: 403 });
     }
-    if (!body.code) return NextResponse.json({ error: "Authenticator code required." }, { status: 428 });
+    if (!body.code) {
+      await client.auth.signOut({ scope: "local" });
+      return NextResponse.json({ error: "Authenticator code required." }, { status: 428 });
+    }
     const verification = await client.auth.mfa.challengeAndVerify({ factorId: factor.id, code: body.code });
-    if (verification.error) return NextResponse.json({ error: "Invalid or expired authenticator code." }, { status: 401 });
+    if (verification.error) {
+      await client.auth.signOut({ scope: "local" });
+      return NextResponse.json({ error: "Invalid or expired authenticator code." }, { status: 401 });
+    }
   }
   return NextResponse.json({ ok: true });
 }

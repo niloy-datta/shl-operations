@@ -13,7 +13,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
   }
   if (canAccessWorkspace(body.email.trim())) {
-    const { error } = await (await createClient()).auth.resetPasswordForEmail(body.email.trim());
+    const { error } = await (await createClient()).auth.resetPasswordForEmail(body.email.trim(), {
+      redirectTo: new URL("/auth/callback", process.env.SHL_PUBLIC_ORIGIN || request.url).href
+    });
     if (error) return NextResponse.json({ error: error.status === 429 ? "Too many attempts. Please try again later." : "Unable to send a reset link. Please try again later." }, { status: error.status === 429 ? 429 : 503 });
   }
   return NextResponse.json({ ok: true, message: "If an authorized account exists, a password reset link has been sent. Open it in this browser." });

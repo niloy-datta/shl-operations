@@ -1,4 +1,5 @@
 "use client";
+import { accessDeniedMessage } from "@/lib/frontend-service";
 
 import Link from "next/link";
 import {useEffect,useState} from "react";
@@ -19,7 +20,7 @@ async function get<T>(path:string,init?:RequestInit):Promise<T>{
   const result=await fetch(path,{...init,cache:"no-store"});
   if(result.status===401){window.location.assign("/login");throw new Error("Sign in again.");}
   if(!result.ok){
-    if(result.status===403)throw new Error("Finance or management permissions are required.");
+if(result.status===403)throw new Error(await accessDeniedMessage(result,"Finance or management permissions are required."));
     if(result.status===404)throw new Error("Service not connected yet. Billing data is unavailable.");
     if(result.status>=500)throw new Error("The billing service encountered a server error. Please try again later.");
     if(result.status===409)throw new Error("Cannot proceed: check shipping completion and approval state.");

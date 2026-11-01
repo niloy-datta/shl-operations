@@ -101,7 +101,7 @@ async function api<T>(path: string, options?: RequestInit): Promise<T> {
   if (res.status===401) { window.location.assign("/login"); throw new Error("Session expired."); }
   if (!res.ok) {
     const body=await res.json().catch(()=>({}));
-    if (res.status===403) throw new Error("Your account is not permitted to perform this action.");
+    if (res.status===403) throw new Error(body.code==="MFA_REQUIRED" ? "Open My security to set up or verify your authenticator, then retry." : body.code==="STAFF_ACCESS_REQUIRED" ? "Your Supabase identity must be linked to an enabled staff account by your administrator." : "Your account is not permitted to perform this action.");
     if (res.status===404) throw new Error("Service not connected yet. These records are unavailable.");
     if (res.status>=500) throw new Error("The service encountered a server error. Please try again later.");
     if (res.status===409) throw new Error("Business rule conflict. Check the record status, links or duplicates.");
@@ -225,9 +225,11 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
   },[user,config,currentModule,tick]);
 
   async function logout() {
-    await fetch("/api/auth/logout",{method:"POST"});
-    router.replace("/login");
-    router.refresh();
+    try {
+      const response=await fetch("/api/auth/logout",{method:"POST"});
+      if(!response.ok)throw new Error("Sign-out could not revoke the session. Please retry.");
+      router.replace("/login");router.refresh();
+    } catch { setError("Sign-out could not be confirmed. Please retry."); }
   }
   async function openCreate() {
     lookupController.current?.abort();offerController.current?.abort();
@@ -293,7 +295,7 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
     if(currentModule==="tasks") payload={title:val("title"),description:val("description")||null,assigneeId:val("assigneeId"),
       rfqId:val("rfqId")||null,salesOrderId:val("salesOrderId")||null,shipmentId:val("shipmentId")||null,
       dueDate:val("dueDate")||null,priority:val("priority")};
-    if(currentModule==="staff") payload={username:val("username"),password:val("password"),role:val("role")};
+    if(currentModule==="staff") payload={username:val("username"),supabaseUserId:val("supabaseUserId"),role:val("role")};
     try {
       await send<Row>(config.endpoint,"POST",payload);
       setModal(null);setNotice("Record created successfully.");setPage(0);refresh();
@@ -406,11 +408,11 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
       </>;
       case "staff":return <>
         <FormField name="username" label="Unique username" required placeholder="jane.doe"/>
-        <FormField name="password" label="Initial password (16+ characters)" type="password" required/>
+        <FormField name="supabaseUserId" label="Supabase user ID (UUID)" required/>
         <FormField name="role" label="Role" required><select name="role" defaultValue="BD">
           {allRoles.map(role=><option value={role} key={role}>{role}</option>)}
         </select></FormField>
-        <p className="en-help">Use a unique temporary password and require the staff member to change it. MFA is not implemented yet.</p>
+        <p className="en-help">Create or invite the identity in Supabase first, then link its user ID here. Passwords and authenticator enrollment are managed through Supabase.</p>
       </>;
       default:return null;
     }

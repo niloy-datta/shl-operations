@@ -15,7 +15,8 @@ export async function POST(request: Request) {
   }
   if (!canAccessWorkspace(body.email.trim())) return NextResponse.json({ error: "Account setup is available only for authorized staff email addresses." }, { status: 403 });
   const client = await createClient();
-  const { data, error } = await client.auth.signUp({ email: body.email.trim(), password: body.password });
+  const { data, error } = await client.auth.signUp({ email: body.email.trim(), password: body.password,
+    options: { emailRedirectTo: new URL("/auth/callback", process.env.SHL_PUBLIC_ORIGIN || request.url).href } });
   if (error) return NextResponse.json({ error: error.status === 429 ? "Too many attempts. Please try again later." : "Account setup failed. If your account already exists, use Forgot password." }, { status: error.status === 429 ? 429 : 400 });
   return NextResponse.json({ ok: true, signedIn: Boolean(data.session), message: "Check your email to confirm your account. If it already exists, sign in or use Forgot password." });
 }

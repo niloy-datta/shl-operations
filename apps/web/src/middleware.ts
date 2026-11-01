@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseConfig } from "@/lib/supabase/config";
-import { verifiedUser } from "@/lib/supabase/user";
+import { verifiedIdentity, verifiedUser } from "@/lib/supabase/user";
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -20,7 +20,8 @@ export async function middleware(request: NextRequest) {
       },
     },
   }) : null;
-  const user = client ? await verifiedUser(client) : null;
+  const securityPage = request.nextUrl.pathname === "/workspace/account" || request.nextUrl.pathname === "/workspace/account/enroll-mfa";
+  const user = client ? await (securityPage ? verifiedIdentity(client) : verifiedUser(client)) : null;
   let result = response;
   if (!user && protectedPage) {
     const login = request.nextUrl.clone();

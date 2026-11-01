@@ -1,4 +1,5 @@
 "use client";
+import { accessDeniedMessage } from "@/lib/frontend-service";
 import Link from "next/link";
 import {useCallback,useEffect,useState,type FormEvent,type ReactNode} from "react";
 import {useRouter} from "next/navigation";
@@ -20,7 +21,7 @@ async function get<T>(url:string,opts?:RequestInit):Promise<T>{
   const response=await fetch(url,{cache:"no-store",...opts});
   if(response.status===401){window.location.assign("/login");throw new Error("Session expired.");}
   if(!response.ok){
-    if(response.status===403)throw new Error("This information requires explicit authorization.");
+if(response.status===403)throw new Error(await accessDeniedMessage(response,"This information requires explicit authorization."));
     if(response.status===404)throw new Error("Service not connected yet. Financial records are unavailable.");
     if(response.status>=500)throw new Error("The service encountered a server error. Please try again later.");
     if(response.status===409)throw new Error("Approval conflict: check creator identity and current status.");
@@ -129,9 +130,11 @@ export function CostDesk({module}:{module:Module}){
     finally{setBusy(false);}
   }
   async function logout(){
-    const r=await fetch("/api/auth/logout",{method:"POST"});
-    if(r.ok){router.replace("/login");router.refresh();}
-    else setError("Sign-out did not revoke your session. Please retry.");
+    try {
+      const r=await fetch("/api/auth/logout",{method:"POST"});
+      if(!r.ok)throw new Error("Sign-out failed");
+      router.replace("/login");router.refresh();
+    } catch { setError("Sign-out did not revoke your session. Please retry."); }
   }
   return <div className="en-app">
     <aside className="en-sidebar">
