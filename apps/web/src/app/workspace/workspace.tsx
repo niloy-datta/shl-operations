@@ -191,7 +191,6 @@ export function Workspace() {
     if (view === "overview" || data.content.length === 0) return;
     const fields = ["name", "email", "phone", "country", "createdAt"] as const;
     const escape = (value: string) => {
-      // Neutralize spreadsheet formulas in user-controlled contact fields.
       const safe = /^[=+\-@\t\r]/.test(value) ? "'" + value : value;
       return '"' + safe.replace(/"/g, '""') + '"';
     };

@@ -27,7 +27,6 @@
 @media(max-width:850px){.lo-shipment-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:550px){.lo-shipment-fields{grid-template-columns:1fr}}
 
-/* V20: readable, keyboard-accessible manual shipment evidence tracker. */
 .lo-docs{margin-top:24px;padding-top:18px;border-top:1px solid #cfdee4}
 .lo-docs-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
 .lo-docs-head h4{margin:0 0 6px;font-size:15px;color:#143c48}

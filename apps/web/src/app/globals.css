@@ -262,7 +262,6 @@ td:last-child, th:last-child { padding-right: 27px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *:before, *:after { animation-duration: .01ms!important; transition-duration: .01ms!important; scroll-behavior: auto!important; } }
 
-/* Operations OS V3: visual refinement layer; no business data is synthesized. */
 :root{--ink:#132540;--muted:#73849a;--line:#e1e9f2;--accent:#0caa89;--accent-deep:#087d71;--canvas:#f3f7fb}
 body{background:radial-gradient(ellipse 65% 25% at 90% 0%,#e1f8f1 0%,transparent 75%),#f3f7fb}
 .sidebar{background:linear-gradient(165deg,#0c2440 0%,#08192f 65%,#061425 100%);border-right:1px solid #1a3a4f}
@@ -280,7 +279,6 @@ body{background:radial-gradient(ellipse 65% 25% at 90% 0%,#e1f8f1 0%,transparent
 @media(max-width:700px){.sidebar{border-right:0;border-bottom:1px solid #1a3a4f}.topbar{backdrop-filter:none}.metric:hover,.quick-action:hover,.primary:hover:not(:disabled),.hero-button:hover{transform:none}}
 @media(prefers-reduced-motion:reduce){.metric,.quick-action,.outline-icon,.primary,.hero-button{transition:none!important}}
 
-/* Trading desk entry in the main workspace */
 .nav-item.live { color: #fff; }
 .live-module { margin-left: auto; padding: 4px 6px; color: #42d5b2; background: #1d594e; border-radius: 4px; letter-spacing: .5px; font-size: 9px; font-weight: 800; }
 .quick-panel a.quick-action { text-decoration: none; }

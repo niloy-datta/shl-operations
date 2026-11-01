@@ -20,7 +20,6 @@ export async function POST(request: Request) {
       typeof body.newPassword !== "string" || body.newPassword.length < 16 || body.newPassword.length > 128) {
     return NextResponse.json({ error: "Enter your current password and a new password of 16–128 characters." }, { status: 400 });
   }
-  // Check the password without replacing or downgrading the current MFA session.
   const verifier = createSupabaseClient(config.url, config.key, { auth: { persistSession: false, autoRefreshToken: false } });
   const verification = await verifier.auth.signInWithPassword({ email: user.email, password: body.currentPassword });
   if (verification.error) return NextResponse.json({ error: "Current password could not be verified." }, { status: 400 });

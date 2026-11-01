@@ -17,7 +17,6 @@ export function LoginForm({ configured }: { configured: boolean }) {
     const accessToken = fragment.get("access_token");
     const refreshToken = fragment.get("refresh_token");
     if (!accessToken || !refreshToken) return;
-    // Remove tokens immediately; never include them in URLs sent to the server.
     window.history.replaceState(null, "", window.location.pathname + window.location.search);
     setBusy(true);
     fetch("/api/auth/email-session", { method: "POST", headers: { "content-type": "application/json" },

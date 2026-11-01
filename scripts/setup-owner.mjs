@@ -11,7 +11,6 @@ if (owners.length !== 1) throw new Error("Initial setup requires exactly one con
 if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || !env.SHL_PUBLIC_ORIGIN) {
   throw new Error("Configure Supabase and the public app origin first.");
 }
-// Supabase delivers a one-time sign-in link; the owner chooses their own password.
 const client = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   { auth: { persistSession: false, autoRefreshToken: false, flowType: "implicit" } });
 const { error } = await client.auth.signInWithOtp({ email: owners[0], options: {

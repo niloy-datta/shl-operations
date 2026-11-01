@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getSupabaseConfig } from "@/lib/supabase/config";
 import { canAccessWorkspace } from "@/lib/supabase/access";
 
-// Handle Supabase dashboard invites and passwordless setup links (implicit flow).
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
   if (!getSupabaseConfig()) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });

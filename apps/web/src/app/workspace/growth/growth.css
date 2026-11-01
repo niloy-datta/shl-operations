@@ -35,7 +35,6 @@
 @media(max-width:900px){.gx-banner{padding:27px;flex-wrap:wrap}.gx-metric{min-width:120px}.gx-toolbar{flex-wrap:wrap}.gx-search{width:100%}.gx-search input{flex:1;min-width:0}}
 @media(max-width:540px){.gx-two,.gx-detail-grid{grid-template-columns:1fr}.gx-pagination{flex-wrap:wrap}.gx-banner{margin-top:0}.gx-dialog-body,.gx-dialog-header{padding:22px}}
 
-/* Admin-only lead routing panel, sharing enterprise spacing and focus treatments. */
 .lr-panel{padding:23px;margin:0 0 25px}
 .lr-header{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
 .lr-header h2{font-size:22px;letter-spacing:-.6px;margin:7px 0}
@@ -56,7 +55,6 @@
 .lr-history{margin-top:20px}
 @media(max-width:700px){.lr-lead{grid-template-columns:1fr}.lr-header-actions{width:100%}.lr-header-actions .en-primary{width:100%}}
 
-/* Read-only lead triage; visually distinct from financial or conversion approvals. */
 .gx-qualification{margin-top:24px;padding:20px 22px;border:1px solid #cce9e6;border-radius:13px;background:#f3faf9;color:#164153}
 .gx-qualification-head{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .gx-qualification-head small{display:block;color:#167d77;font-size:10px;font-weight:800;letter-spacing:1.1px}
