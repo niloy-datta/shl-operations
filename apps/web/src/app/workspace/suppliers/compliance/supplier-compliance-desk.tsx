@@ -116,8 +116,7 @@ export function SupplierComplianceDesk()
   async function review(event:FormEvent<HTMLFormElement>,evidenceId:string)
   {
     event.preventDefault();
-    const form=new FormData(event.currentTarget);
-    const data=new FormData(form);
+    const data=new FormData(event.currentTarget);
     const read=(field:string)=>String(data.get(field)??"").trim();
     setBusy(true);setError("");setNotice("");
     try
