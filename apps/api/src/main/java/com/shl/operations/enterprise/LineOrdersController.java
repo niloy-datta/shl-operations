@@ -25,8 +25,10 @@ import static org.springframework.http.HttpStatus.*;
 public class LineOrdersController {
     private final JdbcTemplate db;
     private final AuditService audit;
-    public LineOrdersController(JdbcTemplate db,AuditService audit) {
-        this.db=db;this.audit=audit;
+    private final PurchaseOrderMatchingService matching;
+    public LineOrdersController(JdbcTemplate db,AuditService audit,
+        PurchaseOrderMatchingService matching) {
+        this.db=db;this.audit=audit;this.matching=matching;
     }
     public record FromQuote(@NotNull UUID quoteId) {}
     public record SupplierSelection(@NotNull UUID supplierId) {}
@@ -220,6 +222,9 @@ public class LineOrdersController {
         if("ISSUED".equals(next)) {
             if(audit.actor().equals(po.get("created_by")))
                 throw conflict("Four-eyes: PO creator cannot issue their own order");
+            var check=matching.verify(id);
+            if(!check.matched())
+                throw conflict("Supplier PO failed source-line reconciliation");
             db.update("""
                 UPDATE line_purchase_orders SET status='ISSUED',issued_by=?,updated_at=now()
                 WHERE id=?
