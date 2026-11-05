@@ -67,3 +67,11 @@
 .lx-case ol{font-size:12px}
 .lx-new-case{padding:16px;border:1px solid #cee5ec;border-radius:10px}
 .lx-new-case h5{margin:0;font-size:13px}
+
+.lo-order:has(.po-match){flex-wrap:wrap}
+.po-match{flex-basis:100%;margin-top:12px;border-top:1px solid #dce7ec;padding-top:11px}
+.po-match button{border:1px solid #b3d6e0;background:#e8f5f9;color:#155c70;border-radius:8px;padding:9px 12px;font-size:11px;font-weight:700}
+.po-match p{color:#9b3737;font-size:12px}
+.po-match strong{font-size:12px;color:#174f60}
+.po-match small{display:block;margin-top:5px;font-size:11px;color:#668090}
+.po-match ul{padding-left:18px;font-size:12px;color:#96453c}

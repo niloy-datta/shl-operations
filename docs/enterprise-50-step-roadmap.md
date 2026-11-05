@@ -35,7 +35,7 @@
 ### 4. Sales / procurement (16–20)
 - [ ] **16 — Commercial document templates (P0).** Proforma and commercial quotations with versioned PDF outputs.
 - [ ] **17 — Contracts and amendments (P0).** Executed terms, immutable versions and controlled change orders.
-- [ ] **18 — Purchase-order line matching (P0).** Supplier PO vs sales order quantity, specification and currency verification.
+- [ ] **18 — Purchase-order line matching (P0).** Partially delivered V28: read-only supplier PO-to-sales-order line matching, including supplier, quantity, source revision, unit cost, currency and total; issuing a PO fails closed on mismatch. Independent document comparison and supplier acceptance are still pending. See [V28 slice](purchase-order-matching-v28.md).
 - [ ] **19 — Production milestones (P1).** Factory readiness, quality inspections and delay escalations.
 - [ ] **20 — Partial fulfillment (P1).** Split orders, multiple POs/shipments and controlled completion rules.
 
