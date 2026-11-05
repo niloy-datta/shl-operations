@@ -72,6 +72,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/dedup/candidates")
                     .hasAnyRole("ADMIN","MANAGEMENT")
                 .requestMatchers("/api/command-center/**").hasAnyRole("ADMIN","MANAGEMENT")
+                .requestMatchers("/api/supplier-compliance/**")
+                    .hasAnyRole("ADMIN","MANAGEMENT","SOURCING","BD")
                 .requestMatchers("/api/entities/**", "/api/entities")
                     .hasAnyRole("ADMIN","MANAGEMENT","BD","SOURCING")
                 .requestMatchers(HttpMethod.GET, "/api/alerts")

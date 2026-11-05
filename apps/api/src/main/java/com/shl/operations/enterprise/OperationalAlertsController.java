@@ -117,6 +117,23 @@ public class OperationalAlertsController {
                     "/workspace/enterprise/line-quotes?rfqId="+rs.getObject("rfq_id"));
             },end));
         }
+        if(anyRole("ADMIN","MANAGEMENT","SOURCING")){
+            alerts.addAll(db.query("""
+                SELECT e.supplier_id,s.name,e.kind,e.expires_on
+                FROM supplier_compliance_evidence e
+                JOIN supplier_compliance_reviews r ON r.evidence_id=e.id
+                JOIN suppliers s ON s.id=e.supplier_id
+                WHERE r.decision='APPROVED' AND e.expires_on IS NOT NULL
+                  AND e.expires_on<=?
+                ORDER BY e.expires_on ASC,e.id ASC LIMIT 40
+                """,(rs,i)->{
+                LocalDate date=rs.getObject("expires_on",LocalDate.class);
+                return new Alert("SUPPLIER_DOCUMENT",rs.getString("name"),
+                    "Staff-reviewed "+rs.getString("kind").replace('_',' ')+
+                    " reference expires or has expired",date,urgency(date,today),
+                    "/workspace/suppliers/compliance?supplierId="+rs.getObject("supplier_id"));
+            },end));
+        }
         if(anyRole("ADMIN","MANAGEMENT","FINANCE")){
             alerts.addAll(db.query("""
                 SELECT reference,due_date FROM invoices
