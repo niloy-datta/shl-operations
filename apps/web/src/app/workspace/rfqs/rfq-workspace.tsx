@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import {LandedCostPanel} from "./landed-cost-panel";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 type Contact = { id: string; name: string; country: string | null };
@@ -431,6 +432,8 @@ export function RfqWorkspace() {
               <p className="desk-caution">Unit prices are not landed costs; freight, duties,
                 exchange rates, quality and terms need independent review.</p>
             </section>}
+            {lineOffers.length>0 && <LandedCostPanel key={selected.id} rfqId={selected.id}
+              currency={selected.currency} offers={lineOffers}/>}
             {items.length > 0 && lineOffers.length > 0 &&
               <div className="desk-quote-launch">
                 <div><strong>Build customer quotation</strong>

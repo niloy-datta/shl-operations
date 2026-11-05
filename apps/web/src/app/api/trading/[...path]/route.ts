@@ -9,10 +9,12 @@ const allowed = {
     new RegExp("^rfqs/" + uuid + "/history$"),
     new RegExp("^rfqs/" + uuid + "/items$"),
     new RegExp("^rfqs/" + uuid + "/line-offers$"),
+    new RegExp("^rfqs/" + uuid + "/landed-cost$"),
     new RegExp("^rfqs/" + uuid + "/line-offers/" + uuid + "/history$")],
   POST: [new RegExp("^rfqs$"), new RegExp("^rfqs/" + uuid + "/offers$"),
     new RegExp("^rfqs/" + uuid + "/items$"),
-    new RegExp("^rfqs/" + uuid + "/line-offers$")],
+    new RegExp("^rfqs/" + uuid + "/line-offers$"),
+    new RegExp("^rfqs/" + uuid + "/landed-cost$")],
   PATCH: [new RegExp("^rfqs/" + uuid + "/status$")],
   PUT: [new RegExp("^rfqs/" + uuid + "/items/" + uuid + "$")],
   DELETE: [new RegExp("^rfqs/" + uuid + "/items/" + uuid + "$")]
