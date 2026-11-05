@@ -30,7 +30,7 @@
 - [ ] **12 — Supplier quotation revisions (P0).** Partially delivered: immutable per-line supplier pricing, sequential revisions, latest-price comparison and audit trail. Attachment references, documentary evidence review and vendor validation still pending.
 - [ ] **13 — Landed-cost comparison (P1).** Incoterms, freight, insurance, duty and currency assumptions separately sourced.
 - [ ] **14 — Sourcing evaluation approval (P1).** Multi-review scoring and four-eyes selection.
-- [ ] **15 — Supplier compliance evidence (P1).** Trade licenses, compliance expiry and approved-vendor status.
+- [ ] **15 — Supplier compliance evidence (P1).** Partially delivered V26: supplier document-reference register, independently approved/rejected metadata, expiry alerts and role-restricted UI. Secure files, actual document verification and approved-vendor status policy remain pending. See [V26 slice](supplier-compliance-v26.md).
 
 ### 4. Sales / procurement (16–20)
 - [ ] **16 — Commercial document templates (P0).** Proforma and commercial quotations with versioned PDF outputs.

@@ -31,6 +31,7 @@ const enterpriseViews: { label: string; href: string; icon: IconName }[] = [
   { label: "Quotations", href: "/workspace/enterprise/quotes", icon: "layers" },
   { label: "Sales orders", href: "/workspace/enterprise/orders", icon: "grid" },
   { label: "Purchase orders", href: "/workspace/enterprise/purchase-orders", icon: "package" },
+  { label: "Supplier compliance", href: "/workspace/suppliers/compliance", icon: "building" },
   { label: "Shipments", href: "/workspace/enterprise/shipments", icon: "ship" },
   { label: "Consignees", href: "/workspace/consignees", icon: "users" },
   { label: "Global entities", href: "/workspace/entities", icon: "building" },
