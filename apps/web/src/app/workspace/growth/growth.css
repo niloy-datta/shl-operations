@@ -68,24 +68,6 @@
 .gx-qualification li{font-size:12px;line-height:1.7;margin:2px 0}
 
 
-.gx-consent{margin-top:27px;padding:20px 22px;border:1px solid #d5e5e8;border-radius:13px}
-.gx-consent h3{font-size:17px;margin:0 0 10px}
-.gx-consent h4{font-size:13px;margin:24px 0 8px}
-.gx-consent-status{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:19px 0}
-.gx-consent-status>div{padding:11px 12px;background:#f6f9fb;border:1px solid #e5ebef;border-radius:9px;display:flex;flex-direction:column;gap:6px}
-.gx-consent-status span{font-size:10px;color:#5e7384}
-.gx-consent-status strong{font-size:12px;color:#17394c}
-.gx-consent-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.gx-consent-form .en-field{min-width:0}
-.gx-consent-form .en-field:nth-child(4){grid-column:1/-1}
-.gx-consent-form textarea{width:100%;padding:11px;border:1px solid #dbe5ed;border-radius:8px;color:#163045;font:inherit}
-.gx-consent-form button{grid-column:1/-1}
-.gx-consent-event{border-top:1px solid #edf1f4;padding:12px 0}
-.gx-consent-event strong,.gx-consent-event small{display:block;font-size:11px}
-.gx-consent-event small{color:#758999;margin-top:5px}
-.gx-consent-event p{font-size:12px;overflow-wrap:anywhere;white-space:pre-wrap}
-@media(max-width:540px){.gx-consent-status,.gx-consent-form{grid-template-columns:1fr}}
-
 .gx-conversion{margin-top:25px;padding:20px 22px;border:1px solid #c8ddeb;border-radius:12px}
 .gx-conversion h3{font-size:17px;margin:0 0 9px}
 .gx-conversion-form{display:grid;gap:13px;margin-top:16px}

@@ -2,6 +2,7 @@
 
 import {useCallback,useEffect,useState,type FormEvent} from "react";
 import {ShipmentDocumentChecklist} from "./shipment-document-checklist";
+import {ShipmentExceptionsPanel} from "./shipment-exceptions-panel";
 
 type Purchase={id:string;reference:string;status:string;supplier_name:string};
 type Shipment={id:string;reference:string;purchase_order_id:string;po_reference:string;
@@ -103,6 +104,8 @@ export function LineShipmentPanel({orderId,purchaseOrders,me}:{
         <strong>{m.event}</strong> · {m.actor} · {new Date(m.occurred_at).toLocaleString("en-GB")}
         {m.notes?" — "+m.notes:""}
       </p>)}
+      <ShipmentExceptionsPanel key={selected.shipment.id+"-exceptions"}
+        shipmentId={selected.shipment.id} shipmentStatus={selected.shipment.status} role={me.role}/>
       <ShipmentDocumentChecklist key={selected.shipment.id} shipmentId={selected.shipment.id}
         canWrite={canWrite&&selected.shipment.status!=="CANCELLED"}/>
       {canWrite&&["BOOKED","IN_TRANSIT"].includes(selected.shipment.status)&&<>

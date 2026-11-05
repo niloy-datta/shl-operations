@@ -42,6 +42,7 @@ class CustomerLineQuotesWorkflowTest {
     @Autowired LineOrdersController lineOrders;
     @Autowired LineShipmentController shipmentFlow;
     @Autowired LineShippingDocumentsController documents;
+    @Autowired LineShipmentExceptionsController exceptions;
     @Autowired OperationalAlertsController alerts;
     @Autowired LineBillingReviewController billingFlow;
     @Autowired JdbcTemplate db;
@@ -348,6 +349,29 @@ class CustomerLineQuotesWorkflowTest {
                 new LineShippingDocumentsController.Change("REQUESTED",null,null)))
                 .isInstanceOf(AccessDeniedException.class);
             switchUser("dispatch-operator","LOGISTICS");
+            var incident=exceptions.open(shipmentId,
+                new LineShipmentExceptionsController.Open("CUSTOMS_HOLD",
+                    "Inspection pending at bonded warehouse",
+                    java.time.LocalDate.now().plusDays(2))).getBody();
+            UUID incidentId=(UUID)incident.get("id");
+            assertThat(exceptions.list(shipmentId)).hasSize(1);
+            assertThat(exceptions.history(shipmentId,incidentId)).hasSize(1);
+            assertThatThrownBy(()->exceptions.resolve(shipmentId,incidentId,
+                new LineShipmentExceptionsController.Resolve("Self approval")))
+                .isInstanceOf(AccessDeniedException.class);
+            switchUser("independent-ops-reviewer","MANAGEMENT");
+            assertThat(exceptions.resolve(shipmentId,incidentId,
+                new LineShipmentExceptionsController.Resolve(
+                    "Carrier confirmed clearance; issue resolved")).get("status"))
+                .isEqualTo("RESOLVED");
+            assertThat(exceptions.history(shipmentId,incidentId)).hasSize(2);
+            assertThatThrownBy(()->exceptions.resolve(shipmentId,incidentId,
+                new LineShipmentExceptionsController.Resolve("Duplicate closure")))
+                .isInstanceOf(ResponseStatusException.class);
+            assertThatThrownBy(()->db.update("""
+                DELETE FROM line_shipment_exception_events WHERE case_id=?
+                """,incidentId)).isInstanceOf(org.springframework.dao.DataAccessException.class);
+            switchUser("dispatch-operator","LOGISTICS");
             assertThat(created.lines()).hasSize(1);
             assertThat(created.milestones()).hasSize(1);
             assertThat(created.shipment().get("status")).isEqualTo("BOOKED");
@@ -384,6 +408,8 @@ class CustomerLineQuotesWorkflowTest {
             assertThat(count).isZero();
             switchUser("unauthorized-bd","BD");
             assertThatThrownBy(()->documents.list(shipmentId))
+                .isInstanceOf(AccessDeniedException.class);
+            assertThatThrownBy(()->exceptions.list(shipmentId))
                 .isInstanceOf(AccessDeniedException.class);
             assertThat(alerts.feed().items())
                 .noneMatch(a->"SHIPMENT_DOCUMENTS".equals(a.source()));
