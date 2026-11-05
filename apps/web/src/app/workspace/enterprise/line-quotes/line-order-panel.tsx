@@ -3,6 +3,7 @@
 import {useCallback,useEffect,useState} from "react";
 import {LineShipmentPanel} from "./line-shipment-panel";
 import {PoMatchPanel} from "./po-match-panel";
+import {PoProductionPanel} from "./po-production-panel";
 
 type Role={username:string;role:string};
 type LineOrder={id:string;reference:string;status:string;currency:string;
@@ -150,6 +151,8 @@ export function LineOrderPanel({rfqId,quotes}:{rfqId:string;quotes:Quote[]}){
               onClick={()=>void mutate("/purchase-orders/"+po.id+"/status",
                 "PATCH",{status:"ISSUED"})}>Approve & issue PO →</button>}
           {canPurchase&&<PoMatchPanel poId={po.id}/>}
+          {canPurchase&&po.status==="ISSUED"&&
+            <PoProductionPanel poId={po.id} role={me?.role??""}/>}
         </div>)}
       </div>}
       <LineShipmentPanel orderId={active.order.id} purchaseOrders={active.purchaseOrders} me={me}/>

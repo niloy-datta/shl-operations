@@ -23,3 +23,7 @@ This vertical slice allows internal logistics and management users to record, re
 ## Remaining operational sign-off
 
 Full item 24 still requires SLA routing, linked claim amounts, insured damage evidence, secure file attachments, escalation policies, carrier/customer verification, and separate regulated compliance approval. No production release or real SHL data is permitted until the broader roadmap security gates pass.
+
+## Internal escalation alerts
+
+Open shipment exception cases with a review due date within seven days (including overdue cases) now appear in role-scoped operational alerts for ADMIN, MANAGEMENT, LOGISTICS and SOURCING. Resolving the case removes the alert. These are in-app reminders, not outbound notifications or carrier reports.
