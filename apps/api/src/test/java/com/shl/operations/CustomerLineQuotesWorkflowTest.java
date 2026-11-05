@@ -410,6 +410,9 @@ class CustomerLineQuotesWorkflowTest {
             UUID incidentId=(UUID)incident.get("id");
             assertThat(exceptions.list(shipmentId)).hasSize(1);
             assertThat(exceptions.history(shipmentId,incidentId)).hasSize(1);
+            assertThat(alerts.feed().items())
+                .anyMatch(a->"SHIPMENT_EXCEPTION".equals(a.source())
+                    && created.shipment().get("reference").equals(a.reference()));
             assertThatThrownBy(()->exceptions.resolve(shipmentId,incidentId,
                 new LineShipmentExceptionsController.Resolve("Self approval")))
                 .isInstanceOf(AccessDeniedException.class);
@@ -419,6 +422,9 @@ class CustomerLineQuotesWorkflowTest {
                     "Carrier confirmed clearance; issue resolved")).get("status"))
                 .isEqualTo("RESOLVED");
             assertThat(exceptions.history(shipmentId,incidentId)).hasSize(2);
+            assertThat(alerts.feed().items())
+                .noneMatch(a->"SHIPMENT_EXCEPTION".equals(a.source())
+                    && created.shipment().get("reference").equals(a.reference()));
             assertThatThrownBy(()->exceptions.resolve(shipmentId,incidentId,
                 new LineShipmentExceptionsController.Resolve("Duplicate closure")))
                 .isInstanceOf(ResponseStatusException.class);
