@@ -36,7 +36,7 @@
 - [ ] **16 — Commercial document templates (P0).** Proforma and commercial quotations with versioned PDF outputs.
 - [ ] **17 — Contracts and amendments (P0).** Executed terms, immutable versions and controlled change orders.
 - [ ] **18 — Purchase-order line matching (P0).** Partially delivered V28: read-only supplier PO-to-sales-order line matching, including supplier, quantity, source revision, unit cost, currency and total; issuing a PO fails closed on mismatch. Independent document comparison and supplier acceptance are still pending. See [V28 slice](purchase-order-matching-v28.md).
-- [ ] **19 — Production milestones (P1).** Factory readiness, quality inspections and delay escalations.
+- [ ] **19 — Production milestones (P1).** Partially delivered V29: audit-backed staff-reported production start, factory readiness and quality-check milestones for issued POs, with sequential completion rules, independent internal QA review and due-date alerts. Verified third-party inspections and external factory integration remain pending. See [V29 slice](po-production-milestones-v29.md).
 - [ ] **20 — Partial fulfillment (P1).** Split orders, multiple POs/shipments and controlled completion rules.
 
 ### 5. Freight / shipping operations (21–25)
