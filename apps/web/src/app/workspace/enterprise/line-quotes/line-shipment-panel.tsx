@@ -1,4 +1,5 @@
 "use client";
+import { ShipmentTimeline } from "@/components/shipment-timeline";
 import { expireWorkspaceSession } from "@/lib/session-client";
 
 import {useCallback,useEffect,useState,type FormEvent} from "react";
@@ -122,6 +123,7 @@ export function LineShipmentPanel({orderId,purchaseOrders,me,initialShipmentId,o
     </div>
     {selected&&<div className="lo-shipment-history">
       <strong>{selected.shipment.reference} / {selected.shipment.status}</strong>
+      <ShipmentTimeline etd={selected.shipment.etd} eta={selected.shipment.eta} events={selected.milestones}/>
       <p className="lq-muted">{selected.lines.map(l=>
         l.product_name+" — "+l.quantity+" "+l.unit).join(" · ")}</p>
       {selected.milestones.map(m=><p key={m.id}>

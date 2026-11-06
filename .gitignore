@@ -25,3 +25,5 @@
 .env.staging
 .env.staging.*
 !.env.staging.example
+
+/.nexus-evidence/

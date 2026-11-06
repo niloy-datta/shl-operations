@@ -34,6 +34,10 @@ export function OperationsCommand(){
   },[inWorkspace,staff]);
 
   useEffect(()=>{
+    window.addEventListener("shl:open-command",show);
+    return()=>window.removeEventListener("shl:open-command",show);
+  },[show]);
+  useEffect(()=>{
     if(!inWorkspace||!staff)return;
     function key(e:KeyboardEvent){
       if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){

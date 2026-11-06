@@ -5,7 +5,7 @@ import { expireWorkspaceSession } from "@/lib/session-client";
 
 import Link from "next/link";
 import {useCallback,useEffect,useState,type FormEvent,type ReactNode} from "react";
-import {useRouter} from "next/navigation";
+import {useSearchParams,useRouter} from "next/navigation";
 import {LeadRoutingPanel,LeadAssignmentHistory} from "./lead-routing-panel";
 import {LeadConsentPanel} from "./lead-consent-panel";
 import {LeadConversionPanel} from "./lead-conversion-panel";
@@ -78,6 +78,17 @@ export function GrowthDesk({module}:{module:Module}){
   });
   const [notes,setNotes]=useState<Item[]>([]);
   const [qualification,setQualification]=useState<Qualification|null>(null);
+  const deepLead=useSearchParams().get("leadId");
+  useEffect(()=>{
+    if(module!=="leads"||!deepLead||!/^[0-9a-f-]{36}$/i.test(deepLead))return;
+    let alive=true;
+    (async()=>{try{
+      const item=await fetchJson<Item>(api+"leads/"+deepLead);
+      const notes=await fetchJson<Item[]>(api+"leads/"+deepLead+"/activity");
+      if(alive){setActive(item);setNotes(notes);setDialog("details");}
+    }catch(e){if(alive)setError(e instanceof Error?e.message:"Lead unavailable");}})();
+    return()=>{alive=false;};
+  },[deepLead,module]);
   const reload=useCallback(()=>setTick(n=>n+1),[]);
 
   useEffect(()=>{

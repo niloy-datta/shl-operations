@@ -2,6 +2,7 @@
 import { expireWorkspaceSession } from "@/lib/session-client";
 
 import Link from "next/link";
+import {useSearchParams} from "next/navigation";
 import {useCallback,useEffect,useState,type FormEvent} from "react";
 
 type Supplier={id:string;name:string;country:string|null};
@@ -49,6 +50,14 @@ export function SupplierComplianceDesk()
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
   const [notice,setNotice]=useState("");
+  const supplierId=useSearchParams().get("supplierId");
+  useEffect(()=>{
+    if(!supplierId||!/^[0-9a-f-]{36}$/i.test(supplierId))return;
+    let active=true;
+    json<Supplier>("/api/data/suppliers/"+supplierId).then(record=>{if(active){setSelected(record);setPage(0);}})
+      .catch(cause=>{if(active)setError(String(cause));});
+    return()=>{active=false;};
+  },[supplierId]);
   const [version,setVersion]=useState(0);
   const [recordsLoading,setRecordsLoading]=useState(false);
 

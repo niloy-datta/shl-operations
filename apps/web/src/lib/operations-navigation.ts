@@ -29,13 +29,13 @@ const finance: StaffRole[] = ["ADMIN","MANAGEMENT","FINANCE"];
 
 export const OPERATIONS_NAVIGATION: readonly NavGroup[] = [
   {label:"Workspace",items:[
-    {label:"Overview",href:"/workspace",icon:"grid",symbol:"▦",
+    {label:"My Day",href:"/workspace",icon:"grid",symbol:"▦",
       description:"Your main operations dashboard",keywords:"home dashboard"},
     {label:"Customers",href:"/workspace?view=customers",icon:"users",symbol:"♙",
       description:"Customer relationships and contacts",keywords:"buyers directory"},
     {label:"Suppliers",href:"/workspace?view=suppliers",icon:"building",symbol:"◇",
       description:"Vendor relationships and contacts",keywords:"vendors directory"},
-    {label:"Executive cockpit",href:"/workspace/command-center",icon:"chart",symbol:"◈",
+    {label:"Executive Overview",href:"/workspace/command-center",icon:"chart",symbol:"◈",
       description:"Management exceptions and live KPIs",roles:exec,keywords:"ceo reports management"},
     {label:"Due dates & alerts",href:"/workspace/alerts",icon:"check",symbol:"◉",
       description:"Overdue work and reminders",keywords:"inbox notifications tasks"}

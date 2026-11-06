@@ -4,6 +4,7 @@ import { WorkspaceNavigation } from "@/components/workspace-navigation";
 import { expireWorkspaceSession } from "@/lib/session-client";
 
 import Link from "next/link";
+import {useSearchParams} from "next/navigation";
 import {LandedCostPanel} from "./landed-cost-panel";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
@@ -33,7 +34,7 @@ type Stage = "NEW" | "SOURCING" | "READY_FOR_QUOTE" | "CLOSED";
 type RfqPage = { content: Rfq[]; totalElements: number; totalPages: number };
 type Offer = { id: string; supplierId: string; supplierName: string; unitPrice: number;
   moq: number; leadDays: number; notes: string | null; updatedAt: string };
-type Event = { actor: string; action: string; detail: string | null; createdAt: string };
+type RfqEvent = { actor: string; action: string; detail: string | null; createdAt: string };
 type Stats = { total: number; NEW: number; SOURCING: number; READY_FOR_QUOTE: number; CLOSED: number };
 const blankPage: RfqPage = { content: [], totalElements: 0, totalPages: 0 };
 const stages: Record<Stage, { label: string; next?: Stage; action?: string }> = {
@@ -61,10 +62,13 @@ const money = (amount: number | string, currency: string) =>
 const date = (value: string | null) => value ? new Date(value + (value.includes("T") ? "" : "T12:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "Not set";
 
 export function RfqWorkspace() {
+  const params=useSearchParams();
+  const deepRfq=params.get("rfqId"), quickCreate=params.get("create");
+
   const [list, setList] = useState<RfqPage>(blankPage);
   const [stats, setStats] = useState<Stats | null>(null);
-  const [query, setQuery] = useState("");
-  const [term, setTerm] = useState("");
+  const [query, setQuery] = useState(params.get("q")||"");
+  const [term, setTerm] = useState(params.get("q")||"");
   const [page, setPage] = useState(0);
   const [tick, setTick] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -80,7 +84,7 @@ export function RfqWorkspace() {
   const [lineHistory, setLineHistory] = useState<LineOffer[]>([]);
   const [editingItem, setEditingItem] = useState<RfqItem | null>(null);
   const [showItem, setShowItem] = useState(false);
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<RfqEvent[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showOffer, setShowOffer] = useState(false);
@@ -90,6 +94,14 @@ export function RfqWorkspace() {
   const [customerSearch, setCustomerSearch] = useState("");
   const [supplierSearch, setSupplierSearch] = useState("");
 
+  useEffect(()=>{const frame=requestAnimationFrame(()=>{
+    if(deepRfq&&/^[0-9a-f-]{36}$/i.test(deepRfq))setSelectedId(deepRfq);
+    if(quickCreate==="1")setShowCreate(true);
+  });return()=>cancelAnimationFrame(frame);},[deepRfq,quickCreate]);
+  useEffect(()=>{
+    const quick=(event:Event)=>{if((event as CustomEvent).detail==="rfq"){setMessage("");setShowCreate(true);}};
+    window.addEventListener("shl:quick-create",quick);return()=>window.removeEventListener("shl:quick-create",quick);
+  },[]);
   const refresh = useCallback(() => setTick(v => v + 1), []);
 
   useEffect(() => {
@@ -113,7 +125,7 @@ export function RfqWorkspace() {
     Promise.all([
       json<Rfq>("/api/trading/rfqs/" + selectedId),
       json<Offer[]>("/api/trading/rfqs/" + selectedId + "/offers"),
-      json<Event[]>("/api/trading/rfqs/" + selectedId + "/history"),
+      json<RfqEvent[]>("/api/trading/rfqs/" + selectedId + "/history"),
       json<RfqItem[]>("/api/trading/rfqs/" + selectedId + "/items"),
       json<LineOffer[]>("/api/trading/rfqs/" + selectedId + "/line-offers")
     ]).then(([record, quotes, history, requirements, pricedLines]) => {
@@ -400,19 +412,9 @@ export function RfqWorkspace() {
             {lineOffers.length > 0 && <section className="desk-line-prices">
               <div className="desk-offer-header"><div><p className="desk-eyebrow">LATEST PRICES · PER ITEM</p>
                 <h3>Supplier line quotes ({lineOffers.length})</h3></div></div>
-              <div className="desk-offers">{lineOffers.map(o => <article className="desk-offer" key={o.id}>
-                <div><h4>{o.productName} · Line {o.lineNumber}</h4>
-                  <span>{o.supplierName} · REV {o.revisionNumber}</span></div>
-                <strong>{money(o.unitPrice, selected.currency)} <small>/ {o.unit}</small></strong>
-                <p>MOQ {Number(o.moq).toLocaleString()} {o.unit}
-                  {" · "}Required {Number(o.requestedQuantity).toLocaleString()} {o.unit}
-                  {" · "}Lead {o.leadDays} days
-                  {o.incoterm && " · " + o.incoterm}
-                  {o.port && " · " + o.port}</p>
-                {Number(o.moq) > Number(o.requestedQuantity) &&
-                  <p className="desk-line-warning">MOQ exceeds the requested quantity.</p>}
-                {o.notes && <p>{o.notes}</p>}
-              </article>)}</div>
+              <div className="desk-table-wrap nx-comparison"><table><caption>Latest supplier revisions · compare the same product and unit</caption><thead><tr><th>Item / supplier</th><th>Unit price</th><th>MOQ</th><th>Lead time</th><th>Terms / port</th><th>Commercial notes</th></tr></thead><tbody>
+                {lineOffers.map(o=><tr key={o.id}><td><strong>{o.productName}</strong><small>{o.supplierName} · Rev {o.revisionNumber}</small></td><td>{money(o.unitPrice,selected.currency)} / {o.unit}</td><td>{Number(o.moq).toLocaleString()} {o.unit}{Number(o.moq)>Number(o.requestedQuantity)&&<small className="desk-line-warning">Exceeds required quantity</small>}</td><td>{o.leadDays} days</td><td>{o.incoterm||"Not recorded"}<small>{o.port||"Port not recorded"}</small></td><td>{o.notes||"No notes recorded"}</td></tr>)}
+              </tbody></table></div>
               <p className="desk-caution">Unit prices are not landed costs; freight, duties,
                 exchange rates, quality and terms need independent review.</p>
             </section>}

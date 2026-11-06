@@ -148,3 +148,28 @@ test("navigation hides restricted modules before identity is known and never inf
   assert.equal(links("ADMIN").includes("/workspace/enterprise/staff"), true);
   assert.equal(navigationMatches({ label: "RFQ sourcing", description: "Supplier pricing" }, "RFQ supplier"), true);
 });
+
+test("workspace overview authenticates and preserves role-denial responses", async () => {
+ const req=new Request("http://localhost:3000/api/workspace-overview?scope=team");
+ assert.equal((await load("app/api/workspace-overview/route.ts").GET(req)).status,401);
+ const response=await load("app/api/workspace-overview/route.ts",{cookie:token,fetch:async(url,options)=>{
+  assert.equal(url,"http://backend.test/api/workspace/overview?scope=team");assert.equal(options.headers.authorization,"Bearer "+token);
+  return Response.json({error:"Management required"},{status:403});
+ }}).GET(req);assert.equal(response.status,403);assert.equal(response.headers.get("cache-control"),"no-store");
+});
+test("CSV import handles quoted multiline data, malformed rows, bounded size and validation",()=>{
+ const {parseContactCsv,contactIssues}=load("lib/contact-import.ts");
+ const rows=parseContactCsv('name,email,country\r\n"A, Trading",a@example.test,BD\r\n"B\nCompany",b@example.test,CN');
+ assert.equal(rows[1][0],"A, Trading");assert.equal(rows[2][0],"B\nCompany");
+ assert.throws(()=>parseContactCsv('name,email\n"unclosed,x'));
+ assert.throws(()=>parseContactCsv('name,email\nOnly one column'));
+ assert.throws(()=>parseContactCsv('name\n'+Array(101).fill('Company').join('\n')));
+ assert.ok(contactIssues({name:"",email:"bad-email",phone:"",country:""}).length===2);
+});
+
+test("supplier deep links authenticate and preserve upstream status",async()=>{
+ const context={params:Promise.resolve({resource:"suppliers",id:uuid})},request=new Request("http://localhost:3000/api/data/suppliers/"+uuid);
+ assert.equal((await load("app/api/data/[resource]/[id]/route.ts").GET(request,context)).status,401);
+ const response=await load("app/api/data/[resource]/[id]/route.ts",{cookie:token,fetch:async(url)=>{assert.equal(url,"http://backend.test/api/suppliers/"+uuid);return Response.json({error:"Missing"},{status:404});}}).GET(request,context);
+ assert.equal(response.status,404);assert.equal(response.headers.get("cache-control"),"no-store");
+});
