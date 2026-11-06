@@ -45,7 +45,7 @@ test("six Nexus review routes support light and dark without overflow or serious
  const today=new Date().toISOString().slice(0,10),myTask=unique("illustrative quotation follow-up"),peerTask=unique("illustrative team handoff");
  await json(api,"/api/enterprise/tasks","POST",{title:myTask,assigneeId:me.id,priority:"HIGH",dueDate:today});
  await json(api,"/api/enterprise/tasks","POST",{title:peerTask,assigneeId:peer.id,priority:"HIGH",dueDate:today});
- await json(api,"/api/growth/leads","POST",{companyName:unique("illustrative truck buyer"),contactName:"Synthetic contact",source:"MANUAL",subject:"E2E illustrative water-truck inquiry",ownerId:me.id,nextFollowUp:today,description:"Illustrative fixture in disposable database only"});
+ const illustrativeLead=await json<{id:string}>(api,"/api/growth/leads","POST",{companyName:unique("illustrative truck buyer"),contactName:"Synthetic contact",source:"MANUAL",subject:"E2E illustrative water-truck inquiry",ownerId:me.id,nextFollowUp:today,description:"Illustrative fixture in disposable database only"});
  await api.dispose();
  const routes=[['my-day','/workspace','/api/workspace-overview'],['executive','/workspace/command-center','/api/workspace-overview'],['crm','/workspace?view=customers','/api/data/customers?'],['suppliers','/workspace?view=suppliers','/api/data/suppliers?'],['trading','/workspace/rfqs','/api/trading/rfqs?'],['logistics','/workspace/shipments/line','/api/enterprise/logistics/line-shipments?']];
  for(const [name,path,endpoint] of routes){
@@ -60,6 +60,18 @@ test("six Nexus review routes support light and dark without overflow or serious
    await testInfo.attach(name+'-'+theme+'.png',{body:await page.screenshot({fullPage:true}),contentType:'image/png'});
    await testInfo.attach(name+'-'+theme+'-axe.json',{body:JSON.stringify(result.violations),contentType:'application/json'});
    expect(result.violations.filter(v=>['critical','serious'].includes(v.impact||'')),name+' '+theme).toEqual([]);
+  }
+  if(name==='my-day'){
+   const expand=page.getByRole("button",{name:/Show all .* snapshot records/});if(await expand.isVisible())await expand.click();
+   await page.locator('.nx-priority a[href*="'+illustrativeLead.id+'"]').click();
+   await expect(page.getByRole("region",{name:"Lead qualification triage"})).toBeVisible();
+   const detail=page.getByRole("dialog");await expect(detail).toBeFocused();await page.keyboard.press("Shift+Tab");
+   expect(await detail.evaluate(root=>root.contains(document.activeElement))).toBe(true);
+   const triageAxe=await new AxeBuilder({page}).include(".gx-dialog").withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa']).analyze();
+   await testInfo.attach("lead-deep-link-axe.json",{body:JSON.stringify(triageAxe.violations),contentType:"application/json"});
+   await testInfo.attach("lead-triage-deep-link.png",{body:await page.screenshot({fullPage:true}),contentType:"image/png"});
+   expect(triageAxe.violations.filter(v=>['serious','critical'].includes(v.impact||''))).toEqual([]);
+   await page.keyboard.press("Escape");
   }
  }
 });

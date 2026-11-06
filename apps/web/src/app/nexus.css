@@ -35,3 +35,9 @@
 .nx-bottom-grid{align-items:start}.nx-expand{display:flex;align-items:center;justify-content:space-between;width:100%;background:var(--nx-surface);color:var(--nx-primary);border:0;border-top:1px solid var(--nx-line);padding:14px 24px;font-size:11px!important;text-align:left}
 
 .nx-profile-identity{margin:4px 10px 10px;padding-bottom:10px;border-bottom:1px solid var(--nx-line);font-size:12px;font-weight:600;overflow-wrap:anywhere}.nx-profile-identity small{margin-top:4px;font-weight:400}
+
+.nx-page :is(.gx-overlay,.desk-drawer-overlay,.desk-modal-backdrop,.en-modal-backdrop,.modal-backdrop){z-index:100}
+.nx-page .gx-dialog{background:var(--nx-surface);color:var(--nx-ink)}
+.nx-page :is(.gx-qualification,.gx-consent-status>div){background:var(--nx-subtle);border-color:var(--nx-line);color:var(--nx-ink)}
+.nx-page :is(.gx-dialog-header small,.gx-detail-grid small,.gx-description,.gx-qualification p,.gx-qualification small,.gx-consent-status span){color:var(--nx-muted)!important}
+.nx-page .en-help{background:var(--nx-subtle)!important}

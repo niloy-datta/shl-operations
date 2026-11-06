@@ -84,8 +84,15 @@ export function GrowthDesk({module}:{module:Module}){
     let alive=true;
     (async()=>{try{
       const item=await fetchJson<Item>(api+"leads/"+deepLead);
-      const notes=await fetchJson<Item[]>(api+"leads/"+deepLead+"/activity");
-      if(alive){setActive(item);setNotes(notes);setDialog("details");}
+      if(alive){setActive(item);setNotes([]);setQualification(null);setDialog("details");}
+      const [activity,triage]=await Promise.allSettled([
+        fetchJson<Item[]>(api+"leads/"+deepLead+"/activity"),
+        fetchJson<Qualification>(api+"leads/"+deepLead+"/qualification")
+      ]);
+      if(alive){
+        if(activity.status==="fulfilled")setNotes(activity.value);else setError("Unable to load lead activity.");
+        if(triage.status==="fulfilled")setQualification(triage.value);else setError("Unable to load lead qualification signals.");
+      }
     }catch(e){if(alive)setError(e instanceof Error?e.message:"Lead unavailable");}})();
     return()=>{alive=false;};
   },[deepLead,module]);
@@ -272,7 +279,7 @@ export function GrowthDesk({module}:{module:Module}){
       </main>
     </div>
     {dialog&&<div className="gx-overlay" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setDialog(null);}}>
-      <WorkspaceDialog className="gx-dialog" aria-labelledby="gx-dialog-title" onClose={()=>setDialog(null)} busy={busy}>
+      <WorkspaceDialog initialFocus={dialog==="details"?"dialog":"field"} className="gx-dialog" aria-labelledby="gx-dialog-title" onClose={()=>setDialog(null)} busy={busy}>
         <header className="gx-dialog-header">
           <div><small>{dialog==="create"?"CREATE NEW RECORD":"RECORD DETAIL"}</small>
             <h2 id="gx-dialog-title">{dialog==="create"?meta.action:t(active?.reference)}</h2></div>
