@@ -32,7 +32,8 @@ const paths: Record<string, RegExp[]> = {
     regex("logistics/line-shipments"),
     regex("entities(/" + id + "/contacts)?"),
     regex("finance/invoices/" + id + "/payments"),
-    regex("tasks"), regex("staff"), regex("staff/password")
+    regex("tasks"), regex("staff"), regex("staff/password"),
+    regex("staff/" + id + "/password-reset")
   ],
   PATCH: [
     regex("commerce/(quotes|orders|purchase-orders)/" + id + "/status"),
