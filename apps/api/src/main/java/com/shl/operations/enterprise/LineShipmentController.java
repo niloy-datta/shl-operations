@@ -58,6 +58,22 @@ public class LineShipmentController {
             salesOrderId==null?new Object[]{}:new Object[]{salesOrderId},
             "ORDER BY sh.created_at DESC,sh.id DESC",page,size);
     }
+
+    // Shipping staff need booking choices without access to commercial prices.
+    @GetMapping("/eligible-purchase-orders")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGEMENT','LOGISTICS')")
+    public Pages.Result eligiblePurchases(@RequestParam(defaultValue="") String q,
+        @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
+        String term=q.trim().toLowerCase(Locale.ROOT);
+        term=term.substring(0,Math.min(100,term.length()));
+        return Pages.of(db,"po.id,po.reference,po.status,s.name AS supplier_name,so.reference AS sales_reference",
+            "FROM line_purchase_orders po JOIN line_sales_orders so ON so.id=po.sales_order_id "+
+            "JOIN suppliers s ON s.id=po.supplier_id",
+            " WHERE po.status='ISSUED' AND so.status='CONFIRMED' "+
+            "AND NOT EXISTS(SELECT 1 FROM line_shipments sh WHERE sh.purchase_order_id=po.id) "+
+            "AND (lower(po.reference) LIKE ? OR lower(s.name) LIKE ?)",
+            new Object[]{"%"+term+"%","%"+term+"%"},"ORDER BY po.created_at DESC,po.id DESC",page,size);
+    }
     @GetMapping("/{id}")
     public ShipmentDetails detail(@PathVariable UUID id){
         var sh=one("""

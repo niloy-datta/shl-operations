@@ -31,6 +31,7 @@ function load(relative, { cookie, fetch = () => { throw new Error("Unexpected up
 }
 
 const routes = [
+  ["enterprise", "logistics/line-shipments/eligible-purchase-orders", "GET"],
   ["growth", `leads/${uuid}/consents`, "POST"],
   ["growth", `leads/${uuid}/conversion`, "POST"],
   ["enterprise", `logistics/line-shipments/${uuid}/exceptions`, "POST"],

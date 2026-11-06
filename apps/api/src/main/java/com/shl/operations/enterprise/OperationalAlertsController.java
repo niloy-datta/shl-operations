@@ -98,7 +98,7 @@ public class OperationalAlertsController {
         // ETD is the action deadline; do not generate a false due date when ETD is absent.
         if(anyRole("ADMIN","MANAGEMENT","LOGISTICS","SOURCING")){
             alerts.addAll(db.query("""
-                SELECT sh.reference,sh.etd,so.rfq_id,
+                SELECT sh.id AS shipment_id,sh.reference,sh.etd,so.rfq_id,
                   COUNT(d.kind) FILTER (WHERE d.status='REPORTED_RECEIVED') AS reported
                 FROM line_shipments sh
                 JOIN line_sales_orders so ON so.id=sh.sales_order_id
@@ -114,7 +114,7 @@ public class OperationalAlertsController {
                 return new Alert("SHIPMENT_DOCUMENTS",rs.getString("reference"),
                     missing+" shipping document requirement(s) not reported received",
                     date,urgency(date,today),
-                    "/workspace/enterprise/line-quotes?rfqId="+rs.getObject("rfq_id"));
+                    "/workspace/shipments/line?shipmentId="+rs.getObject("shipment_id"));
             },end));
         }
         if(anyRole("ADMIN","MANAGEMENT","SOURCING")){
@@ -153,7 +153,7 @@ public class OperationalAlertsController {
         }
         if(anyRole("ADMIN","MANAGEMENT","LOGISTICS","SOURCING")){
             alerts.addAll(db.query("""
-                SELECT sh.reference,e.type,e.review_due,so.rfq_id
+                SELECT sh.id AS shipment_id,sh.reference,e.type,e.review_due,so.rfq_id
                 FROM line_shipment_exceptions e
                 JOIN line_shipments sh ON sh.id=e.shipment_id
                 JOIN line_sales_orders so ON so.id=sh.sales_order_id
@@ -165,7 +165,7 @@ public class OperationalAlertsController {
                 return new Alert("SHIPMENT_EXCEPTION",rs.getString("reference"),
                     "Open "+rs.getString("type").replace('_',' ')+
                     " case requires operational review",date,urgency(date,today),
-                    "/workspace/enterprise/line-quotes?rfqId="+rs.getObject("rfq_id"));
+                    "/workspace/shipments/line?shipmentId="+rs.getObject("shipment_id"));
             },end));
         }
         if(anyRole("ADMIN","MANAGEMENT","FINANCE")){

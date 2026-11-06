@@ -7,7 +7,7 @@ export async function verifyWorkspace({ api, cookie, password, sessionCookie, to
     "/workspace/command-center", "/workspace/alerts", "/workspace/entities", "/workspace/consignees",
     "/workspace/rfqs", "/workspace/growth/leads", "/workspace/growth/projects",
     "/workspace/enterprise/quotes", "/workspace/enterprise/orders", "/workspace/enterprise/purchase-orders",
-    "/workspace/enterprise/shipments", "/workspace/enterprise/invoices", "/workspace/enterprise/tasks",
+    "/workspace/enterprise/shipments", "/workspace/shipments/line", "/workspace/enterprise/invoices", "/workspace/enterprise/tasks",
     "/workspace/enterprise/staff", "/workspace/enterprise/audit", "/workspace/enterprise/line-quotes",
     "/workspace/suppliers/compliance", "/workspace/finance/line-billing", "/workspace/costs/expenses",
     "/workspace/costs/profitability", "/workspace/account", "/workspace/dedup"];
@@ -26,7 +26,7 @@ export async function verifyWorkspace({ api, cookie, password, sessionCookie, to
   const reads = ["data/me", "data/dashboard", "data/customers", "data/suppliers", "alerts", "command-center",
     "growth/leads", "growth/projects", "trading/rfqs", "trading/rfqs/stats", "enterprise/entities",
     "enterprise/commerce/quotes", "enterprise/commerce/orders", "enterprise/commerce/purchase-orders",
-    "enterprise/commerce/line-orders", "enterprise/logistics/shipments", "enterprise/logistics/consignees",
+    "enterprise/commerce/line-orders", "enterprise/logistics/line-shipments/eligible-purchase-orders", "enterprise/logistics/shipments", "enterprise/logistics/consignees",
     "enterprise/finance/invoices", "enterprise/finance/summary", "enterprise/finance/line-billing",
     "enterprise/finance/line-billing/eligible-orders", "enterprise/tasks", "enterprise/staff", "enterprise/audit",
     "enterprise/dedup/candidates", "costs/expenses", "costs/profitability", "costs/commissions/access"];

@@ -59,8 +59,10 @@ export const OPERATIONS_NAVIGATION: readonly NavGroup[] = [
       description:"Customer order lifecycle (legacy view)",roles:sourcing},
     {label:"Purchase orders",href:"/workspace/enterprise/purchase-orders",icon:"package",symbol:"⬡",
       description:"Supplier purchase orders (legacy view)",roles:supply,keywords:"po procurement"},
-    {label:"Shipments",href:"/workspace/enterprise/shipments",icon:"ship",symbol:"⇢",
+    {label:"Shipments",href:"/workspace/shipments/line",icon:"ship",symbol:"⇢",
       description:"Shipment bookings and milestone history",roles:shipping,keywords:"eta etd freight"},
+    {label:"Earlier shipments",href:"/workspace/enterprise/shipments",icon:"ship",symbol:"⇢",
+      description:"Earlier shipment records and consignee assignments",roles:shipping},
     {label:"Consignees",href:"/workspace/consignees",icon:"users",symbol:"◎",
       description:"Shipping recipient directory",roles:shipping}
   ]},

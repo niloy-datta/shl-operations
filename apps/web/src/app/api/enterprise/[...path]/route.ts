@@ -15,6 +15,7 @@ const paths: Record<string, RegExp[]> = {
     regex("commerce/line-orders/purchase-orders/" + id + "/production/" + id + "/events"),
     regex("logistics/shipments(/" + id + "(/milestones)?)?"),
     regex("logistics/line-shipments(/" + id + ")?"),
+    regex("logistics/line-shipments/eligible-purchase-orders"),
     regex("logistics/line-shipments/" + id + "/documents"),
     regex("logistics/line-shipments/" + id + "/exceptions"),
     regex("logistics/line-shipments/" + id + "/exceptions/" + id + "/events"),

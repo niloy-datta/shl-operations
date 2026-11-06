@@ -1,4 +1,5 @@
 "use client";
+import { expireWorkspaceSession } from "@/lib/session-client";
 
 import {useCallback,useEffect,useState,type FormEvent} from "react";
 import {ShipmentDocumentChecklist} from "./shipment-document-checklist";
@@ -7,7 +8,7 @@ import {ShipmentExceptionsPanel} from "./shipment-exceptions-panel";
 type Purchase={id:string;reference:string;status:string;supplier_name:string};
 type Shipment={id:string;reference:string;purchase_order_id:string;po_reference:string;
   supplier_name:string;origin:string;destination:string;status:string;etd:string|null;eta:string|null};
-type Page={content:Shipment[];totalElements:number};
+type Page={content:Shipment[];totalElements:number;totalPages:number};
 type Milestone={id:string;event:string;actor:string;notes:string|null;occurred_at:string};
 type Details={shipment:Shipment;lines:{id:string;product_name:string;quantity:number;unit:string}[];
   milestones:Milestone[]};
@@ -16,7 +17,7 @@ const route="/api/enterprise/logistics/line-shipments";
 
 async function req<T>(url:string,init?:RequestInit):Promise<T>{
   const response=await fetch(url,{cache:"no-store",...init});
-  if(response.status===401){window.location.assign("/login");throw new Error("Session expired");}
+  if(response.status===401){expireWorkspaceSession();throw new Error("Session expired");}
   if(!response.ok){
     if(response.status===403)throw new Error("Insufficient permission for shipping records.");
     if(response.status===409)throw new Error("Shipment step blocked. Confirm PO approval and current status.");
@@ -25,8 +26,8 @@ async function req<T>(url:string,init?:RequestInit):Promise<T>{
   return response.json() as Promise<T>;
 }
 
-export function LineShipmentPanel({orderId,purchaseOrders,me}:{
-  orderId:string;purchaseOrders:Purchase[];me:Role|null
+export function LineShipmentPanel({orderId,purchaseOrders,me,initialShipmentId,onBooked}:{
+  orderId?:string;purchaseOrders:Purchase[];me:Role|null;initialShipmentId?:string;onBooked?:()=>void
 }){
   const [items,setItems]=useState<Shipment[]>([]);
   const [selected,setSelected]=useState<Details|null>(null);
@@ -34,15 +35,29 @@ export function LineShipmentPanel({orderId,purchaseOrders,me}:{
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
   const [note,setNote]=useState("");
+  const [page,setPage]=useState(0);
+  const [totalPages,setTotalPages]=useState(0);
+  const [loading,setLoading]=useState(true);
   const reload=useCallback(()=>setTick(n=>n+1),[]);
   useEffect(()=>{
     if(!me||!["ADMIN","MANAGEMENT","SOURCING","LOGISTICS"].includes(me.role))return;
     let mounted=true;
-    req<Page>(route+"?salesOrderId="+encodeURIComponent(orderId))
-      .then(p=>{if(mounted){setItems(p.content);setError("");}})
-      .catch(e=>{if(mounted)setError(e instanceof Error?e.message:"Unable to load shipments");});
-    return()=>{mounted=false;};
-  },[orderId,tick,me]);
+    const frame=requestAnimationFrame(()=>setLoading(true));
+    const query=new URLSearchParams({page:String(page),size:"20"});
+    if(orderId)query.set("salesOrderId",orderId);
+    req<Page>(route+"?"+query)
+      .then(p=>{if(mounted){setItems(p.content);setTotalPages(p.totalPages);setError("");}})
+      .catch(e=>{if(mounted)setError(e instanceof Error?e.message:"Unable to load shipments");})
+      .finally(()=>{cancelAnimationFrame(frame);if(mounted)setLoading(false);});
+    return()=>{mounted=false;cancelAnimationFrame(frame);};
+  },[orderId,tick,me,page]);
+  useEffect(()=>{
+    if(!initialShipmentId||!me)return;
+    let active=true;
+    req<Details>(route+"/"+initialShipmentId).then(value=>{if(active)setSelected(value);})
+      .catch(cause=>{if(active)setError(cause instanceof Error?cause.message:"Shipment unavailable");});
+    return()=>{active=false;};
+  },[initialShipmentId,me]);
   const canWrite=!!me&&["ADMIN","MANAGEMENT","LOGISTICS"].includes(me.role);
   const already=new Set(items.map(s=>s.purchase_order_id));
 
@@ -51,7 +66,8 @@ export function LineShipmentPanel({orderId,purchaseOrders,me}:{
     try{
       const result=await req<Details>(route+path,{method,
         headers:{"content-type":"application/json"},body:JSON.stringify(body)});
-      setSelected(result);setNote("");reload();
+      setSelected(result);setNote("");setPage(0);reload();
+      if(method==="POST")onBooked?.();
     }catch(e){setError(e instanceof Error?e.message:"Shipment action failed");}
     finally{setBusy(false);}
   }
@@ -75,6 +91,7 @@ export function LineShipmentPanel({orderId,purchaseOrders,me}:{
 
   return <section className="lo-allocations lo-shipment">
     <h3>04 / Shipment booking & milestones</h3>
+    <button type="button" disabled={busy||loading} onClick={reload}>Refresh shipments</button>
     <p className="lq-muted">One full-allocation shipment per issued supplier PO.
       Tracking updates are entered by staff, not imported from carriers.</p>
     {error&&<p role="alert" className="lq-error">{error}</p>}
@@ -91,11 +108,18 @@ export function LineShipmentPanel({orderId,purchaseOrders,me}:{
         </div>
         {canWrite&&<button type="submit" disabled={busy} className="lq-action">Book shipment</button>}
       </form>)}
-    {items.map(sh=><div className="lo-order" key={sh.id}>
+    {loading&&<p role="status">Loading shipments…</p>}
+    {!loading&&!error&&items.length===0&&<p>No shipments recorded for this view.</p>}
+    {!loading&&items.map(sh=><div className="lo-order" key={sh.id}>
       <div><strong>{sh.reference} · {sh.supplier_name}</strong>
         <small>{sh.status} · {sh.origin} → {sh.destination} · ETA {sh.eta||"not set"}</small>
       </div><button type="button" disabled={busy} onClick={()=>void open(sh.id)}>Milestones →</button>
     </div>)}
+    <div className="lo-actions">
+      <button type="button" disabled={loading||page===0} onClick={()=>setPage(value=>value-1)}>Previous shipments</button>
+      <span>Page {page+1} / {Math.max(1,totalPages)}</span>
+      <button type="button" disabled={loading||page+1>=totalPages} onClick={()=>setPage(value=>value+1)}>Next shipments</button>
+    </div>
     {selected&&<div className="lo-shipment-history">
       <strong>{selected.shipment.reference} / {selected.shipment.status}</strong>
       <p className="lq-muted">{selected.lines.map(l=>

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { SESSION_EXPIRED_EVENT } from "@/lib/session-client";
 
 type Staff = { username: string; role: string };
 const Identity = createContext<{ staff: Staff | null; commissionAccess: boolean }>({
@@ -16,6 +17,16 @@ export function WorkspaceIdentity({ children }: { children: ReactNode }) {
   });
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    function expired() {
+      setIdentity({ staff: null, commissionAccess: false });
+      setError("");
+      router.replace("/login");
+      router.refresh();
+    }
+    window.addEventListener(SESSION_EXPIRED_EVENT, expired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, expired);
+  }, [router]);
   useEffect(() => {
     if (pathname === "/workspace/account/enroll-mfa") return;
     const controller = new AbortController();

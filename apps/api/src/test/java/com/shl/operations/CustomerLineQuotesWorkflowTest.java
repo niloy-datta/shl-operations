@@ -172,6 +172,8 @@ class CustomerLineQuotesWorkflowTest {
 
     @Test @WithMockUser(username="finance-auditor",roles="FINANCE")
     void financeCannotReadConfidentialSourcingPriceOrCreateQuote() {
+        assertThatThrownBy(()->shipmentFlow.eligiblePurchases("",0,20))
+            .isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(()->quotes.list(UUID.randomUUID()))
             .isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(()->quotes.create(new CustomerLineQuotesController.Create(
@@ -360,14 +362,21 @@ class CustomerLineQuotesWorkflowTest {
                 DELETE FROM line_po_production_events WHERE milestone_id=?
                 """,quality)).isInstanceOf(org.springframework.dao.DataAccessException.class);
             switchUser("dispatch-operator","LOGISTICS");
+            var eligible=shipmentFlow.eligiblePurchases("",0,100).content();
+            assertThat(eligible).anyMatch(row->poId.equals(row.get("id")));
+            assertThat(eligible).allSatisfy(row->assertThat(row.keySet())
+                .containsExactlyInAnyOrder("id","reference","status","supplier_name","sales_reference"));
             var booking=new LineShipmentController.Booking(poId,
                 "Shanghai, CN","Rotterdam, NL","Carrier One","BL-TEST",
                 java.time.LocalDate.now(),java.time.LocalDate.now().plusDays(20));
             var created=shipmentFlow.create(booking).getBody();
             UUID shipmentId=(UUID)created.shipment().get("id");
+            assertThat(shipmentFlow.eligiblePurchases("",0,100).content())
+                .noneMatch(row->poId.equals(row.get("id")));
             assertThat(alerts.feed().items())
                 .anyMatch(a->"SHIPMENT_DOCUMENTS".equals(a.source())
                     && created.shipment().get("reference").equals(a.reference())
+                    && a.url().equals("/workspace/shipments/line?shipmentId="+shipmentId)
                     && a.title().contains("5 shipping document"));
             assertThat(documents.list(shipmentId)).hasSize(5)
                 .allMatch(x->"MISSING".equals(x.status()));
@@ -412,6 +421,7 @@ class CustomerLineQuotesWorkflowTest {
             assertThat(exceptions.history(shipmentId,incidentId)).hasSize(1);
             assertThat(alerts.feed().items())
                 .anyMatch(a->"SHIPMENT_EXCEPTION".equals(a.source())
+                    && a.url().equals("/workspace/shipments/line?shipmentId="+shipmentId)
                     && created.shipment().get("reference").equals(a.reference()));
             assertThatThrownBy(()->exceptions.resolve(shipmentId,incidentId,
                 new LineShipmentExceptionsController.Resolve("Self approval")))
