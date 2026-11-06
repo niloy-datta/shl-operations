@@ -37,6 +37,7 @@ test("real browser login, mandatory MFA enrollment, recovery login and logout", 
   expect(session?.httpOnly).toBe(true);
   expect(session?.secure).toBe(true);
   expect(session?.sameSite).toBe("Strict");
+  await page.getByLabel("Account menu").click();
   await page.getByRole("button", { name: "Sign out", exact: true }).filter({ visible: true }).first().click();
   await expect(page).toHaveURL(/\/login/);
   expect((await page.request.get("/api/data/customers")).status()).toBe(401);
@@ -140,13 +141,16 @@ for (const role of ["ADMIN", "MANAGEMENT", "BD", "SOURCING", "LOGISTICS", "FINAN
     await useRole(page, role);
     await page.goto("/workspace");
     await expect(page.getByRole("button", { name: "Jump to anything" })).toBeVisible();
-    const nav = page.getByRole("navigation", { name: "Business modules" });
-    const toggle = nav.getByRole("button", { name: "Workspace modules" });
+    const toggle = page.getByRole("button", { name: "Workspace modules" });
     if (await toggle.isVisible()) await toggle.click();
+    const nav = page.getByRole("navigation", { name: "Business modules" });
     await expect(nav.getByRole("link", { name: "Commission vault" })).toHaveCount(0);
     await expect(nav.getByRole("link", { name: "Staff & access" })).toHaveCount(role === "ADMIN" ? 1 : 0);
     await expect(nav.getByRole("link", { name: "Finance & invoices" })).toHaveCount(["ADMIN", "MANAGEMENT", "FINANCE"].includes(role) ? 1 : 0);
     expect((await page.request.get("/api/costs/commissions")).status()).toBe(403);
+    expect((await page.request.get("/api/workspace-overview")).status()).toBe(200);
+    expect((await page.request.get("/api/workspace-overview?scope=team")).status()).toBe(["ADMIN","MANAGEMENT"].includes(role)?200:403);
+
     expect((await page.request.get("/api/enterprise/staff")).status()).toBe(role === "ADMIN" ? 200 : 403);
     expect((await page.request.get("/api/enterprise/finance/summary")).status()).toBe(["ADMIN", "MANAGEMENT", "FINANCE"].includes(role) ? 200 : 403);
     expect((await page.request.get("/api/trading/rfqs")).status()).toBe(["ADMIN", "MANAGEMENT", "BD", "SOURCING"].includes(role) ? 200 : 403);
@@ -158,7 +162,7 @@ test("workspace and alerts have no serious WCAG A/AA accessibility violations", 
   for (const path of ["/workspace", "/workspace/alerts"]) {
     await page.goto(path);
     await expect(page.getByRole("button", { name: "Jump to anything" })).toBeVisible();
-    if (path === "/workspace") await expect(page.locator(".composition-info span").first()).not.toHaveText("—");
+    if (path === "/workspace") await expect(page.locator(".nx-kpi strong").first()).not.toHaveText("—");
     else await expect(page.locator(".ax-card strong").first()).not.toHaveText("—");
     const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
     await testInfo.attach("accessibility-" + path.replaceAll("/", "_") + ".json", { body: JSON.stringify(results.violations, null, 2), contentType: "application/json" });

@@ -11,8 +11,8 @@ test("CRM registers a lead, records consent and independently converts the won o
   await page.goto("/workspace/growth/leads");
   await page.getByRole("button", { name: /Register lead/ }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Company", { exact: false }).fill(company);
-  await dialog.getByLabel("Contact", { exact: false }).first().fill("Synthetic buyer contact");
+  await dialog.getByRole("textbox",{name:"Company *",exact:true}).fill(company);
+  await dialog.getByRole("textbox",{name:"Contact *",exact:true}).fill("Synthetic buyer contact");
   await dialog.getByLabel("Opportunity subject").fill(subject);
   await dialog.getByLabel("Lead source").selectOption("MANUAL");
   await dialog.getByLabel("Existing customer (optional)").selectOption(customer.id);
@@ -63,10 +63,8 @@ test("supplier references require an independent review and persist the decision
   await page.getByRole("button", { name: "Submit for review", exact: true }).click();
   await expect(page.getByRole("status").filter({hasText:"Reference submitted"})).toBeVisible();
   await useRole(page, "REVIEWER");
-  await page.goto("/workspace/suppliers/compliance");
-  await page.getByRole("textbox", { name: "Search suppliers" }).fill(name);
-  await page.getByRole("button", { name: "Search", exact: true }).click();
-  await page.getByRole("button", { name: new RegExp(name) }).click();
+  await page.goto("/workspace/suppliers/compliance?supplierId="+supplier.id);
+  await expect(page.getByRole("heading",{name:name+" · Submitted references"})).toBeVisible();
   const card = page.locator(".sc-evidence article").filter({ hasText: reference });
   await card.getByLabel("Review outcome").selectOption("APPROVED");
   await card.getByLabel("Review evidence and reason").fill("Synthetic independent review of supplied reference");
