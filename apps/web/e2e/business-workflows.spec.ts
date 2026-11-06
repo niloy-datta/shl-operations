@@ -162,7 +162,7 @@ test("quote approval, PO matching, factory progress, logistics exceptions and fi
   await api.dispose();
 });
 
-test("RFQ form creates a real inquiry and sourced landed-cost assumptions persist", async ({ page }) => {
+test("RFQ form creates a real inquiry and sourced landed-cost assumptions persist", async ({ page },testInfo) => {
   const api = await apiFor();
   const customer = await json<{id: string}>(api, "/api/data/customers", "POST", { name: unique("RFQ customer") });
   const supplier = await json<{id: string}>(api, "/api/data/suppliers", "POST", { name: unique("RFQ source") });
@@ -186,6 +186,8 @@ test("RFQ form creates a real inquiry and sourced landed-cost assumptions persis
   await json(api, `/api/trading/rfqs/${rfq.id}/line-offers`, "POST", {
     itemId: item.id, supplierId: supplier.id, unitPrice: 100, moq: 1, leadDays: 10, incoterm: "FOB",
   });
+  const alternative=await json<{id:string}>(api,"/api/data/suppliers","POST",{name:unique("comparison supplier"),country:"CN"});
+  await json(api,`/api/trading/rfqs/${rfq.id}/line-offers`,"POST",{itemId:item.id,supplierId:alternative.id,unitPrice:115,moq:1,leadDays:7,incoterm:"FOB"});
   await page.reload();
   await page.getByPlaceholder("Search RFQ, product, customer…").fill(subject);
   await page.getByRole("button", { name: "Search", exact: true }).click();
@@ -197,6 +199,8 @@ test("RFQ form creates a real inquiry and sourced landed-cost assumptions persis
   await landed.getByLabel("Source and assumptions").fill("Synthetic sourced freight, insurance and handling quote");
   await landed.getByRole("button", { name: "Save immutable cost scenario" }).click();
   await expect(landed.getByRole("status")).toContainText("Cost assumption saved");
+  await expect(page.locator(".nx-comparison tbody tr")).toHaveCount(2);
+  await testInfo.attach("rfq-comparison.png",{body:await page.screenshot({fullPage:true}),contentType:"image/png"});
   const scenarios = await json<{estimated_total: number}[]>(api, `/api/trading/rfqs/${rfq.id}/landed-cost`);
   expect(Number(scenarios[0].estimated_total)).toBe(1017);
   await api.dispose();

@@ -77,6 +77,11 @@ test("one command finder supports keyboard search, focus trapping and navigation
   const dialog = page.getByRole("dialog", { name: /Where to/ });
   const search = dialog.getByRole("combobox");
   await expect(search).toBeFocused();
+  const sidebar=page.getByRole("complementary",{name:"Workspace sidebar"});
+  if(await sidebar.isVisible()){
+    const box=await sidebar.boundingBox();
+    expect(await page.evaluate(point=>!document.elementFromPoint(point.x,point.y)?.closest("aside"),{x:box!.x+30,y:box!.y+150}),"The command backdrop must cover background navigation").toBe(true);
+  }
   await search.fill("unmatched navigation query");
   await expect(dialog.getByText("No matching module")).toBeVisible();
   await page.keyboard.press("Escape");

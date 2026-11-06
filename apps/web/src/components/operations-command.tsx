@@ -29,7 +29,7 @@ export function OperationsCommand(){
   const entries=useMemo(()=>groups.flatMap(group=>group.items),[groups]);
 
   const show=useCallback(()=>{
-    if(!inWorkspace||!staff)return;
+    if(!inWorkspace||!staff||document.querySelector('[role="dialog"][aria-modal="true"]'))return;
     setQuery("");setCursor(0);setOpen(true);
   },[inWorkspace,staff]);
 
