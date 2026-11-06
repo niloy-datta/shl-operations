@@ -71,3 +71,5 @@ This is a **local first milestone**, not a production release. The initial accou
 GitHub Actions checks run Node 24 with typecheck/lint/build, and Java 25 with Maven verify / PostgreSQL Testcontainers. This is CI verification, not a production deployment or complete security review. See [boudi-aligned execution blueprint](docs/operations-v3-roadmap.md), [architecture](docs/architecture.md) [new feature roadmap](docs/implementation-milestone-v6.md), and [website integration](docs/website-integration.md).
 
 Phase 2 browser verification and release review: [বাংলা stabilization report](docs/phase2-stabilization-20261106-bn.md) · [PR #39 review sections](docs/phase2-pr39-review.md).
+
+SHL NEXUS local workspace increment: [design tokens and components](DESIGN.md) · [বাংলা delivery / feature inventory](docs/nexus-delivery-bn.md). Local before/after evidence: `.nexus-evidence/review/index.html` (private, ignored artifacts).
