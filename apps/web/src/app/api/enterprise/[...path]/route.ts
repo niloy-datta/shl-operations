@@ -81,7 +81,7 @@ async function relay(request: Request, context: Context) {
     const upstream = await fetch(
       process.env.API_INTERNAL_URL + "/api/" + target + (query.size ? "?" + query : ""),
       { method, headers: { authorization, "content-type": "application/json" },
-        body, cache: "no-store" }
+        body, cache: "no-store", signal: AbortSignal.timeout(15_000) }
     );
     return new NextResponse(await upstream.text(), {
       status: upstream.status,
