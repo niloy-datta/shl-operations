@@ -37,6 +37,59 @@ test("CSV import previews mapping and excludes invalid or duplicate rows before 
  await api.dispose();
 });
 
+test("truck catalog draft requires independent approval and links active products to RFQ comparison",async({page},testInfo)=>{
+ const sourcing=await apiFor("SOURCING"),manager=await apiFor("MANAGEMENT");
+ await useRole(page,"SOURCING");await page.goto("/workspace/products/new");
+ const model=unique("truck model");
+ await page.getByLabel("Manufacturer name").fill(unique("manufacturer"));
+ await page.getByRole("button",{name:"Save manufacturer reference"}).click();
+ await page.getByLabel("Model name *").fill(model);
+ await page.getByLabel("Model code").fill(unique("model-code"));
+ await page.getByLabel("Tank capacity (L)").fill("10000");
+ await page.getByLabel("Overall dimensions (mm)").fill("Source entered test value");
+ await page.getByLabel("Applications").fill("Synthetic test application");
+ await page.getByRole("button",{name:"Save product draft"}).click();
+ await expect(page.getByRole("heading",{name:model})).toBeVisible();
+ await expect(page.getByText("DRAFT",{exact:true})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Approve product"})).toHaveCount(0);
+ const detailAxe=await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa","wcag22aa"]).analyze();
+ expect(detailAxe.violations.filter(v=>["critical","serious"].includes(v.impact||""))).toEqual([]);
+ await noPageOverflow(page);
+ const draft=await json<{content:{id:string}[]}>(sourcing,"/api/products?q="+encodeURIComponent(model));
+ const firstId=draft.content[0]?.id;
+ expect(firstId).toBeTruthy();
+ await json(manager,`/api/products/${firstId}/approve`,"POST",{});
+ const category=(await json<{id:string}[]>(sourcing,"/api/products/categories"))[0];
+ const second=await json<{id:string}>(sourcing,"/api/products","POST",{
+  categoryId:category.id,modelName:unique("second active tanker"),modelCode:null,brand:null,description:null,
+  specifications:[{fieldKey:"tank_capacity",label:"Tank capacity",value:"Test only",unit:"L"}],
+  applications:[],configurations:[],marketNotes:[],documents:[],supplierIds:[]
+ });
+ await json(manager,`/api/products/${second.id}/approve`,"POST",{});
+ const customer=await json<{id:string}>(sourcing,"/api/data/customers","POST",{name:unique("product RFQ buyer"),country:"BD"});
+ const rfq=await json<{id:string}>(sourcing,"/api/trading/rfqs","POST",{customerId:customer.id,subject:unique("truck RFQ"),details:"Synthetic test",quantity:1,unit:"PCS",currency:"USD"});
+ await page.goto(`/workspace/rfqs?rfqId=${rfq.id}`);
+ await page.getByRole("button",{name:/Add item/}).click();
+ await page.getByLabel("Catalog product (optional)").selectOption(firstId!);
+ await expect(page.getByLabel("Product name *")).toHaveValue(new RegExp(model));
+ await page.getByLabel("Quantity *").fill("1");await page.getByLabel("Unit *").fill("PCS");
+ await page.getByRole("button",{name:/Save item/}).click();
+ await expect(page.getByText(model,{exact:false}).first()).toBeVisible();
+ const lines=await json<{truckProductId:string}[]>(sourcing,`/api/trading/rfqs/${rfq.id}/items`);
+ expect(lines[0].truckProductId).toBe(firstId);
+ await page.goto(`/workspace/products/compare?ids=${firstId},${second.id}`);
+ await expect(page.getByRole("heading",{name:"Compare truck products"})).toBeVisible();
+ await expect(page.locator(".prd-compare tbody")).toContainText("Tank capacity");
+ const comparisonAxe=await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa","wcag22aa"]).analyze();
+ expect(comparisonAxe.violations.filter(v=>["critical","serious"].includes(v.impact||""))).toEqual([]);
+ await noPageOverflow(page);
+ await testInfo.attach("truck-product-compare.png",{body:await page.screenshot({fullPage:true}),contentType:"image/png"});
+ await page.goto("/workspace/products");await expect(page.getByRole("heading",{name:"Truck product catalog"})).toBeVisible();await noPageOverflow(page);
+ const catalogAxe=await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa","wcag22aa"]).analyze();
+ expect(catalogAxe.violations.filter(v=>["critical","serious"].includes(v.impact||""))).toEqual([]);
+ await sourcing.dispose();await manager.dispose();
+});
+
 test("six Nexus review routes support light and dark without overflow or serious accessibility failures",async({page},testInfo)=>{
  test.setTimeout(180_000);await useRole(page);
  // Illustrative records exist only in the disposable test database; all writes use real guarded APIs.

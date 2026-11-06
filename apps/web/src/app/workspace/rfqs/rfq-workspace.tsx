@@ -20,8 +20,10 @@ type RfqItem = {
   id: string; rfqId: string; lineNumber: number; productName: string;
   specifications: string | null; hsCode: string | null;
   quantity: number; unit: string; toleranceNotes: string | null;
-  originCountry: string | null; targetDestination: string | null;
+  originCountry: string | null; targetDestination: string | null; truckProductId: string | null;
 };
+type CatalogProduct = { id:string; modelName:string; category:string; manufacturer:string|null; modelCode:string|null; status:string };
+type CatalogProductDetail = {product:CatalogProduct&{description:string|null};specifications:{label:string;value:string;unit:string|null}[]};
 type LineOffer = {
   id: string; rfqId: string; itemId: string; lineNumber: number;
   productName: string; unit: string; requestedQuantity: number;
@@ -93,6 +95,7 @@ export function RfqWorkspace() {
   const [suppliers, setSuppliers] = useState<Contact[]>([]);
   const [customerSearch, setCustomerSearch] = useState("");
   const [supplierSearch, setSupplierSearch] = useState("");
+  const [catalogProducts,setCatalogProducts]=useState<CatalogProduct[]>([]);
 
   useEffect(()=>{const frame=requestAnimationFrame(()=>{
     if(deepRfq&&/^[0-9a-f-]{36}$/i.test(deepRfq))setSelectedId(deepRfq);
@@ -103,6 +106,15 @@ export function RfqWorkspace() {
     window.addEventListener("shl:quick-create",quick);return()=>window.removeEventListener("shl:quick-create",quick);
   },[]);
   const refresh = useCallback(() => setTick(v => v + 1), []);
+
+  useEffect(() => {
+    if (!showItem) return;
+    let live=true;
+    json<{content:CatalogProduct[]}>('/api/products?status=ACTIVE&size=100&sort=modelName')
+      .then(result=>{if(live)setCatalogProducts(result.content);})
+      .catch(e=>{if(live)setMessage(e instanceof Error?e.message:"Unable to load active catalog products");});
+    return()=>{live=false;};
+  },[showItem]);
 
   useEffect(() => {
     let live = true;
@@ -206,7 +218,8 @@ export function RfqWorkspace() {
       unit: String(form.get("unit") || "").trim(),
       toleranceNotes: String(form.get("toleranceNotes") || "").trim() || null,
       originCountry: String(form.get("originCountry") || "").trim() || null,
-      targetDestination: String(form.get("targetDestination") || "").trim() || null
+      targetDestination: String(form.get("targetDestination") || "").trim() || null,
+      truckProductId: String(form.get("truckProductId") || "") || null
     };
     try {
       await json<RfqItem>("/api/trading/rfqs/" + selectedId + "/items" +
@@ -217,6 +230,17 @@ export function RfqWorkspace() {
       setShowItem(false); setEditingItem(null); refresh();
     } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to save requirement"); }
     finally { setSaving(false); }
+  }
+
+  async function selectCatalogProduct(select:HTMLSelectElement){
+    const form=select.form;if(!form||!select.value)return;
+    try{
+      const item=await json<CatalogProductDetail>("/api/products/"+select.value);
+      const name=form.elements.namedItem("productName") as HTMLInputElement|null;
+      const specs=form.elements.namedItem("specifications") as HTMLTextAreaElement|null;
+      if(name)name.value=[item.product.manufacturer,item.product.modelName,item.product.modelCode].filter(Boolean).join(" ");
+      if(specs)specs.value=item.specifications.map(s=>`${s.label}: ${s.value}${s.unit?" "+s.unit:""}`).join("\n")||item.product.description||"";
+    }catch(e){setMessage(e instanceof Error?e.message:"Unable to load catalog product details");}
   }
 
   async function removeItem(item: RfqItem) {
@@ -478,6 +502,9 @@ export function RfqWorkspace() {
         <button className="desk-close" onClick={() => { setShowItem(false); setEditingItem(null); }} disabled={saving} aria-label="Close">×</button>
       </header>
       <form onSubmit={saveItem} className="desk-form">
+        <label>Catalog product (optional)<select name="truckProductId" defaultValue={editingItem?.truckProductId||""} onChange={event=>void selectCatalogProduct(event.currentTarget)}>
+          <option value="">No catalog link · keep legacy item</option>{catalogProducts.map(p=><option key={p.id} value={p.id}>{p.modelName} · {p.category}{p.manufacturer?` · ${p.manufacturer}`:""}{p.modelCode?` · ${p.modelCode}`:""}</option>)}
+        </select></label>
         <label>Product name *<input name="productName" required maxLength={240} defaultValue={editingItem?.productName || ""} placeholder="e.g. ASTM A36 steel plate" /></label>
         <label>Specification / grade / dimensions<textarea name="specifications" maxLength={3000} rows={3}
           defaultValue={editingItem?.specifications || ""} placeholder="Grade, thickness, size, packaging, acceptance criteria…" /></label>

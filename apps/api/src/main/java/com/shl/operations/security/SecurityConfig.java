@@ -98,6 +98,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/logistics/**").hasAnyRole("ADMIN","MANAGEMENT","LOGISTICS","SOURCING")
                 .requestMatchers("/api/tasks/**", "/api/tasks").hasAnyRole("ADMIN","MANAGEMENT","BD","SOURCING","LOGISTICS","FINANCE")
                 .requestMatchers("/api/rfqs/**", "/api/rfqs").hasAnyRole("ADMIN","MANAGEMENT","BD","SOURCING")
+                .requestMatchers("/api/products/**", "/api/products").hasAnyRole("ADMIN","MANAGEMENT","BD","SOURCING")
                 .requestMatchers(HttpMethod.GET,"/api/customers","/api/suppliers","/api/suppliers/*","/api/dashboard")
                     .hasAnyRole("ADMIN","MANAGEMENT","BD","SOURCING","LOGISTICS","FINANCE")
                 .requestMatchers(HttpMethod.POST,"/api/customers","/api/suppliers")

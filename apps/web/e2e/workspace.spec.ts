@@ -152,6 +152,7 @@ for (const role of ["ADMIN", "MANAGEMENT", "BD", "SOURCING", "LOGISTICS", "FINAN
     await expect(nav.getByRole("link", { name: "Commission vault" })).toHaveCount(0);
     await expect(nav.getByRole("link", { name: "Staff & access" })).toHaveCount(role === "ADMIN" ? 1 : 0);
     await expect(nav.getByRole("link", { name: "Finance & invoices" })).toHaveCount(["ADMIN", "MANAGEMENT", "FINANCE"].includes(role) ? 1 : 0);
+    await expect(nav.getByRole("link", { name: "Truck product catalog" })).toHaveCount(["ADMIN","MANAGEMENT","BD","SOURCING"].includes(role)?1:0);
     expect((await page.request.get("/api/costs/commissions")).status()).toBe(403);
     expect((await page.request.get("/api/workspace-overview")).status()).toBe(200);
     expect((await page.request.get("/api/workspace-overview?scope=team")).status()).toBe(["ADMIN","MANAGEMENT"].includes(role)?200:403);
@@ -159,6 +160,13 @@ for (const role of ["ADMIN", "MANAGEMENT", "BD", "SOURCING", "LOGISTICS", "FINAN
     expect((await page.request.get("/api/enterprise/staff")).status()).toBe(role === "ADMIN" ? 200 : 403);
     expect((await page.request.get("/api/enterprise/finance/summary")).status()).toBe(["ADMIN", "MANAGEMENT", "FINANCE"].includes(role) ? 200 : 403);
     expect((await page.request.get("/api/trading/rfqs")).status()).toBe(["ADMIN", "MANAGEMENT", "BD", "SOURCING"].includes(role) ? 200 : 403);
+    expect((await page.request.get("/api/products")).status()).toBe(["ADMIN","MANAGEMENT","BD","SOURCING"].includes(role)?200:403);
+    if (["ADMIN","MANAGEMENT","BD","SOURCING"].includes(role)) {
+      const categories=await page.request.get("/api/products/categories");
+      const category=(await categories.json() as {id:string}[])[0];
+      const write=await page.request.post("/api/products",{data:{categoryId:category.id,modelName:unique(`${role} denied product`),specifications:[{fieldKey:"test_field",label:"Test field",value:"synthetic test value"}],applications:[],configurations:[],marketNotes:[],documents:[],supplierIds:[]},headers:{origin:"http://127.0.0.1:3107"}});
+      expect(write.status()).toBe(["ADMIN","MANAGEMENT","SOURCING"].includes(role)?201:403);
+    }
   });
 }
 
