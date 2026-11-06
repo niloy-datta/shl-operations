@@ -41,6 +41,7 @@ class CustomerLineQuotesWorkflowTest {
     @Autowired CommerceController oldCommerce;
     @Autowired LineOrdersController lineOrders;
     @Autowired PurchaseOrderMatchingService matching;
+    @Autowired PoProductionMilestonesController factory;
     @Autowired LineShipmentController shipmentFlow;
     @Autowired LineShippingDocumentsController documents;
     @Autowired LineShipmentExceptionsController exceptions;
@@ -282,6 +283,8 @@ class CustomerLineQuotesWorkflowTest {
             .isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(()->matching.verify(UUID.randomUUID()))
             .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(()->factory.list(UUID.randomUUID()))
+            .isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(()->lineOrders.create(
             new LineOrdersController.FromQuote(UUID.randomUUID())))
             .isInstanceOf(AccessDeniedException.class);
@@ -319,6 +322,43 @@ class CustomerLineQuotesWorkflowTest {
                 .hasMessageContaining("Only issued");
             switchUser("po-approver","ADMIN");
             lineOrders.purchaseStatus(poId,new LineOrdersController.Transition("ISSUED"));
+            switchUser("factory-coordinator","SOURCING");
+            UUID start=(UUID)factory.create(poId,
+                new PoProductionMilestonesController.Create("PRODUCTION_START",
+                    java.time.LocalDate.now().plusDays(2),
+                    "Factory states manufacturing is scheduled")).getBody().get("id");
+            assertThat(alerts.feed().items())
+                .anyMatch(a->"FACTORY_MILESTONE".equals(a.source()));
+            factory.status(poId,start,new PoProductionMilestonesController.Change(
+                "IN_PROGRESS","Factory reported production started"));
+            factory.status(poId,start,new PoProductionMilestonesController.Change(
+                "COMPLETED","Factory reported production finished"));
+            UUID ready=(UUID)factory.create(poId,
+                new PoProductionMilestonesController.Create("FACTORY_READY",
+                    java.time.LocalDate.now().plusDays(3),
+                    "Supplier reported final packing")).getBody().get("id");
+            factory.status(poId,ready,new PoProductionMilestonesController.Change(
+                "IN_PROGRESS","Final packing underway"));
+            factory.status(poId,ready,new PoProductionMilestonesController.Change(
+                "COMPLETED","Factory reported cargo ready"));
+            UUID quality=(UUID)factory.create(poId,
+                new PoProductionMilestonesController.Create("QUALITY_CHECK",
+                    java.time.LocalDate.now().plusDays(4),
+                    "Internal QA observation pending")).getBody().get("id");
+            factory.status(poId,quality,new PoProductionMilestonesController.Change(
+                "IN_PROGRESS","QA report requested"));
+            assertThatThrownBy(()->factory.status(poId,quality,
+                new PoProductionMilestonesController.Change("COMPLETED","Self review")))
+                .isInstanceOf(ResponseStatusException.class);
+            switchUser("independent-qc-reviewer","MANAGEMENT");
+            assertThat(factory.status(poId,quality,
+                new PoProductionMilestonesController.Change(
+                    "COMPLETED","Internal QA paperwork reviewed")).get("status"))
+                .isEqualTo("COMPLETED");
+            assertThat(factory.events(poId,quality)).hasSize(3);
+            assertThatThrownBy(()->db.update("""
+                DELETE FROM line_po_production_events WHERE milestone_id=?
+                """,quality)).isInstanceOf(org.springframework.dao.DataAccessException.class);
             switchUser("dispatch-operator","LOGISTICS");
             var booking=new LineShipmentController.Booking(poId,
                 "Shanghai, CN","Rotterdam, NL","Carrier One","BL-TEST",
@@ -370,6 +410,9 @@ class CustomerLineQuotesWorkflowTest {
             UUID incidentId=(UUID)incident.get("id");
             assertThat(exceptions.list(shipmentId)).hasSize(1);
             assertThat(exceptions.history(shipmentId,incidentId)).hasSize(1);
+            assertThat(alerts.feed().items())
+                .anyMatch(a->"SHIPMENT_EXCEPTION".equals(a.source())
+                    && created.shipment().get("reference").equals(a.reference()));
             assertThatThrownBy(()->exceptions.resolve(shipmentId,incidentId,
                 new LineShipmentExceptionsController.Resolve("Self approval")))
                 .isInstanceOf(AccessDeniedException.class);
@@ -379,6 +422,9 @@ class CustomerLineQuotesWorkflowTest {
                     "Carrier confirmed clearance; issue resolved")).get("status"))
                 .isEqualTo("RESOLVED");
             assertThat(exceptions.history(shipmentId,incidentId)).hasSize(2);
+            assertThat(alerts.feed().items())
+                .noneMatch(a->"SHIPMENT_EXCEPTION".equals(a.source())
+                    && created.shipment().get("reference").equals(a.reference()));
             assertThatThrownBy(()->exceptions.resolve(shipmentId,incidentId,
                 new LineShipmentExceptionsController.Resolve("Duplicate closure")))
                 .isInstanceOf(ResponseStatusException.class);

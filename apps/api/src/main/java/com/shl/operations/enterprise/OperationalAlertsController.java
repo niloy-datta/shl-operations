@@ -134,6 +134,40 @@ public class OperationalAlertsController {
                     "/workspace/suppliers/compliance?supplierId="+rs.getObject("supplier_id"));
             },end));
         }
+        if(anyRole("ADMIN","MANAGEMENT","SOURCING")){
+            alerts.addAll(db.query("""
+                SELECT p.reference,m.kind,m.target_date,so.rfq_id
+                FROM line_po_production_milestones m
+                JOIN line_purchase_orders p ON p.id=m.purchase_order_id
+                JOIN line_sales_orders so ON so.id=p.sales_order_id
+                WHERE p.status='ISSUED' AND m.status<>'COMPLETED'
+                  AND m.target_date<=?
+                ORDER BY m.target_date ASC,m.id ASC LIMIT 40
+                """,(rs,i)->{
+                LocalDate date=rs.getObject("target_date",LocalDate.class);
+                return new Alert("FACTORY_MILESTONE",rs.getString("reference"),
+                    "Staff-reported factory "+rs.getString("kind").replace('_',' ')+
+                    " milestone requires review",date,urgency(date,today),
+                    "/workspace/enterprise/line-quotes?rfqId="+rs.getObject("rfq_id"));
+            },end));
+        }
+        if(anyRole("ADMIN","MANAGEMENT","LOGISTICS","SOURCING")){
+            alerts.addAll(db.query("""
+                SELECT sh.reference,e.type,e.review_due,so.rfq_id
+                FROM line_shipment_exceptions e
+                JOIN line_shipments sh ON sh.id=e.shipment_id
+                JOIN line_sales_orders so ON so.id=sh.sales_order_id
+                WHERE e.status='OPEN' AND sh.status<>'CANCELLED'
+                  AND e.review_due IS NOT NULL AND e.review_due<=?
+                ORDER BY e.review_due ASC,e.id ASC LIMIT 40
+                """,(rs,i)->{
+                LocalDate date=rs.getObject("review_due",LocalDate.class);
+                return new Alert("SHIPMENT_EXCEPTION",rs.getString("reference"),
+                    "Open "+rs.getString("type").replace('_',' ')+
+                    " case requires operational review",date,urgency(date,today),
+                    "/workspace/enterprise/line-quotes?rfqId="+rs.getObject("rfq_id"));
+            },end));
+        }
         if(anyRole("ADMIN","MANAGEMENT","FINANCE")){
             alerts.addAll(db.query("""
                 SELECT reference,due_date FROM invoices

@@ -75,3 +75,18 @@
 .po-match strong{font-size:12px;color:#174f60}
 .po-match small{display:block;margin-top:5px;font-size:11px;color:#668090}
 .po-match ul{padding-left:18px;font-size:12px;color:#96453c}
+
+.lo-order:has(.pm-panel){flex-wrap:wrap}
+.pm-panel{flex-basis:100%;border-top:1px solid #dce7ed;margin-top:12px;padding-top:11px}
+.pm-panel>button,.pm-content button{padding:9px 12px;border-radius:8px;border:1px solid #b6dee2;background:#e6f6f7;color:#185d61;font-size:11px;font-weight:700}
+.pm-panel p{font-size:11px;line-height:1.6;color:#5a7684}
+.pm-content{padding:13px 0;display:grid;gap:12px}
+.pm-content article{padding:13px;background:#f6fafb;border:1px solid #e3ebee;border-radius:9px}
+.pm-content strong,.pm-content small{display:block;font-size:11px}
+.pm-content small{color:#79909e;margin-top:6px}
+.pm-content form{display:grid;gap:10px;margin-top:12px}
+.pm-content label{display:grid;gap:6px;font-size:11px;font-weight:700}
+.pm-content textarea,.pm-content input,.pm-content select{width:100%;padding:9px;border-radius:8px;border:1px solid #cddfe5;background:white;color:#153746;font:inherit}
+.pm-content h4{margin:5px 0;font-size:13px}
+.pm-error{color:#9e3930!important}
+.pm-notice{color:#187a58!important}
