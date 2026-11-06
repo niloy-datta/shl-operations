@@ -78,10 +78,10 @@ Source tokens/components: [DESIGN.md](../DESIGN.md)। নতুন theme login/
 
 ## Final local delivery
 
-Final full Chromium run: **৬৯/৬৯ pass**, প্রায় ৯৬ সেকেন্ড; retry, skipped, flaky এবং unexpected failure: ০। Compact priority expansion, mobile navigation focus/Escape, command overlay coverage, customer profile, CSV approval/results এবং two-supplier comparison-ও covered।
+Final full Chromium run: **৬৯/৬৯ pass**, প্রায় ৯৪ সেকেন্ড; retry, skipped, flaky এবং unexpected failure: ০। Compact priority expansion, mobile navigation focus/Escape, command overlay coverage, customer profile, CSV approval/results এবং two-supplier comparison-ও covered। My Day থেকে lead খুললে qualification triage, activity ও consent detail load হওয়া, dialog-এর initial focus/Shift+Tab containment এবং dark dialog-এর serious/critical axe findings-ও যাচাই করা হয়েছে।
 
 Local `http://127.0.0.1:3000`-এ same code rebuild ও health check pass; authenticated overview HTTP 200। তিন viewport × ছয় route × দুই theme-এর ৩৬টি after screenshot নেওয়া হয়েছে। Working database-এ কোনো synthetic business row insert করা হয়নি; screenshots-এর login session শেষে revoke করা হয়েছে।
 
-Core source commits: `bcebff7` (projection/lookup), `24e0da5` (shell and connected UI), `a1129cc` (browser coverage); `1eef6ab` covers final density/mobile/modal polish; all commits remain local. GitHub CI was not run for these unpushed commits. Existing PR #39 baseline evidence is separate.
+Core source commits: `bcebff7` (projection/lookup), `24e0da5` (shell and connected UI), `a1129cc` (browser coverage); `1eef6ab` covers final density/mobile/modal polish; `bc7ec04` fixes lead triage deep-link loading and dark dialog focus/contrast; all commits remain local. GitHub CI was not run for these unpushed commits. Existing PR #39 baseline evidence is separate.
 
 Temporary E2E Compose stack ও synthetic auth/config files cleanup করা হয়েছে। Working localhost stack চালু রাখা হয়েছে। Existing database volume, `.env` ও original local report অক্ষত।
