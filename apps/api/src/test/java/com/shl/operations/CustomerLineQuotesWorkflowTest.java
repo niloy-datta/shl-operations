@@ -40,6 +40,7 @@ class CustomerLineQuotesWorkflowTest {
     @Autowired CustomerLineQuotesController quotes;
     @Autowired CommerceController oldCommerce;
     @Autowired LineOrdersController lineOrders;
+    @Autowired PurchaseOrderMatchingService matching;
     @Autowired LineShipmentController shipmentFlow;
     @Autowired LineShippingDocumentsController documents;
     @Autowired LineShipmentExceptionsController exceptions;
@@ -244,6 +245,17 @@ class CustomerLineQuotesWorkflowTest {
                 new LineOrdersController.Transition("ISSUED")))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("creator cannot");
+            assertThat(matching.verify(poId).matched()).isTrue();
+            db.update("UPDATE line_purchase_orders SET currency='EUR' WHERE id=?",poId);
+            assertThat(matching.verify(poId).matched()).isFalse();
+            assertThat(matching.verify(poId).discrepancies())
+                .anyMatch(x->x.contains("currencies differ"));
+            switchUser("second-manager","ADMIN");
+            assertThatThrownBy(()->lineOrders.purchaseStatus(poId,
+                new LineOrdersController.Transition("ISSUED")))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("reconciliation");
+            db.update("UPDATE line_purchase_orders SET currency='USD' WHERE id=?",poId);
             switchUser("second-manager","ADMIN");
             assertThat(lineOrders.purchaseStatus(poId,
                 new LineOrdersController.Transition("ISSUED")).purchase().get("status"))
@@ -267,6 +279,8 @@ class CustomerLineQuotesWorkflowTest {
     @Test @WithMockUser(username="data-reviewer",roles="FINANCE")
     void financeCannotReadSupplierLineOrderSourcesOrCreateLinePurchase() {
         assertThatThrownBy(()->lineOrders.list(null,0,20))
+            .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(()->matching.verify(UUID.randomUUID()))
             .isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(()->lineOrders.create(
             new LineOrdersController.FromQuote(UUID.randomUUID())))
