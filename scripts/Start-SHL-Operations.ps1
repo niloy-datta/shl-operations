@@ -86,7 +86,7 @@ try {
 
         Write-Host ''
         Write-Host 'SHL Operations OS started successfully!' -ForegroundColor Green
-        Write-Host 'URL: http://localhost:3000'
+        Write-Host 'URL: http://127.0.0.1:3000'
         Write-Host 'Admin username: admin (unless you changed .env)'
         Write-Host "Admin password: see BOOTSTRAP_ADMIN_PASSWORD in $repoPath\.env"
         Write-Host 'Do not commit or share the .env file or load real SHL data into this development system.' -ForegroundColor Yellow

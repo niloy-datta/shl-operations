@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
+import { verifyWorkspace } from "./workspace-smoke.mjs";
 
 const base = process.env.SHL_TEST_BASE_URL || "http://127.0.0.1:3000";
 const url = new URL(base);
@@ -103,6 +104,8 @@ test("real Next.js BFF -> Spring Boot -> PostgreSQL MFA lifecycle", async () => 
   assert.equal((await verified.json()).enrollmentRequired,false);
   const verifiedCookie=sessionCookie(verified);
   assert.equal((await api("/api/data/customers",{cookie:verifiedCookie})).status,200);
+
+  await verifyWorkspace({ api, cookie: verifiedCookie, password, sessionCookie, totp });
 
   const replay=await api("/api/auth/login",{
     method:"POST",json:{username,password,code:recovery[0]}

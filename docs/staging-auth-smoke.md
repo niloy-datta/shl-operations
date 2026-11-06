@@ -8,6 +8,9 @@ It checks:
 - MFA setup completes and previous sessions are revoked.
 - A one-use recovery code enables a fresh verified login, and replay is rejected.
 - Authorized users can list an empty customer directory; logout revokes access.
+- All 25 workspace page URLs keep anonymous guards and return authenticated HTML; 28 live API reads reach the backend.
+- Five additional staff roles enroll MFA and exercise positive/negative commercial, finance, staff, consent, conversion, compliance, PO matching and production-milestone API access through Next.js.
+- New-feature writes reject cross-origin requests; unknown proxy paths are blocked; commission access remains denied even to administrators without an explicit grant.
 
 The workflow runs on pull requests or manual GitHub Actions invocation as `Isolated Full-Stack Auth Smoke`. It destroys volumes and synthetic credentials at the end, even on failures.
 

@@ -2,6 +2,8 @@
 
 Independent internal application. The existing `shl-global` website is untouched.
 
+**Integrated recovery milestone (2026-11-06):** The review branch combines lead consent and conversion, shipment exceptions, supplier compliance, sourced landed-cost scenarios, PO reconciliation and factory milestones. Authentication remains required; `/` opens the application workspace. See the [verified recovery report](docs/fullstack-recovery-20261106.md) and [branch-by-branch decisions](docs/recovery-branch-audit-20261106.md). This is a development integration, pending stakeholder and security approval.
+
 **Security note:** The source GitHub repository is currently public. The application is not ready for production; do not commit business data, credentials, commission details, or customer documents. Review privacy and security requirements before loading SHL records.
 
 **GitHub Pages deployment status (2026-10-22):** The read-only [Enterprise Experience preview](https://niloy-datta.github.io/shl-operations-preview/enterprise.html) is deployed by [the separate public Pages repository](https://github.com/niloy-datta/shl-operations-preview). Its workflow validates static files before publishing. **No operational ERP, API, staff sessions, PostgreSQL or customer data have been deployed to GitHub Pages.** See [deployment boundaries](docs/github-preview-release.md).
@@ -26,9 +28,9 @@ Production startup now has a fail-closed deployment-mode guard, and opt-in encry
 1. Install Docker Desktop with Compose.
 2. Copy `.env.example` to `.env`. Set distinct random database and admin passwords. Sessions use 256-bit random opaque tokens hashed in PostgreSQL; SESSION_KEY is no longer needed. Generate a unique MFA_ENCRYPTION_KEY with `openssl rand -hex 32` before enabling authenticator MFA. Do not commit `.env`. Commission records are visible only to exact case-sensitive existing staff usernames in protected `COMMISSION_AUTHORIZED_USERS`; leave it empty to deny all. This list must be explicitly approved.
 3. Run `docker compose up --build` in this folder.
-4. Open `http://localhost:3000` and sign in with the bootstrap admin credentials.
+4. Open `http://127.0.0.1:3000` and sign in with the bootstrap admin credentials. Use the exact origin configured in `SHL_PUBLIC_ORIGIN`; mixing `localhost` and `127.0.0.1` causes same-origin checks to reject writes.
 
-The PostgreSQL volume persists records between restarts. To rerun checks in an environment with Docker, run `docker compose run --rm api mvn test` only in a build image with Maven, or `cd apps/api && mvn test` with Java 25 and Maven installed. For the web, run `cd apps/web && npm install && npm run typecheck && npm run lint && npm run build`.
+The PostgreSQL volume persists records between restarts. Do not remove it to troubleshoot application code. For backend checks, run `cd apps/api && mvn clean verify` with Java 25, Maven and Docker available for disposable PostgreSQL Testcontainers. The runtime API image contains a JRE and does not contain Maven. For the web, run `cd apps/web && npm ci && npm test && npm run typecheck && npm run lint && npm run build`.
 
 ## Current roadmap
 
