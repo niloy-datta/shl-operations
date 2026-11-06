@@ -5,6 +5,7 @@ import {useCallback,useEffect,useState,type FormEvent,type ReactNode} from "reac
 import {useRouter} from "next/navigation";
 import {LeadRoutingPanel,LeadAssignmentHistory} from "./lead-routing-panel";
 import {LeadConsentPanel} from "./lead-consent-panel";
+import {LeadConversionPanel} from "./lead-conversion-panel";
 
 type Module="leads"|"projects";
 type Item=Record<string,unknown>;
@@ -336,6 +337,11 @@ export function GrowthDesk({module}:{module:Module}){
                   {next.replaceAll("_"," ")} ↗</button>)}</div>
             </div>}
             {module==="leads"&&<LeadConsentPanel key={String(active.id)} leadId={String(active.id)}/>}
+            {module==="leads"&&!!me&&["ADMIN","MANAGEMENT"].includes(me.role)&&
+              String(active.status)==="WON"&&<LeadConversionPanel key={String(active.id)}
+                leadId={String(active.id)} companyName={String(active.company_name??"")}
+                customerId={active.customer_id?String(active.customer_id):null}
+                ownerId={active.owner_id?String(active.owner_id):null}/>}
             <section className="gx-notes">
               <h3>{module==="leads"?"Lead follow-up history":"Project activity notes"}</h3>
               <form onSubmit={e=>void addNote(e)}>
