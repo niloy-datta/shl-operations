@@ -101,4 +101,35 @@ public class StaffController {
         audit.log("PASSWORD_CHANGED","STAFF",id,"Self-service password change");
         return Map.of("ok",true);
     }
+
+    public record ResetStaffPassword(@NotBlank @Size(max=256) String adminPassword,
+        @NotBlank @Size(min=16,max=128) String newPassword) {}
+
+    @PostMapping("/{id}/password-reset")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public Map<String,Boolean> resetStaffPassword(@PathVariable UUID id,
+        @Valid @RequestBody ResetStaffPassword input) {
+        String adminName=audit.actor();
+        Map<String,Object> admin=db.queryForMap(
+            "SELECT id,password_hash FROM staff_users WHERE username=?",adminName);
+        if (id.equals(admin.get("id")))
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Use account security to change your own password");
+        if (!passwords.matches(input.adminPassword(),(String)admin.get("password_hash")))
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                "Administrator verification failed");
+        List<Map<String,Object>> rows=db.queryForList(
+            "SELECT id,password_hash FROM staff_users WHERE id=? FOR UPDATE",id);
+        if (rows.isEmpty())
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Staff account not found");
+        if (passwords.matches(input.newPassword(),(String)rows.getFirst().get("password_hash")))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Choose a different password");
+        db.update("UPDATE staff_users SET password_hash=?,password_changed_at=now() WHERE id=?",
+            passwords.encode(input.newPassword()),id);
+        db.update("UPDATE auth_sessions SET revoked_at=now() WHERE staff_id=? AND revoked_at IS NULL",id);
+        audit.log("PASSWORD_RESET","STAFF",id,"Verified administrator recovery");
+        return Map.of("ok",true);
+    }
 }
