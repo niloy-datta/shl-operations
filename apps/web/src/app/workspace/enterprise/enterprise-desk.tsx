@@ -483,7 +483,7 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
                   <span className={["reference","title","username"].includes(col.key)?"en-strong":""}>{pretty(record[col.key],col.key)}</span>}</td>)}
                 <td><button className="en-action" onClick={()=>void showDetails(record)}>Details ↗</button>
                   {currentModule==="staff"&&<button className="en-action" onClick={()=>{setActive(record);setModal("access");}}>Access</button>}
-                  {currentModule==="staff"&&record.username!==user?.username&&<button className="en-action" onClick={()=>{setActive(record);setError("");setModal("reset-password");}}>Reset password</button>
+                  {currentModule==="staff"&&record.username!==user?.username&&<button className="en-action" onClick={()=>{setActive(record);setError("");setModal("reset-password");}}>Reset password</button>}
                   {currentModule==="invoices"&&record.status==="ISSUED"&&<button className="en-action" onClick={()=>{setActive(record);setModal("payment");}}>Pay</button>}
                 </td></tr>)}</tbody></table>
               {loading&&<div className="en-table-empty">Loading your records…</div>}
@@ -550,7 +550,7 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
               onClick={()=>void changeStatus(active,status)}>{titles[status]??status} →</button>)}</div>}
           {currentModule==="invoices"&&active.status==="ISSUED"&&<button className="en-primary" onClick={()=>setModal("payment")}>Record payment →</button>}
           {currentModule==="staff"&&<button className="en-primary" onClick={()=>setModal("access")}>Edit staff access →</button>}
-          {currentModule==="staff"&&active.username!==user?.username&&<button className="en-secondary" onClick={()=>{setError("");setModal("reset-password");}}>Reset password →</button>
+          {currentModule==="staff"&&active.username!==user?.username&&<button className="en-secondary" onClick={()=>{setError("");setModal("reset-password");}}>Reset password →</button>}
           <button className="en-secondary en-detail-close" onClick={()=>setModal(null)}>Close</button>
         </div>}
       </div>
