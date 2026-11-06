@@ -4,6 +4,7 @@ import Link from "next/link";
 import {useCallback,useEffect,useState,type FormEvent,type ReactNode} from "react";
 import {useRouter} from "next/navigation";
 import {LeadRoutingPanel,LeadAssignmentHistory} from "./lead-routing-panel";
+import {LeadConsentPanel} from "./lead-consent-panel";
 
 type Module="leads"|"projects";
 type Item=Record<string,unknown>;
@@ -334,6 +335,7 @@ export function GrowthDesk({module}:{module:Module}){
                 <button key={next} disabled={busy} onClick={()=>void status(active,next)}>
                   {next.replaceAll("_"," ")} ↗</button>)}</div>
             </div>}
+            {module==="leads"&&<LeadConsentPanel key={String(active.id)} leadId={String(active.id)}/>}
             <section className="gx-notes">
               <h3>{module==="leads"?"Lead follow-up history":"Project activity notes"}</h3>
               <form onSubmit={e=>void addNote(e)}>
