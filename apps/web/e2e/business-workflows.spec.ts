@@ -214,7 +214,13 @@ test("administrator password recovery revokes an existing staff session", async 
   await useRole(page);
   await page.goto("/workspace/enterprise/staff");
   const row = page.getByRole("row").filter({ hasText: username });
-  await row.getByRole("button", { name: "Reset password", exact: true }).click();
+  const reset = row.getByRole("button", { name: "Reset password", exact: true });
+  await reset.scrollIntoViewIfNeeded();
+  expect(await reset.evaluate(button => {
+    const cell = button.closest("td")!.getBoundingClientRect(), box = button.getBoundingClientRect();
+    return box.left >= cell.left && box.right <= cell.right && box.top >= cell.top && box.bottom <= cell.bottom;
+  }), "Staff actions must fit inside their cell without clipping").toBe(true);
+  await reset.click();
   const dialog = page.getByRole("dialog", { name: "Reset staff password" });
   await dialog.getByLabel("Your administrator password").fill(accounts().ADMIN.password);
   const replacement = "Synthetic-replacement-password-" + Date.now();

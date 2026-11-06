@@ -7,6 +7,7 @@ Review date: 2026-11-06. Original review range: `b27df0f76a1acce7d87d0d2a2563e1b
 | Severity | Finding | Disposition / evidence |
 |---|---|---|
 | High usability/integration | LOGISTICS could not reach line-shipment booking through a quotation page whose commercial API correctly denies the role; paperwork/exception alerts targeted that page. | Added dedicated shipping desk reusing the existing panel, safe paginated issued-PO lookup, and shipment deep links. Java test enforces exact nonfinancial projection and excludes already-booked orders. Browser business test keeps quotation API 403 while booking succeeds. |
+| Medium responsive usability | Linux Chromium tablet clipped the Staff reset-password button inside the generic 290px text cell; 56/57 CI tests passed. | Dedicated non-clipping action cell and wrapping action group; original failing screenshots/traces retained in run 42192975405. Normal pointer click and explicit cell-bounds regression remain enforced. |
 | Medium accessibility | Customer modal did not trap keyboard focus; several workspace dialogs lacked consistent Escape/focus restoration. | Shared dialog wrapper applied to directory, growth, enterprise and RFQ forms. Browser tests cover customer focus/validation/save and command finder keyboard navigation. |
 | Medium accessibility | Dashboard and alert text contrast failed real axe scans, including counts that appeared after data loaded. | Darkened existing palette text; scan waits for real totals. Automated scan scope is dashboard and alerts, not a whole-product accessibility certification. |
 | Medium stability | Fast API responses could finish before the queued loading-frame callback, leaving six desks permanently loading. | Cancel the pending loading frame on request completion (seven effects, including RFQ details). Real browser regression deliberately delays animation frames while calling real APIs. |
@@ -144,4 +145,3 @@ Build/scripts review checks npm lock + npm ci, environment origin consistency, f
 - `scripts/staging-auth-smoke.test.mjs`
 - `scripts/test-github-release-gates.sh`
 - `scripts/workspace-smoke.mjs`
-

@@ -65,6 +65,9 @@
 .en-table-scroll table{border-collapse:collapse;width:100%;text-align:left;white-space:nowrap}
 .en-table-scroll th{color:#8394a6;background:#f9fbfd;font-size:9px;font-weight:850;letter-spacing:1.2px;padding:16px 20px}
 .en-table-scroll td{border-top:1px solid #eef2f6;color:#718399;font-size:12px;padding:18px 20px;max-width:290px;overflow:hidden;text-overflow:ellipsis}
+.en-table-scroll td.en-action-cell{max-width:none;overflow:visible}
+.en-row-actions{display:flex;flex-wrap:wrap;gap:6px;min-width:180px}
+.en-row-actions .en-action{margin:0;white-space:nowrap}
 .en-table-scroll tr:hover td{background:#fbfefd}
 .en-table-scroll th:first-child,.en-table-scroll td:first-child{padding-left:27px}
 .en-strong{font-weight:750;color:#1a4450}

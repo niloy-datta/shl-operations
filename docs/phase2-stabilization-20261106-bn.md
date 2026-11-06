@@ -10,6 +10,7 @@
 - **Loading race:** দ্রুত request শেষ হওয়ার পরে queued animation frame loading flag আবার true করত। Enterprise, Growth, RFQ list/details, Costs, Shipping ও supplier-reference list-এর সাতটি effect-এ pending frame cancel করা হয়েছে। Real API ও delayed browser frame দিয়ে regression test আছে।
 - **Navigation/session:** Growth, RFQ, Costs, contribution ও cockpit menu shared role-aware navigation ব্যবহার করে। ১৯টি full-page login assignment central router event দিয়ে প্রতিস্থাপিত হয়েছে। Commission access explicit grant ছাড়া দেখায় না। Mobile menu disclosure ও sign-out ব্যবহারযোগ্য।
 - **Daily workflow:** Dashboard-এ role অনুযায়ী alerts, leads/follow-up, RFQ, shipment ও billing review-এর সরাসরি priority links; signed-in account initial; বাস্তব database totals।
+- **Tablet table actions:** Linux Chromium-এর প্রথম run-এ Staff action cell-এর 290px text limit “Reset password” button কেটে দিচ্ছিল। Dedicated action cell ও wrapping button group দিয়ে ঠিক করা হয়েছে; clipping bounds এবং normal pointer click দিয়ে regression check আছে।
 - **Forms/accessibility:** Shared dialog focus trap, Escape, initial focus, focus restoration ও scroll lock; customer, enterprise, growth ও RFQ dialogs-এ ব্যবহার। Dashboard ও alerts-এর পরীক্ষায় পাওয়া text contrast ঠিক হয়েছে।
 - **Truthful feedback:** পুনরায় reconciliation ব্যর্থ হলে পুরোনো green match থাকে না। Evidence/exception loading বা error-কে empty success বলা হয় না। Closed lead-এ নতুন opt-in disable; quotation action ও supplier self-review controls existing server rule অনুযায়ী সীমিত। Staff form-এর ভুল “MFA not implemented” লেখা সরানো হয়েছে।
 - **Browser CI:** Chromium + axe, desktop/tablet/mobile projects, normal password/MFA enrollment ও server-issued session, failure screenshot/trace এবং HTML/JSON report। `.env.e2e` ও auth-state ignored; Docker build context থেকেও বাদ। Unique Compose project-এ tmpfs PostgreSQL ব্যবহার হয়।
@@ -32,7 +33,7 @@ Browser suite real login, invalid credentials, mandatory enrollment, recovery-co
 
 Axe scan শুধু dashboard ও alerts-এর serious/critical WCAG A/AA findings gate করে। এটি সব page-এর পূর্ণ accessibility certification নয়। Desktop/mobile dashboard screenshot-ও চোখে দেখে যাচাই করা হয়েছে। Chromium mobile viewport physical phone বা Safari পরীক্ষা নয়।
 
-চূড়ান্ত local Chromium run: **৫৭/৫৭ pass**, ৫৭ সেকেন্ড; প্রতিটি viewport-এ একই ১৯টি test। Failure screenshot/trace আগের failed runs থেকে সংরক্ষিত; pass run-এ desktop/tablet/mobile dashboard ও shipping screenshots এবং axe JSON reports আছে।
+চূড়ান্ত local Chromium run: **৫৭/৫৭ pass**, ৫৭ সেকেন্ড; প্রতিটি viewport-এ একই ১৯টি test। Linux CI-এর প্রথম run-এ ৫৬/৫৭ pass; tablet Staff action clipping failure-এর [screenshots/traces](https://github.com/niloy-datta/shl-operations/actions/runs/42192975405) সংরক্ষিত এবং layout fix করা হয়েছে। পরবর্তী CI ফল PR checks-এ দেখো। Failure screenshot/trace আগের failed runs থেকে সংরক্ষিত; pass run-এ desktop/tablet/mobile dashboard ও shipping screenshots এবং axe JSON reports আছে।
 
 ## Review ও release blockers
 

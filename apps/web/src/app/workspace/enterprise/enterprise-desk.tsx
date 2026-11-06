@@ -446,11 +446,11 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
                 {config.columns.map(col=><td key={col.key}>{col.key==="status"||col.key==="priority"||col.key==="invoice_type"?
                   <RowBadge value={record[col.key]}/>:
                   <span className={["reference","title","username"].includes(col.key)?"en-strong":""}>{pretty(record[col.key],col.key)}</span>}</td>)}
-                <td><button className="en-action" onClick={()=>void showDetails(record)}>Details ↗</button>
+                <td className="en-action-cell"><div className="en-row-actions"><button className="en-action" onClick={()=>void showDetails(record)}>Details ↗</button>
                   {currentModule==="staff"&&<button className="en-action" onClick={()=>{setActive(record);setModal("access");}}>Access</button>}
                   {currentModule==="staff"&&record.username!==user?.username&&<button className="en-action" onClick={()=>{setActive(record);setError("");setModal("reset-password");}}>Reset password</button>}
                   {currentModule==="invoices"&&record.status==="ISSUED"&&<button className="en-action" onClick={()=>{setActive(record);setModal("payment");}}>Pay</button>}
-                </td></tr>)}</tbody></table>
+                </div></td></tr>)}</tbody></table>
               {loading&&<div className="en-table-empty">Loading your records…</div>}
               {!loading && list.content.length===0&&<div className="en-table-empty"><span>◇</span><h3>No records found</h3>
                 <p>{term?"Try a different search.":"Create your first record to begin this workflow. No demo entries are inserted."}</p></div>}
