@@ -48,6 +48,9 @@ export const OPERATIONS_NAVIGATION: readonly NavGroup[] = [
     {label:"RFQ & sourcing",href:"/workspace/rfqs",icon:"layers",symbol:"▤",
       description:"RFQs, item prices and approved line quotes",roles:sourcing,
       keywords:"quotation pricing sourcing line quote"},
+    {label:"Supplier compliance",href:"/workspace/suppliers/compliance",icon:"lock",symbol:"◇",
+      description:"Evidence references, independent reviews and expiry dates",roles:sourcing,
+      keywords:"supplier documents compliance license"},
     {label:"Customer quotations",href:"/workspace/enterprise/quotes",icon:"layers",symbol:"◈",
       description:"Legacy quotation review and approvals",roles:sourcing}
   ]},

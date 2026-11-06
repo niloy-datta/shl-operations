@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { WorkspaceNavigation } from "@/components/workspace-navigation";
+import { useWorkspaceIdentity } from "@/components/workspace-identity";
+import { StatCard } from "@/components/ui/primitives";
 import Link from "next/link";
 
 type Contact = {
@@ -18,30 +21,6 @@ type View = "overview" | "customers" | "suppliers";
 type IconName = "grid" | "users" | "building" | "arrow" | "plus" | "search" | "refresh" |
   "logout" | "edit" | "download" | "check" | "lock" | "layers" | "package" | "ship" | "chart" | "close";
 const emptyPage: ContactPage = { content: [], totalElements: 0, totalPages: 0 };
-const primaryViews: { key: View; label: string; icon: IconName }[] = [
-  { key: "overview", label: "Overview", icon: "grid" },
-  { key: "customers", label: "Customers", icon: "users" },
-  { key: "suppliers", label: "Suppliers", icon: "building" }
-];
-const enterpriseViews: { label: string; href: string; icon: IconName }[] = [
-  { label: "Executive cockpit", href: "/workspace/command-center", icon: "chart" },
-  { label: "Due dates & alerts", href: "/workspace/alerts", icon: "check" },
-  { label: "Lead pipeline", href: "/workspace/growth/leads", icon: "users" },
-  { label: "Projects & jobs", href: "/workspace/growth/projects", icon: "grid" },
-  { label: "Quotations", href: "/workspace/enterprise/quotes", icon: "layers" },
-  { label: "Sales orders", href: "/workspace/enterprise/orders", icon: "grid" },
-  { label: "Purchase orders", href: "/workspace/enterprise/purchase-orders", icon: "package" },
-  { label: "Supplier compliance", href: "/workspace/suppliers/compliance", icon: "building" },
-  { label: "Shipments", href: "/workspace/enterprise/shipments", icon: "ship" },
-  { label: "Consignees", href: "/workspace/consignees", icon: "users" },
-  { label: "Global entities", href: "/workspace/entities", icon: "building" },
-  { label: "Finance", href: "/workspace/enterprise/invoices", icon: "chart" },
-  { label: "Line billing review", href: "/workspace/finance/line-billing", icon: "chart" },
-  { label: "Expenses", href: "/workspace/costs/expenses", icon: "chart" },
-  { label: "Project contribution", href: "/workspace/costs/profitability", icon: "chart" },
-  { label: "Team tasks", href: "/workspace/enterprise/tasks", icon: "check" },
-  { label: "Staff & audit", href: "/workspace/enterprise/staff", icon: "users" }
-];
 
 function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true as const };
@@ -68,13 +47,11 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
 
 export function Workspace() {
   const router = useRouter();
+  const params = useSearchParams();
+  const queryView = params.get("view");
   const [view, setView] = useState<View>("overview");
-  useEffect(() => {
-    const queryView = new URLSearchParams(window.location.search).get("view");
-    if (queryView !== "customers" && queryView !== "suppliers") return;
-    const frame = window.requestAnimationFrame(() => setView(queryView));
-    return () => window.cancelAnimationFrame(frame);
-  }, []);
+  const { staff, commissionAccess } = useWorkspaceIdentity();
+  const canEdit = !!staff && ["ADMIN", "MANAGEMENT", "BD", "SOURCING"].includes(staff.role);
   const [totals, setTotals] = useState<Totals | null>(null);
   const [data, setData] = useState<ContactPage>(emptyPage);
   const [page, setPage] = useState(0);
@@ -87,15 +64,14 @@ export function Workspace() {
   const [editing, setEditing] = useState<Contact | null>(null);
   const [saving, setSaving] = useState(false);
   const requestCounter = useRef(0);
-  const [commissionAccess, setCommissionAccess] = useState(false);
+
   useEffect(() => {
-    let alive=true;
-    fetch("/api/costs/commissions/access",{cache:"no-store"})
-      .then(r=>r.ok?r.json():Promise.resolve({allowed:false}))
-      .then((d:{allowed?:boolean})=>{if(alive)setCommissionAccess(d.allowed===true);})
-      .catch(()=>{});
-    return()=>{alive=false;};
-  },[]);
+    const frame = window.requestAnimationFrame(() => {
+      setView(queryView === "customers" || queryView === "suppliers" ? queryView : "overview");
+      setPage(0); setQuery(""); setSearch(""); setFormOpen(false); setData(emptyPage);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [queryView]);
 
   const load = useCallback(async () => {
     const requestNumber = ++requestCounter.current;
@@ -138,6 +114,7 @@ export function Workspace() {
   }, [formOpen, saving]);
 
   function navigate(target: View) {
+    router.push(target === "overview" ? "/workspace" : "/workspace?view=" + target);
     setView(target);
     setPage(0);
     setQuery("");
@@ -216,23 +193,10 @@ export function Workspace() {
       <div className="brand-row"><div className="brand-emblem" aria-hidden="true">S</div>
         <div><div className="brand-mark">SHL<span>.</span></div><div className="brand-description">INTERNATIONAL</div></div></div>
       <div className="workspace-pill"><span className="pill-dot" /> OPERATIONS OS <span className="pill-separator">/</span> INTERNAL</div>
-      <nav aria-label="Main navigation">
-        <p className="nav-heading">WORKSPACE</p>
-        {primaryViews.map(item => <button key={item.key} type="button" aria-current={view === item.key ? "page" : undefined}
-          className={["nav-item", view === item.key ? "selected" : ""].join(" ")} onClick={() => navigate(item.key)}>
-          <Icon name={item.icon} /><span>{item.label}</span>{view === item.key && <span className="active-indicator" />}</button>)}
-        <p className="nav-heading future-heading">TRADING OPERATIONS</p>
-        <Link href="/workspace/rfqs" className="nav-item"><Icon name="layers" /><span>RFQ &amp; Sourcing</span><small className="live-module">LIVE</small></Link>
-        <p className="nav-heading future-heading">COMING NEXT</p>
-        <Link href="/workspace/account" className="nav-item"><Icon name="lock" /><span>My security</span></Link>
-        {commissionAccess&&<Link href="/workspace/costs/commissions" className="nav-item">
-          <Icon name="lock"/><span>Commission vault</span></Link>}
-        {enterpriseViews.map(item => <Link key={item.label} href={item.href} className="nav-item">
-          <Icon name={item.icon} /><span>{item.label}</span></Link>)}
-      </nav>
+      <WorkspaceNavigation role={staff?.role} commissionAccess={commissionAccess} variant="workspace" />
       <div className="sidebar-bottom">
         <div className="side-status"><Icon name="lock" size={15} /><span>Private operations workspace</span></div>
-        <div className="account-row"><div className="user-avatar">A</div><div className="account-info"><strong>Administrator</strong><small>SHL workspace</small></div>
+        <div className="account-row"><div className="user-avatar">A</div><div className="account-info"><strong>{staff?.username ?? "Loading account…"}</strong><small>{staff?.role ?? "SHL workspace"}</small></div>
           <button className="icon-button signout" type="button" aria-label="Sign out" title="Sign out" onClick={() => void logout()}><Icon name="logout" /></button></div>
       </div>
     </aside>
@@ -245,7 +209,7 @@ export function Workspace() {
           <section className="welcome-hero">
             <div className="hero-content"><p className="hero-kicker"><span className="hero-kicker-line" /> SHL INTERNATIONAL · OPERATIONS CONTROL</p>
               <h1>One workspace.<br /><span>Every connection.</span></h1>
-              <p>Bring customers, suppliers, and future trade workflows together in one focused operations hub.</p>
+              <p>Bring customers, suppliers, and connected trade workflows together in one focused operations hub.</p>
               <div className="hero-buttons"><button className="hero-button" onClick={() => navigate("customers")}>Explore customers <Icon name="arrow" size={16} /></button>
                 <button className="hero-link" onClick={() => navigate("suppliers")}>View suppliers <Icon name="arrow" size={15} /></button></div>
             </div>
@@ -270,7 +234,7 @@ export function Workspace() {
               <div className="composition-row"><div className="composition-symbol supplier-symbol"><Icon name="building" size={21} /></div>
                 <div className="composition-info"><div><strong>Suppliers</strong><span>{totals ? totals.suppliers.toLocaleString() : "—"}</span></div>
                   <div className="progress-track supplier-progress"><span style={{ width: totalRelationships ? (100 * (totals?.suppliers ?? 0) / totalRelationships) + "%" : "0%" }} /></div></div></div>
-              <p className="surface-note">{totalRelationships === 0 ? "Your network is ready for its first record." : "Calculated from saved customer and supplier records."}</p>
+              <p className="surface-note">{!totals ? "Live relationship totals are unavailable." : totalRelationships === 0 ? "Your network is ready for its first record." : "Calculated from saved customer and supplier records."}</p>
             </section>
             <section className="surface quick-panel"><div className="surface-top"><div><p className="section-overline">QUICK ACTIONS</p><h2>Keep work moving</h2></div></div>
               <button className="quick-action" onClick={() => navigate("customers")}><div className="quick-icon"><Icon name="users" /></div><div><strong>Customer directory</strong><small>Search and manage customer records</small></div><Icon name="arrow" size={17} /></button>
@@ -283,7 +247,7 @@ export function Workspace() {
           <div className="page-heading"><div><p className="section-overline">RELATIONSHIP MANAGEMENT <span>/</span> {title.toUpperCase()}</p>
             <h1>{title}<span className="heading-period">.</span></h1>
             <p className="muted">Keep every {view === "customers" ? "customer" : "supplier"} relationship organized and accessible.</p></div>
-            <button className="primary" onClick={openCreate}><Icon name="plus" size={17} /> Add {view === "customers" ? "customer" : "supplier"}</button></div>
+            {canEdit && <button className="primary" onClick={openCreate}><Icon name="plus" size={17} /> Add {view === "customers" ? "customer" : "supplier"}</button>}</div>
           <div className="directory-stats"><div className="directory-icon"><Icon name={view === "customers" ? "users" : "building"} size={23} /></div>
             <div><p className="section-overline">DIRECTORY TOTAL</p><strong>{directoryTotal === undefined || directoryTotal === null ? "—" : directoryTotal.toLocaleString()}</strong></div>
             <span className="directory-tip">Saved records</span></div>
@@ -302,12 +266,12 @@ export function Workspace() {
                 <td>{item.email ? <a className="data-link" href={"mailto:" + item.email}>{item.email}</a> : "—"}</td>
                 <td>{item.phone || "—"}</td><td>{item.country || "—"}</td>
                 <td>{new Date(item.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                <td><button className="edit-button" onClick={() => openEdit(item)}><Icon name="edit" size={14} /> Edit</button></td></tr>)}</tbody></table>
+                <td>{canEdit && <button className="edit-button" onClick={() => openEdit(item)}><Icon name="edit" size={14} /> Edit</button>}</td></tr>)}</tbody></table>
               {loading && <div className="table-state" role="status"><span className="loading-spinner" /> Loading records…</div>}
               {!loading && !error && data.content.length === 0 && <div className="empty"><div className="empty-illustration"><Icon name={view === "customers" ? "users" : "building"} size={30} /></div>
                 <h3>{search ? "No matching records" : "Your directory starts here"}</h3>
                 <p>{search ? "Try another name or clear your search." : "Add your first " + (view === "customers" ? "customer" : "supplier") + " to begin building your network."}</p>
-                {!search && <button className="primary" onClick={openCreate}><Icon name="plus" size={16} /> Add first record</button>}</div>}</div>
+                {!search && canEdit && <button className="primary" onClick={openCreate}><Icon name="plus" size={16} /> Add first record</button>}</div>}</div>
             <div className="pagination"><span>Page {page + 1} of {Math.max(1, data.totalPages)}</span><div className="pager-buttons">
               <button disabled={page === 0 || loading} onClick={() => setPage(current => Math.max(0, current - 1))}>Previous</button>
               <button disabled={page + 1 >= data.totalPages || loading} onClick={() => setPage(current => current + 1)}>Next</button></div></div>
@@ -317,7 +281,7 @@ export function Workspace() {
       </div>
     </main>
 
-    {formOpen && <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !saving) setFormOpen(false); }}>
+    {formOpen && canEdit && <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !saving) setFormOpen(false); }}>
       <section className="modal" role="dialog" aria-modal="true" aria-labelledby="form-title">
         <div className="modal-head"><div><p className="section-overline">{editing ? "UPDATE RECORD" : "NEW RELATIONSHIP"}</p><h2 id="form-title">{editing ? "Edit" : "Add"} {view === "customers" ? "customer" : "supplier"}</h2>
           <p className="muted">Keep your contact information up to date.</p></div>
@@ -336,9 +300,7 @@ export function Workspace() {
 }
 
 function Metric({ label, value, icon, detail, loading }: { label: string; value: number | null; icon: IconName; detail: string; loading: boolean }) {
-  return <article className="metric"><div className="metric-head"><span>{label}</span><span className="metric-icon"><Icon name={icon} size={20} /></span></div>
-    <strong aria-live="polite">{loading || value === null ? "—" : value.toLocaleString()}</strong>
-    <div className="metric-footer"><span className="metric-foot-dot" /> {detail}</div></article>;
+  return <StatCard label={label} value={value} icon={<Icon name={icon} size={20} />} detail={detail} loading={loading} />;
 }
 function ErrorNotice({ message, retry }: { message: string; retry: () => void }) {
   return <div className="notice error" role="alert">{message}<button onClick={retry}>Retry</button></div>;

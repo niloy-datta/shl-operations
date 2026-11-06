@@ -3,8 +3,7 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
 import {usePathname,useRouter} from "next/navigation";
 import {navigationMatches,visibleNavigation,type NavModule} from "@/lib/operations-navigation";
-
-type Staff={username:string;role:string};
+import {useWorkspaceIdentity} from "./workspace-identity";
 
 /**
  * Global Ctrl/Cmd+K module finder. No saved search history or third-party data.
@@ -14,28 +13,13 @@ export function OperationsCommand(){
   const path=usePathname();
   const router=useRouter();
   const inWorkspace=path.startsWith("/workspace") && !path.startsWith("/workspace/account/enroll-mfa");
-  const [staff,setStaff]=useState<Staff|null>(null);
-  const [commissionAccess,setCommissionAccess]=useState(false);
+  const {staff,commissionAccess}=useWorkspaceIdentity();
   const [open,setOpen]=useState(false);
   const [query,setQuery]=useState("");
   const [cursor,setCursor]=useState(0);
   const inputRef=useRef<HTMLInputElement>(null);
   const triggerRef=useRef<HTMLButtonElement>(null);
   const dialogRef=useRef<HTMLDivElement>(null);
-
-  useEffect(()=>{
-    if(!inWorkspace)return;
-    let active=true;
-    fetch("/api/data/me",{cache:"no-store"})
-      .then(async res=>res.ok?await res.json() as Staff:null)
-      .then(user=>{if(active)setStaff(user);})
-      .catch(()=>{if(active)setStaff(null);});
-    fetch("/api/costs/commissions/access",{cache:"no-store"})
-      .then(async res=>res.ok?await res.json() as {allowed?:boolean}:null)
-      .then(x=>{if(active)setCommissionAccess(x?.allowed===true);})
-      .catch(()=>{if(active)setCommissionAccess(false);});
-    return()=>{active=false;};
-  },[inWorkspace]);
 
   const groups=useMemo(()=>
     visibleNavigation(staff?.role,commissionAccess).map(group=>({
@@ -54,17 +38,25 @@ export function OperationsCommand(){
     function key(e:KeyboardEvent){
       if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){
         e.preventDefault();
-        setOpen(wasOpen=>!wasOpen);
+        if(open){
+          setOpen(false);
+          window.requestAnimationFrame(()=>triggerRef.current?.focus());
+        }else show();
       }
     }
     window.addEventListener("keydown",key);
     return()=>window.removeEventListener("keydown",key);
-  },[inWorkspace,staff]);
+  },[inWorkspace,staff,open,show]);
   useEffect(()=>{
     if(!open)return;
     const id=window.requestAnimationFrame(()=>inputRef.current?.focus());
-    return()=>window.cancelAnimationFrame(id);
+    const overflow=document.body.style.overflow;
+    document.body.style.overflow="hidden";
+    return()=>{window.cancelAnimationFrame(id);document.body.style.overflow=overflow;};
   },[open]);
+  useEffect(()=>{
+    if(open)dialogRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({block:"nearest"});
+  },[open,cursor,query]);
 
   const close=useCallback(()=>{
     setOpen(false);
@@ -77,7 +69,7 @@ export function OperationsCommand(){
   }
   function keys(e:React.KeyboardEvent<HTMLDivElement>){
     if(e.key==="Escape"){e.preventDefault();close();return;}
-    if(e.key==="ArrowDown"||e.key==="ArrowUp"){
+    if(e.target===inputRef.current&&(e.key==="ArrowDown"||e.key==="ArrowUp")){
       e.preventDefault();
       setCursor(current=>{
         const safe=Math.min(current,Math.max(0,entries.length-1));
@@ -86,7 +78,7 @@ export function OperationsCommand(){
       });
       return;
     }
-    if(e.key==="Enter"&&entries.length){
+    if(e.target===inputRef.current&&e.key==="Enter"&&entries.length){
       e.preventDefault();
       go(entries[Math.min(cursor,entries.length-1)]);
       return;

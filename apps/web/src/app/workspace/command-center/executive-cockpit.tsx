@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { DailyDesk } from "./daily-desk";
-import { QuickSwitcher } from "./quick-switcher";
 import { useCallback, useEffect, useState } from "react";
 type InvoiceAging={currency:string;invoice_type:string;invoice_count:number;outstanding:number|string};
 type Shipment={reference:string;origin:string;destination:string;eta:string|null;status:string};
@@ -89,7 +88,7 @@ export function ExecutiveCockpit(){
     <div className="cc-main">
       <header className="cc-header">
         <div><span>OPERATIONS OS</span><b>/</b><strong>Executive command center</strong></div>
-        <div className="cc-header-right"><QuickSwitcher/><span className="cc-header-private"><i/> INTERNAL ACCESS</span>
+        <div className="cc-header-right"><span className="cc-header-private"><i/> INTERNAL ACCESS</span>
           <Link href="/workspace">Main workspace ↗</Link></div>
       </header>
       <main className="cc-content">

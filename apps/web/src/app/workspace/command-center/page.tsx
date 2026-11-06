@@ -3,7 +3,6 @@ import { sessionAuthorization } from "@/lib/session";
 import { ExecutiveCockpit } from "./executive-cockpit";
 import "./cockpit.css";
 import "./daily-desk.css";
-import "./quick-switcher.css";
 
 export default async function CommandCenterPage(){
   if(!await sessionAuthorization())redirect("/login");

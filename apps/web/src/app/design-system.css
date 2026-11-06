@@ -71,6 +71,8 @@ body{background:var(--os-canvas)}
 .os-en-navigation .en-nav-item{min-height:40px;padding:10px 12px;margin:3px 0}
 .os-en-navigation .en-nav-item.active{background:linear-gradient(90deg,#1c5357,#1b384a);
   box-shadow:inset 3px 0 #4de6c3}
+.os-nav-toggle{display:none}
+.os-navigation-groups .nav-heading{margin-top:18px}
 /* Global module switcher. Intended for desktop and touch, no third-party lib. */
 .os-command-launcher{position:fixed;right:26px;bottom:22px;z-index:80;
   background:#0b2a3b;color:#ebfff8;border:1px solid #2e6870;
@@ -151,6 +153,11 @@ body{background:var(--os-canvas)}
   .os-command-foot-right{display:none}
   .os-stat-card{padding:20px}
   .os-en-navigation{display:flex!important;flex-direction:column;align-items:stretch;overflow:auto}
+  .os-nav-toggle{display:flex;align-items:center;justify-content:space-between;border:1px solid #466276;
+    border-radius:9px;background:#102c40;color:#ebfff8;padding:12px;width:100%;font-size:12px}
+  .os-navigation-groups{max-height:55dvh;overflow:auto;width:100%}
+  .os-navigation-groups:not(.is-expanded){display:none}
+  .os-navigation-groups .nav-heading{display:block}
 }
 @media(prefers-reduced-motion:reduce){
   .os-command-launcher,.os-nav-chevron{transition:none}

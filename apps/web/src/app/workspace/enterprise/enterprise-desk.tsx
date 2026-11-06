@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { WorkspaceNavigation } from "@/components/workspace-navigation";
+import { useWorkspaceIdentity } from "@/components/workspace-identity";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 type Module = "quotes" | "orders" | "purchase-orders" | "shipments" | "invoices" | "tasks" | "staff" | "audit";
 type Row = Record<string, unknown>;
 type Page = { content: Row[]; totalElements: number; totalPages: number };
-type User = { username: string; role: string };
 type Config = { name: string; subtitle: string; endpoint: string; columns: { key: string; label: string }[]; roles: string[]; create: string; search?: boolean; };
 const allRoles = ["ADMIN", "MANAGEMENT", "BD", "SOURCING", "LOGISTICS", "FINANCE"];
 const moduleConfig: Record<Module, Config> = {
@@ -52,29 +53,6 @@ const moduleConfig: Record<Module, Config> = {
     columns:[{key:"actor",label:"ACTOR"},{key:"action",label:"ACTION"},{key:"entity_type",label:"RESOURCE"},{key:"detail",label:"DETAIL"},{key:"created_at",label:"TIME"}]
   }
 };
-const nav: { label: string; url: string; symbol: string; roles?: string[] }[] = [
-  {label:"Overview",url:"/workspace",symbol:"▦"},
-  {label:"Executive cockpit",url:"/workspace/command-center",symbol:"◈",roles:["ADMIN","MANAGEMENT"]},
-  {label:"Customers",url:"/workspace?view=customers",symbol:"♙"},
-  {label:"Suppliers",url:"/workspace?view=suppliers",symbol:"◇"},
-  {label:"RFQ sourcing",url:"/workspace/rfqs",symbol:"▤"},
-  {label:"Due dates & alerts",url:"/workspace/alerts",symbol:"◉"},
-  {label:"Lead pipeline",url:"/workspace/growth/leads",symbol:"✧",roles:["ADMIN","MANAGEMENT","BD"]},
-  {label:"Projects & jobs",url:"/workspace/growth/projects",symbol:"▱"},
-  {label:"Quotations",url:"/workspace/enterprise/quotes",symbol:"◈",roles:moduleConfig.quotes.roles},
-  {label:"Sales orders",url:"/workspace/enterprise/orders",symbol:"▣",roles:moduleConfig.orders.roles},
-  {label:"Purchase orders",url:"/workspace/enterprise/purchase-orders",symbol:"⬡",roles:moduleConfig["purchase-orders"].roles},
-  {label:"Shipments",url:"/workspace/enterprise/shipments",symbol:"⇢",roles:moduleConfig.shipments.roles},
-  {label:"Consignees",url:"/workspace/consignees",symbol:"◎",roles:moduleConfig.shipments.roles},
-  {label:"Global entities",url:"/workspace/entities",symbol:"♧",roles:["ADMIN","MANAGEMENT","BD","SOURCING"]},
-  {label:"Finance",url:"/workspace/enterprise/invoices",symbol:"▥",roles:moduleConfig.invoices.roles},
-  {label:"Expenses",url:"/workspace/costs/expenses",symbol:"◎",roles:moduleConfig.invoices.roles},
-  {label:"Project contribution",url:"/workspace/costs/profitability",symbol:"◴",roles:moduleConfig.invoices.roles},
-  {label:"Team tasks",url:"/workspace/enterprise/tasks",symbol:"☷",roles:moduleConfig.tasks.roles},
-  {label:"Staff",url:"/workspace/enterprise/staff",symbol:"♧",roles:moduleConfig.staff.roles},
-  {label:"Audit trail",url:"/workspace/enterprise/audit",symbol:"⊞",roles:moduleConfig.audit.roles},
-  {label:"My security",url:"/workspace/account",symbol:"◌"}
-];
 const titles: Record<string,string> = {
   DRAFT:"Draft",SUBMITTED:"Submitted",APPROVED:"Approved",REJECTED:"Rejected",
   CONFIRMED:"Confirmed",IN_PROGRESS:"In progress",COMPLETED:"Completed",CANCELLED:"Cancelled",
@@ -159,16 +137,7 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
   const currentModule = moduleName as Module;
   const config=moduleConfig[currentModule];
   const router=useRouter();
-  const [user,setUser]=useState<User|null>(null);
-  const [commissionAccess,setCommissionAccess]=useState(false);
-  useEffect(()=>{
-    let live=true;
-    fetch("/api/costs/commissions/access",{cache:"no-store"})
-      .then(res=>res.ok?res.json():{allowed:false})
-      .then((x:{allowed:boolean})=>{if(live)setCommissionAccess(x.allowed===true);})
-      .catch(()=>{});
-    return()=>{live=false;};
-  },[]);
+  const { staff: user, commissionAccess } = useWorkspaceIdentity();
   const [page,setPage]=useState(0);
   const [query,setQuery]=useState("");
   const [term,setTerm]=useState("");
@@ -187,11 +156,6 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
   const [summary,setSummary]=useState<Row|null>(null);
   const refresh=useCallback(()=>setTick(v=>v+1),[]);
 
-  useEffect(()=>{
-    let live=true;
-    api<User>("/api/data/me").then(u=>{if(live)setUser(u);}).catch(e=>{if(live)setError(String(e));});
-    return ()=>{live=false;};
-  },[]);
 
   useEffect(()=>{
     if (!user || !config.roles.includes(user.role)) return;
@@ -211,9 +175,14 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
   },[user,config,currentModule,page,term,tick]);
 
   async function logout() {
-    await fetch("/api/auth/logout",{method:"POST"});
-    router.replace("/login");
-    router.refresh();
+    try {
+      const response = await fetch("/api/auth/logout",{method:"POST"});
+      if (!response.ok) throw new Error("Sign out could not revoke your session. Please retry.");
+      router.replace("/login");
+      router.refresh();
+    } catch {
+      setError("Sign out could not revoke your session. Please retry.");
+    }
   }
   async function openCreate() {
     setModal("create");setActive(null);setError("");setChosenOrder("");setInvoiceType("RECEIVABLE");
@@ -424,13 +393,7 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
       <Link href="/workspace" className="en-brand"><span className="en-logo">S</span><span><strong>SHL<span>.</span></strong><small>INTERNATIONAL</small></span></Link>
       <div className="en-edition"><span className="en-dot" /> OPERATIONS OS <span>ENTERPRISE</span></div>
       <div className="en-nav-scroll"><p className="en-nav-label">OPERATIONS WORKSPACE</p>
-        <nav aria-label="Business modules">{nav.filter(item=>!item.roles||!user||item.roles.includes(user.role)).concat(
-          commissionAccess?[{label:"Commission vault",url:"/workspace/costs/commissions",symbol:"◆"}]:[]
-        ).map(item=>
-          <Link key={item.url} href={item.url} className={"en-nav-item "+(item.url.endsWith("/"+currentModule)?"active":"")}>
-            <span className="en-nav-symbol">{item.symbol}</span><span>{item.label}</span>
-            {item.url.endsWith("/"+currentModule)&&<span className="en-current-dot"/>}
-          </Link>)}</nav></div>
+        <WorkspaceNavigation role={user?.role} commissionAccess={commissionAccess} /></div>
       <div className="en-sidebar-bottom">
         <div className="en-private">◈ &nbsp; Private business workspace</div>
         <div className="en-profile"><span className="en-profile-avatar">{user?.username?.slice(0,1).toUpperCase()??"?"}</span>
