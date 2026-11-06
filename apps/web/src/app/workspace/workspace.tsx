@@ -1,4 +1,5 @@
 "use client";
+import { WorkspaceDialog } from "@/components/workspace-dialog";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -6,6 +7,7 @@ import { WorkspaceNavigation } from "@/components/workspace-navigation";
 import { useWorkspaceIdentity } from "@/components/workspace-identity";
 import { StatCard } from "@/components/ui/primitives";
 import Link from "next/link";
+import { visibleNavigation } from "@/lib/operations-navigation";
 
 type Contact = {
   id: string;
@@ -196,14 +198,16 @@ export function Workspace() {
       <WorkspaceNavigation role={staff?.role} commissionAccess={commissionAccess} variant="workspace" />
       <div className="sidebar-bottom">
         <div className="side-status"><Icon name="lock" size={15} /><span>Private operations workspace</span></div>
-        <div className="account-row"><div className="user-avatar">A</div><div className="account-info"><strong>{staff?.username ?? "Loading account…"}</strong><small>{staff?.role ?? "SHL workspace"}</small></div>
+        <div className="account-row"><div className="user-avatar">{staff?.username.charAt(0).toUpperCase() || "S"}</div><div className="account-info"><strong>{staff?.username ?? "Loading account…"}</strong><small>{staff?.role ?? "SHL workspace"}</small></div>
           <button className="icon-button signout" type="button" aria-label="Sign out" title="Sign out" onClick={() => void logout()}><Icon name="logout" /></button></div>
       </div>
     </aside>
 
     <main className="main-area">
       <header className="topbar"><div className="breadcrumb">SHL Operations <span>/</span> <strong>{title}</strong></div>
-        <div className="topbar-end"><span className="topbar-tag"><span className="status-dot" /> Internal workspace</span><div className="topbar-avatar">A</div></div></header>
+        <div className="topbar-end"><span className="topbar-tag"><span className="status-dot" /> Internal workspace</span>
+          <button type="button" className="icon-button" aria-label="Sign out" title="Sign out" onClick={()=>void logout()}><Icon name="logout" /></button>
+          <div className="topbar-avatar">{staff?.username.slice(0,1).toUpperCase()??"?"}</div></div></header>
       <div className="content">
         {view === "overview" ? <>
           <section className="welcome-hero">
@@ -236,10 +240,14 @@ export function Workspace() {
                   <div className="progress-track supplier-progress"><span style={{ width: totalRelationships ? (100 * (totals?.suppliers ?? 0) / totalRelationships) + "%" : "0%" }} /></div></div></div>
               <p className="surface-note">{!totals ? "Live relationship totals are unavailable." : totalRelationships === 0 ? "Your network is ready for its first record." : "Calculated from saved customer and supplier records."}</p>
             </section>
-            <section className="surface quick-panel"><div className="surface-top"><div><p className="section-overline">QUICK ACTIONS</p><h2>Keep work moving</h2></div></div>
-              <button className="quick-action" onClick={() => navigate("customers")}><div className="quick-icon"><Icon name="users" /></div><div><strong>Customer directory</strong><small>Search and manage customer records</small></div><Icon name="arrow" size={17} /></button>
-              <button className="quick-action" onClick={() => navigate("suppliers")}><div className="quick-icon teal"><Icon name="building" /></div><div><strong>Supplier directory</strong><small>Maintain your trading network</small></div><Icon name="arrow" size={17} /></button>
-              <Link href="/workspace/rfqs" className="quick-action"><div className="quick-icon teal"><Icon name="layers" /></div><div><strong>RFQ &amp; sourcing desk</strong><small>Capture inquiries and compare supplier offers</small></div><Icon name="arrow" size={17} /></Link>
+            <section className="surface quick-panel"><div className="surface-top"><div><p className="section-overline">QUICK ACTIONS</p><h2>Daily priorities</h2></div></div>
+              {visibleNavigation(staff?.role, commissionAccess).flatMap(group => group.items)
+                .filter(item => ["/workspace/alerts", "/workspace/growth/leads", "/workspace/rfqs",
+                  "/workspace/shipments/line", "/workspace/finance/line-billing"].includes(item.href))
+                .map(item => <Link key={item.href} href={item.href} className="quick-action">
+                  <div className="quick-icon teal"><Icon name={item.icon} /></div>
+                  <div><strong>{item.label}</strong><small>{item.description}</small></div>
+                  <Icon name="arrow" size={17} /></Link>)}
             </section>
           </div>
           <div className="footnote"><Icon name="check" size={15} /> Figures are sourced from the application database. No sample metrics are displayed.</div>
@@ -282,7 +290,7 @@ export function Workspace() {
     </main>
 
     {formOpen && canEdit && <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !saving) setFormOpen(false); }}>
-      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="form-title">
+      <WorkspaceDialog className="modal" aria-labelledby="form-title" onClose={()=>setFormOpen(false)} busy={saving}>
         <div className="modal-head"><div><p className="section-overline">{editing ? "UPDATE RECORD" : "NEW RELATIONSHIP"}</p><h2 id="form-title">{editing ? "Edit" : "Add"} {view === "customers" ? "customer" : "supplier"}</h2>
           <p className="muted">Keep your contact information up to date.</p></div>
           <button className="close" type="button" disabled={saving} onClick={() => setFormOpen(false)} aria-label="Close dialog"><Icon name="close" /></button></div>
@@ -295,7 +303,7 @@ export function Workspace() {
           <div className="form-actions"><button type="button" className="secondary" disabled={saving} onClick={() => setFormOpen(false)}>Cancel</button>
             <button className="primary" type="submit" disabled={saving}>{saving ? "Saving…" : editing ? "Save changes" : "Create record"} <Icon name="arrow" size={15} /></button></div>
         </form>
-      </section></div>}
+      </WorkspaceDialog></div>}
   </div>;
 }
 

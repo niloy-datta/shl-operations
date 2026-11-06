@@ -1,4 +1,5 @@
 "use client";
+import { expireWorkspaceSession } from "@/lib/session-client";
 
 import {useState,type FormEvent} from "react";
 
@@ -29,7 +30,7 @@ export function PoProductionPanel({poId,role}:{poId:string;role:string})
     const response=await fetch(endpoint,{cache:"no-store",...init});
     if(response.status===401)
     {
-      window.location.assign("/login");
+      expireWorkspaceSession();
       throw new Error("Session expired");
     }
     if(!response.ok)

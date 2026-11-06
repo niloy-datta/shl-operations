@@ -1,4 +1,5 @@
 "use client";
+import { expireWorkspaceSession } from "@/lib/session-client";
 
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -28,7 +29,7 @@ const ROLES=["BUYING","FINANCE","LOGISTICS","MANAGEMENT","COMPLIANCE","OTHER"];
 const route="/api/enterprise/entities";
 async function api<T>(path:string,init?:RequestInit):Promise<T>{
   const res=await fetch(path,{cache:"no-store",...init});
-  if(res.status===401){window.location.assign("/login");throw new Error("Session expired");}
+  if(res.status===401){expireWorkspaceSession();throw new Error("Session expired");}
   if(!res.ok){
     const data=await res.json().catch(()=>null);
     if(res.status===403)throw new Error("Your account cannot perform this action");

@@ -1,8 +1,10 @@
 "use client";
+import { expireWorkspaceSession } from "@/lib/session-client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {LineOrderPanel} from "./line-order-panel";
+import {useWorkspaceIdentity} from "@/components/workspace-identity";
 
 type Rfq={ id:string;reference:string;subject:string;currency:string;status:string;customerName:string };
 type Requirement={id:string;lineNumber:number;productName:string;specifications:string|null;
@@ -23,7 +25,7 @@ const money=(n:number,c:string)=>new Intl.NumberFormat("en-US",{
 }).format(n)+" "+c;
 async function json<T>(path:string,init?:RequestInit):Promise<T> {
   const response=await fetch(path,{cache:"no-store",...init});
-  if(response.status===401){window.location.assign("/login");throw new Error("Session expired");}
+  if(response.status===401){expireWorkspaceSession();throw new Error("Session expired");}
   const value=await response.json().catch(()=>({})) as {detail?:string;message?:string;error?:string};
   if(!response.ok)throw new Error(
     (response.status===403?"Not authorized for this action. ":
@@ -34,6 +36,9 @@ async function json<T>(path:string,init?:RequestInit):Promise<T> {
 const api=(path:string)=>"/api/enterprise/commerce/line-quotes"+path;
 
 export function LineQuoteDesk({rfqId}:{rfqId:string}) {
+  const {staff}=useWorkspaceIdentity();
+  const canDraft=!!staff&&["ADMIN","MANAGEMENT","BD"].includes(staff.role);
+  const canReview=!!staff&&["ADMIN","MANAGEMENT"].includes(staff.role);
   const valid=uuidPattern.test(rfqId);
   const [rfq,setRfq]=useState<Rfq|null>(null);
   const [items,setItems]=useState<Requirement[]>([]);
@@ -191,7 +196,7 @@ export function LineQuoteDesk({rfqId}:{rfqId:string}) {
                   <input type="date" value={validUntil} onChange={e=>setValidUntil(e.target.value)}
                     disabled={busy}/></label>
                 <button className="lq-action" type="submit"
-                  disabled={busy||items.length===0||rfq.status!=="SOURCING"||prices.length===0}>
+                  disabled={!canDraft||busy||items.length===0||rfq.status!=="SOURCING"||prices.length===0||quotes.some(quote=>quote.status==="APPROVED")}>
                   {busy?"Processing…":"Create versioned draft →"}</button>
               </div>
             </form>
@@ -227,16 +232,16 @@ export function LineQuoteDesk({rfqId}:{rfqId:string}) {
                   <td>{money(line.sell_unit_price,rfq.currency)}</td>
                 </tr>)}</tbody></table></div>
               <div className="lq-review-actions">
-                {selected.quote.status==="DRAFT"&&<button type="button" className="lq-action"
-                  disabled={busy} onClick={()=>void perform("/"+selected.quote.id+"/submit")}>
+                {selected.quote.status==="DRAFT"&&canDraft&&<button type="button" className="lq-action"
+                  disabled={busy||staff?.username!==selected.quote.created_by} onClick={()=>void perform("/"+selected.quote.id+"/submit")}>
                     Submit for independent approval</button>}
-                {selected.quote.status==="SUBMITTED"&&<>
+                {selected.quote.status==="SUBMITTED"&&canReview&&<>
                   <label>Reviewer notes<input value={notes} maxLength={1000} disabled={busy}
                     onChange={e=>setNotes(e.target.value)} placeholder="Record review evidence / exception"/></label>
-                  <button type="button" disabled={busy||!notes.trim()} className="lq-action"
+                  <button type="button" disabled={busy||!notes.trim()||staff?.username===selected.quote.created_by} className="lq-action"
                     onClick={()=>void perform("/"+selected.quote.id+"/review",
                       {decision:"APPROVED",notes})}>Approve (separate manager)</button>
-                  <button type="button" disabled={busy||!notes.trim()} className="lq-danger"
+                  <button type="button" disabled={busy||!notes.trim()||staff?.username===selected.quote.created_by} className="lq-danger"
                     onClick={()=>void perform("/"+selected.quote.id+"/review",
                       {decision:"REJECTED",notes})}>Reject</button>
                 </>}

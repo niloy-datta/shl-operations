@@ -1,4 +1,6 @@
 "use client";
+import { WorkspaceNavigation } from "@/components/workspace-navigation";
+import { expireWorkspaceSession } from "@/lib/session-client";
 
 import Link from "next/link";
 import { DailyDesk } from "./daily-desk";
@@ -12,19 +14,6 @@ type Summary={
   shipmentsTransit:number;shipmentsLate:number;tasksOverdue:number;invoicesOverdue:number;
   outstandingByCurrency:InvoiceAging[];nextShipments:Shipment[];nextTasks:Task[];
 };
-const menu=[
-  {label:"Overview",href:"/workspace",symbol:"▦"},
-  {label:"CRM & leads",href:"/workspace/growth/leads",symbol:"◎"},
-  {label:"Trading RFQs",href:"/workspace/rfqs",symbol:"◈"},
-  {label:"Sales orders",href:"/workspace/enterprise/orders",symbol:"▣"},
-  {label:"Shipments",href:"/workspace/enterprise/shipments",symbol:"⇢"},
-  {label:"Finance",href:"/workspace/enterprise/invoices",symbol:"◇"},
-  {label:"Projects",href:"/workspace/growth/projects",symbol:"⬡"},
-  {label:"Company registry",href:"/workspace/entities",symbol:"♧"},
-  {label:"Duplicate review",href:"/workspace/dedup",symbol:"⌕"},
-  {label:"Due date alerts",href:"/workspace/alerts",symbol:"◉"},
-  {label:"Audit trail",href:"/workspace/enterprise/audit",symbol:"☷"},
-];
 const number=(n:number)=>new Intl.NumberFormat("en-US").format(n);
 function date(value:string|null) {
   if(!value)return "Not scheduled";
@@ -46,7 +35,7 @@ export function ExecutiveCockpit(){
   useEffect(()=>{
     let alive=true;
     fetch("/api/command-center",{cache:"no-store"}).then(async r=>{
-      if(r.status===401){window.location.assign("/login");return;}
+      if(r.status===401){expireWorkspaceSession();return;}
       if(r.status===403){if(alive)setRestricted(true);return;}
       if(!r.ok)throw new Error("Unable to access live business metrics (HTTP "+r.status+")");
       const data=await r.json() as Summary;
@@ -81,7 +70,7 @@ export function ExecutiveCockpit(){
       <p className="cc-rail-title">EXECUTIVE WORKSPACE</p>
       <Link href="/workspace/command-center" className="cc-link cc-current"><span>▦</span>Mission control <i/></Link>
       <p className="cc-rail-title">BUSINESS MODULES</p>
-      <nav aria-label="Executive modules">{menu.map(m=><Link key={m.href} href={m.href} className="cc-link"><span>{m.symbol}</span>{m.label}</Link>)}</nav>
+      <WorkspaceNavigation variant="cockpit" />
       <div className="cc-rail-bottom"><div className="cc-shield">◈ <span>Restricted · Management only</span></div>
         <Link href="/workspace/account">Account security ↗</Link></div>
     </aside>

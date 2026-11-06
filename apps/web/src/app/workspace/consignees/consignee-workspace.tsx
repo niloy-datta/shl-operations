@@ -1,4 +1,5 @@
 "use client";
+import { expireWorkspaceSession } from "@/lib/session-client";
 
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -26,7 +27,7 @@ const apiRoot = "/api/enterprise/";
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(path.startsWith("/")?path:apiRoot+path,
     {cache:"no-store",...options});
-  if (response.status===401) { window.location.assign("/login"); throw new Error("Session expired"); }
+  if (response.status===401) { expireWorkspaceSession(); throw new Error("Session expired"); }
   if (!response.ok) {
     const body=await response.json().catch(()=>null);
     throw new Error(response.status===403?"Permission denied":

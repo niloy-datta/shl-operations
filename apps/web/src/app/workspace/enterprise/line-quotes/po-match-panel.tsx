@@ -1,4 +1,5 @@
 "use client";
+import { expireWorkspaceSession } from "@/lib/session-client";
 
 import {useState} from "react";
 
@@ -20,14 +21,14 @@ export function PoMatchPanel({poId}:{poId:string})
 
   async function verify()
   {
-    setBusy(true);setError("");
+    setBusy(true);setError("");setResult(null);
     try
     {
       const response=await fetch("/api/enterprise/commerce/line-orders/purchase-orders/"+
         poId+"/reconciliation",{cache:"no-store"});
       if(response.status===401)
       {
-        window.location.assign("/login");
+        expireWorkspaceSession();
         throw new Error("Session expired");
       }
       if(!response.ok)

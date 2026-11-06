@@ -72,7 +72,11 @@ body{background:var(--os-canvas)}
 .os-en-navigation .en-nav-item.active{background:linear-gradient(90deg,#1c5357,#1b384a);
   box-shadow:inset 3px 0 #4de6c3}
 .os-nav-toggle{display:none}
+.os-en-navigation a{text-decoration:none}
 .os-navigation-groups .nav-heading{margin-top:18px}
+/* Readable muted text retains the existing navy/teal visual system. */
+.shell :is(.breadcrumb,.topbar-tag,.surface-note,.footnote,.quiet-tag,.quick-action small){color:#52667a}
+.shell .section-overline{color:#056f62}
 /* Global module switcher. Intended for desktop and touch, no third-party lib. */
 .os-command-launcher{position:fixed;right:26px;bottom:22px;z-index:80;
   background:#0b2a3b;color:#ebfff8;border:1px solid #2e6870;

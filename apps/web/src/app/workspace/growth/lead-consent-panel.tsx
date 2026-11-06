@@ -20,7 +20,7 @@ const channels = ["EMAIL", "PHONE", "WECHAT"];
 const purposes = ["FOLLOW_UP", "MARKETING"];
 const formatDate = (value:string) => new Date(value).toLocaleString("en-GB");
 
-export function LeadConsentPanel({leadId}:{leadId:string})
+export function LeadConsentPanel({leadId,closed=false}:{leadId:string;closed?:boolean})
 {
   const [snapshot, setSnapshot] = useState<Snapshot|null>(null);
   const [error, setError] = useState("");
@@ -132,7 +132,7 @@ export function LeadConsentPanel({leadId}:{leadId:string})
         <label className="en-field"><span>Decision</span>
           <select name="decision" required>
             <option value="REVOKED">Revoked / opted out</option>
-            <option value="GRANTED">Granted / opted in</option>
+            <option value="GRANTED" disabled={closed}>Granted / opted in{closed?" (closed lead)":""}</option>
           </select>
         </label>
         <label className="en-field"><span>Evidence or reason (required)</span>

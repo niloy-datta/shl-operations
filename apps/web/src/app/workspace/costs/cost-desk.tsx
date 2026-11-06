@@ -1,4 +1,6 @@
 "use client";
+import { WorkspaceNavigation } from "@/components/workspace-navigation";
+import { expireWorkspaceSession } from "@/lib/session-client";
 import Link from "next/link";
 import {useCallback,useEffect,useState,type FormEvent,type ReactNode} from "react";
 import {useRouter} from "next/navigation";
@@ -18,7 +20,7 @@ const columns={
 const txt=(v:unknown)=>v===null||v===undefined||v===""?"—":String(v);
 async function get<T>(url:string,opts?:RequestInit):Promise<T>{
   const response=await fetch(url,{cache:"no-store",...opts});
-  if(response.status===401){window.location.assign("/login");throw new Error("Session expired.");}
+  if(response.status===401){expireWorkspaceSession();throw new Error("Session expired.");}
   if(!response.ok){
     if(response.status===403)throw new Error("This information requires explicit authorization.");
     if(response.status===409)throw new Error("Approval conflict: check creator identity and current status.");
@@ -69,7 +71,7 @@ export function CostDesk({module}:{module:Module}){
       module==="expenses"?get<Row[]>(api+"expenses/summary"):Promise.resolve([])
     ]).then(([r,s])=>{if(alive){setRecords(r);setSummary(s);setError("");}})
       .catch(e=>{if(alive)setError(e instanceof Error?e.message:"Unable to load finance records.");})
-      .finally(()=>{if(alive)setLoading(false);});
+      .finally(()=>{cancelAnimationFrame(frame);if(alive)setLoading(false);});
     return()=>{alive=false;cancelAnimationFrame(frame);};
   },[module,me,authorized,permitted,page,term,tick]);
 
@@ -126,20 +128,7 @@ export function CostDesk({module}:{module:Module}){
         <span><strong>SHL<span>.</span></strong><small>INTERNATIONAL</small></span></Link>
       <div className="en-edition"><span className="en-dot"/> OPERATIONS OS <span>RESTRICTED</span></div>
       <div className="en-nav-scroll"><p className="en-nav-label">CONNECTED MODULES</p>
-        <nav aria-label="Finance navigation">
-          {[
-            ["/workspace","▦","Overview"],
-            ["/workspace/growth/projects","▱","Projects & jobs"],
-            ["/workspace/alerts","◉","Due dates & alerts"],
-            ["/workspace/enterprise/invoices","▥","Invoices"],
-            ["/workspace/costs/expenses","◎","Operational expenses"],
-            ["/workspace/costs/profitability","◴","Project contribution"],
-            ...(authorized?[["/workspace/costs/commissions","◆","Commission vault"]]:[]),
-            ["/workspace/account","◌","Account security"]
-          ].map(([href,symbol,label])=><Link className={"en-nav-item "+
-            (href.endsWith("/"+module)?"active":"")} key={href} href={href}>
-            <span className="en-nav-symbol">{symbol}</span>{label}</Link>)}
-        </nav>
+        <WorkspaceNavigation variant="enterprise" />
       </div>
       <div className="en-sidebar-bottom"><div className="en-private">◈ Private operational finance</div>
         <div className="en-profile"><span className="en-profile-avatar">{me?.username?.[0]?.toUpperCase()??"?"}</span>

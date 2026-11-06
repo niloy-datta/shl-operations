@@ -1,4 +1,5 @@
 "use client";
+import { WorkspaceNavigation } from "@/components/workspace-navigation";
 
 import Link from "next/link";
 import {useCallback,useEffect,useState} from "react";
@@ -39,16 +40,7 @@ export function ProfitabilityDesk(){
       <span className="en-logo">S</span><span><strong>SHL<span>.</span></strong><small>INTERNATIONAL</small></span>
     </Link><div className="en-edition"><span className="en-dot"/> FINANCE INTELLIGENCE <span>CONTROLLED</span></div>
       <div className="en-nav-scroll"><p className="en-nav-label">REPORTING WORKSPACE</p>
-        <nav>
-          {[
-            ["/workspace","▦","Overview"],["/workspace/costs/profitability","◴","Project contribution"],
-            ["/workspace/costs/expenses","◎","Expenses"],
-            ["/workspace/enterprise/invoices","▥","Invoices"],
-            ["/workspace/growth/projects","▱","Projects"],["/workspace/alerts","◉","Alerts"]
-          ].map(([url,sym,label])=><Link key={url} href={url} className={"en-nav-item "+
-            (url.endsWith("/profitability")?"active":"")}>
-            <span className="en-nav-symbol">{sym}</span>{label}</Link>)}
-        </nav></div><div className="en-sidebar-bottom"><p className="en-private">◈ Estimates, not audited financial statements</p></div>
+        <WorkspaceNavigation variant="enterprise" /></div><div className="en-sidebar-bottom"><p className="en-private">◈ Estimates, not audited financial statements</p></div>
     </aside>
     <div className="en-main"><header className="en-topbar"><div>SHL Operations <span>/</span> <strong>Project contribution</strong></div>
       <Link href="/workspace">Dashboard ↗</Link></header>

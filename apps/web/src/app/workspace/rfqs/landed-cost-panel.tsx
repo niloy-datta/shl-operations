@@ -1,4 +1,5 @@
 "use client";
+import { expireWorkspaceSession } from "@/lib/session-client";
 
 import {useCallback,useEffect,useState,type FormEvent} from "react";
 
@@ -40,7 +41,7 @@ async function load<T>(path:string,init?:RequestInit):Promise<T>
   const response=await fetch(path,{cache:"no-store",...init});
   if(response.status===401)
   {
-    window.location.assign("/login");
+    expireWorkspaceSession();
     throw new Error("Session expired");
   }
   if(!response.ok)

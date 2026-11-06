@@ -28,6 +28,7 @@ export function ShipmentExceptionsPanel({shipmentId,shipmentStatus,role}:{
   const [busy,setBusy] = useState(false);
   const [error,setError] = useState("");
   const [notice,setNotice] = useState("");
+  const [loading,setLoading] = useState(true);
   const canOpen = ["ADMIN","MANAGEMENT","LOGISTICS"].includes(role);
   const canResolve = ["ADMIN","MANAGEMENT"].includes(role);
   const path = "/api/enterprise/logistics/line-shipments/" + shipmentId + "/exceptions";
@@ -45,7 +46,8 @@ export function ShipmentExceptionsPanel({shipmentId,shipmentStatus,role}:{
         return response.json() as Promise<Case[]>;
       })
       .then(rows => {if(active)setCases(rows);})
-      .catch(cause => {if(active)setError(cause instanceof Error ? cause.message : "Unable to load cases.");});
+      .catch(cause => {if(active)setError(cause instanceof Error ? cause.message : "Unable to load cases.");})
+      .finally(() => {if(active)setLoading(false);});
     return () => {active = false;};
   },[path]);
 
@@ -154,7 +156,8 @@ export function ShipmentExceptionsPanel({shipmentId,shipmentStatus,role}:{
     <p>Manual, auditable internal casework. No carrier claim or customs filing is submitted.</p>
     {error && <p role="alert" className="lq-error">{error}</p>}
     {notice && <p role="status" className="gx-notice">{notice}</p>}
-    {cases.length === 0 && <p>No recorded exceptions for this shipment.</p>}
+    {loading&&<p role="status">Loading shipment cases…</p>}
+    {!loading&&!error&&cases.length === 0 && <p>No recorded exceptions for this shipment.</p>}
     {cases.map(item => <article className="lx-case" key={item.id}>
       <div><strong>{item.type.replaceAll("_"," ")} · {item.status}</strong>
         <small>Opened by {item.opened_by} · {new Date(item.created_at).toLocaleString("en-GB")}</small>

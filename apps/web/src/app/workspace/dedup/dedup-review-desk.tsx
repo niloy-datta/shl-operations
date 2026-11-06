@@ -1,4 +1,5 @@
 "use client";
+import { expireWorkspaceSession } from "@/lib/session-client";
 
 import Link from "next/link";
 import {useEffect,useState} from "react";
@@ -30,7 +31,7 @@ export function DedupReviewDesk(){
         const response=await fetch("/api/enterprise/dedup/candidates?"+params,{
           signal:ctrl.signal,cache:"no-store"
         });
-        if(response.status===401){window.location.assign("/login");return;}
+        if(response.status===401){expireWorkspaceSession();return;}
         if(response.status===403)throw new Error("This review is restricted to management.");
         if(!response.ok)throw new Error("Could not retrieve candidate groups.");
         setResults(await response.json() as Page);

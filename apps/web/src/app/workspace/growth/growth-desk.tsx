@@ -1,4 +1,7 @@
 "use client";
+import { WorkspaceNavigation } from "@/components/workspace-navigation";
+import { WorkspaceDialog } from "@/components/workspace-dialog";
+import { expireWorkspaceSession } from "@/lib/session-client";
 
 import Link from "next/link";
 import {useCallback,useEffect,useState,type FormEvent,type ReactNode} from "react";
@@ -30,7 +33,7 @@ const t=(v:unknown)=>v===null||v===undefined||v===""?"—":String(v);
 const date=(v:unknown)=>!v?"—":new Date(String(v)).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
 async function fetchJson<T>(path:string,init?:RequestInit):Promise<T>{
   const res=await fetch(path,{cache:"no-store",...init});
-  if(res.status===401){window.location.assign("/login");throw new Error("Session expired");}
+  if(res.status===401){expireWorkspaceSession();throw new Error("Session expired");}
   if(!res.ok){
     if(res.status===403)throw new Error("Your account is not permitted to perform this action.");
     if(res.status===409)throw new Error("Workflow conflict. Check linked customer, owner and current status.");
@@ -91,7 +94,7 @@ export function GrowthDesk({module}:{module:Module}){
     fetchJson<Page>(api+module+"?"+new URLSearchParams({page:String(page),size:"15",q:term}))
       .then(data=>{if(alive){setItems(data);setError("");}})
       .catch(e=>{if(alive)setError(e instanceof Error?e.message:"Unable to fetch records.");})
-      .finally(()=>{if(alive)setLoading(false);});
+      .finally(()=>{cancelAnimationFrame(frame);if(alive)setLoading(false);});
     return()=>{alive=false;cancelAnimationFrame(frame);};
   },[me,module,page,term,tick]);
 
@@ -190,27 +193,7 @@ export function GrowthDesk({module}:{module:Module}){
         <span><strong>SHL<span>.</span></strong><small>INTERNATIONAL</small></span></Link>
       <div className="en-edition"><span className="en-dot"/> OPERATIONS OS <span>ENTERPRISE</span></div>
       <div className="en-nav-scroll"><p className="en-nav-label">CONNECTED WORKSPACE</p>
-        <nav aria-label="Workspace navigation">
-          {[
-            {url:"/workspace",label:"Overview",symbol:"▦"},
-            {url:"/workspace?view=customers",label:"Customers",symbol:"♙"},
-            {url:"/workspace?view=suppliers",label:"Suppliers",symbol:"◇"},
-            {url:"/workspace/rfqs",label:"RFQ sourcing",symbol:"▤"},
-            {url:"/workspace/alerts",label:"Due dates & alerts",symbol:"◉"},
-            {url:"/workspace/growth/leads",label:"Lead pipeline",symbol:"✧",roles},
-            {url:"/workspace/growth/projects",label:"Projects & jobs",symbol:"▱"},
-            {url:"/workspace/enterprise/quotes",label:"Quotations",symbol:"◈"},
-            {url:"/workspace/enterprise/orders",label:"Sales orders",symbol:"▣"},
-            {url:"/workspace/enterprise/shipments",label:"Shipments",symbol:"⇢"},
-            {url:"/workspace/enterprise/tasks",label:"Team tasks",symbol:"☷"},
-            {url:"/workspace/costs/expenses",label:"Expenses",symbol:"◎",
-              roles:["ADMIN","MANAGEMENT","FINANCE"]},
-            {url:"/workspace/account",label:"Account security",symbol:"◌"}
-          ].filter(x=>!x.roles||!me||x.roles.includes(me.role)).map(x=>
-            <Link key={x.url} href={x.url} className={"en-nav-item "+
-              (x.url.endsWith("/"+module)?"active":"")}>
-              <span className="en-nav-symbol">{x.symbol}</span>{x.label}</Link>)}
-        </nav>
+        <WorkspaceNavigation variant="enterprise" />
       </div>
       <div className="en-sidebar-bottom"><div className="en-private">◈ Private enterprise workspace</div>
         <div className="en-profile"><span className="en-profile-avatar">{me?.username?.slice(0,1).toUpperCase()??"?"}</span>
@@ -278,7 +261,7 @@ export function GrowthDesk({module}:{module:Module}){
       </main>
     </div>
     {dialog&&<div className="gx-overlay" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setDialog(null);}}>
-      <section className="gx-dialog" role="dialog" aria-modal="true" aria-labelledby="gx-dialog-title">
+      <WorkspaceDialog className="gx-dialog" aria-labelledby="gx-dialog-title" onClose={()=>setDialog(null)} busy={busy}>
         <header className="gx-dialog-header">
           <div><small>{dialog==="create"?"CREATE NEW RECORD":"RECORD DETAIL"}</small>
             <h2 id="gx-dialog-title">{dialog==="create"?meta.action:t(active?.reference)}</h2></div>
@@ -336,7 +319,7 @@ export function GrowthDesk({module}:{module:Module}){
                 <button key={next} disabled={busy} onClick={()=>void status(active,next)}>
                   {next.replaceAll("_"," ")} ↗</button>)}</div>
             </div>}
-            {module==="leads"&&<LeadConsentPanel key={String(active.id)} leadId={String(active.id)}/>}
+            {module==="leads"&&<LeadConsentPanel key={String(active.id)} leadId={String(active.id)} closed={["WON","LOST"].includes(String(active.status))}/>}
             {module==="leads"&&!!me&&["ADMIN","MANAGEMENT"].includes(me.role)&&
               String(active.status)==="WON"&&<LeadConversionPanel key={String(active.id)}
                 leadId={String(active.id)} companyName={String(active.company_name??"")}
@@ -376,7 +359,7 @@ export function GrowthDesk({module}:{module:Module}){
               <LeadAssignmentHistory leadId={String(active.id)}/>}
           </>}
         </div>
-      </section>
+      </WorkspaceDialog>
     </div>}
   </div>;
 }

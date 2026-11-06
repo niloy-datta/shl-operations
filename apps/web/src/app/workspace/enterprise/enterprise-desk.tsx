@@ -1,4 +1,6 @@
 "use client";
+import { WorkspaceDialog } from "@/components/workspace-dialog";
+import { expireWorkspaceSession } from "@/lib/session-client";
 
 import Link from "next/link";
 import { WorkspaceNavigation } from "@/components/workspace-navigation";
@@ -76,7 +78,7 @@ const pretty = (v: unknown, key: string) => {
 const base = "/api/enterprise/";
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(path.startsWith("/") ? path : base + path,{cache:"no-store",...options});
-  if (res.status===401) { window.location.assign("/login"); throw new Error("Session expired."); }
+  if (res.status===401) { expireWorkspaceSession(); throw new Error("Session expired."); }
   if (!res.ok) {
     const body=await res.json().catch(()=>({}));
     if (res.status===403) throw new Error("Your account is not permitted to perform this action.");
@@ -170,7 +172,7 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
       if(!live)return;
       setList(items);setSummary(stats);setError("");
     }).catch(e=>{if(live)setError(e instanceof Error?e.message:"Unable to load records");})
-      .finally(()=>{if(live)setLoading(false);});
+      .finally(()=>{cancelAnimationFrame(frame);if(live)setLoading(false);});
     return ()=>{live=false;cancelAnimationFrame(frame);};
   },[user,config,currentModule,page,term,tick]);
 
@@ -382,7 +384,7 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
         <FormField name="role" label="Role" required><select name="role" defaultValue="BD">
           {allRoles.map(role=><option value={role} key={role}>{role}</option>)}
         </select></FormField>
-        <p className="en-help">Use a unique temporary password and require the staff member to change it. MFA is not implemented yet.</p>
+        <p className="en-help">Use a unique temporary password and require the staff member to change it. MFA is available in My security; enrollment is required when enforcement is enabled.</p>
       </>;
       default:return null;
     }
@@ -463,7 +465,7 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
       </main>
     </div>
     {modal && <div className="en-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)setModal(null);}}>
-      <div className="en-modal" role="dialog" aria-modal="true" aria-labelledby="en-modal-title">
+      <WorkspaceDialog className="en-modal" aria-labelledby="en-modal-title" onClose={()=>setModal(null)} busy={busy}>
         <header><div><p className="en-eyebrow">{modal==="details"?"RECORD DETAILS":modal==="payment"?"FINANCE ENTRY":modal==="access"?"STAFF ACCESS":modal==="reset-password"?"ADMINISTRATOR RECOVERY":"CREATE RECORD"}</p>
           <h2 id="en-modal-title">{modal==="details" ? asText(active?.reference??active?.title??active?.username??"Record") :
             modal==="payment"?"Record payment":modal==="access"?"Update staff access":modal==="reset-password"?"Reset staff password":config.create}</h2></div>
@@ -516,7 +518,7 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
           {currentModule==="staff"&&active.username!==user?.username&&<button className="en-secondary" onClick={()=>{setError("");setModal("reset-password");}}>Reset password →</button>}
           <button className="en-secondary en-detail-close" onClick={()=>setModal(null)}>Close</button>
         </div>}
-      </div>
+      </WorkspaceDialog>
     </div>}
   </div>;
 }

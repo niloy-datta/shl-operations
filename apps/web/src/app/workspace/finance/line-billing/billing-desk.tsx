@@ -1,4 +1,5 @@
 "use client";
+import { expireWorkspaceSession } from "@/lib/session-client";
 
 import Link from "next/link";
 import {useEffect,useState} from "react";
@@ -17,7 +18,7 @@ const money=(value:number,unit:string)=>new Intl.NumberFormat("en-US",{
 }).format(Number(value))+" "+unit;
 async function get<T>(path:string,init?:RequestInit):Promise<T>{
   const result=await fetch(path,{...init,cache:"no-store"});
-  if(result.status===401){window.location.assign("/login");throw new Error("Sign in again.");}
+  if(result.status===401){expireWorkspaceSession();throw new Error("Sign in again.");}
   if(!result.ok){
     if(result.status===403)throw new Error("Finance or management permissions are required.");
     if(result.status===409)throw new Error("Cannot proceed: check shipping completion and approval state.");

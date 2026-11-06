@@ -5,7 +5,7 @@
 .gx-kicker{font-size:10px;color:#60e3c2;letter-spacing:2.3px;font-weight:850}.gx-metric{background:#ffffff12;border:1px solid #ffffff27;border-radius:16px;padding:22px 32px;min-width:155px;text-align:center}
 .gx-metric strong{font-size:45px;letter-spacing:-2px;display:block;font-variant-numeric:tabular-nums}.gx-metric small{font-size:9px;letter-spacing:1.6px;color:#b9d5d8;font-weight:850}
 .gx-list{overflow:hidden}.gx-toolbar{display:flex;justify-content:space-between;gap:20px;align-items:center;padding:23px 27px}
-.gx-toolbar strong{display:block;font-size:17px}.gx-toolbar span{display:block;margin-top:6px;color:#8da0ae;font-size:11px}
+.gx-toolbar strong{display:block;font-size:17px}.gx-toolbar span{display:block;margin-top:6px;color:#52667a;font-size:11px}
 .gx-search{display:flex;gap:8px}.gx-search input{padding:11px 14px;border:1px solid #dbe5ed;border-radius:8px;font-size:12px;min-width:240px;color:#122941;background:#fff}
 .gx-search button,.gx-pagination button,.gx-open,.gx-actions button{background:#e7f7f3;border:1px solid #c7eee3;border-radius:8px;color:#087a65;padding:10px 15px;font-weight:750;font-size:11px}
 .gx-search button:hover,.gx-pagination button:hover:not(:disabled),.gx-open:hover,.gx-actions button:hover{background:#c9f2e6}

@@ -1,4 +1,5 @@
 "use client";
+import { expireWorkspaceSession } from "@/lib/session-client";
 
 import {useEffect,useState,type FormEvent} from "react";
 
@@ -26,7 +27,7 @@ export function ShipmentDocumentChecklist({shipmentId,canWrite}:{
     let active=true;
     fetch(base+shipmentId+"/documents",{cache:"no-store"})
       .then(async response=>{
-        if(response.status===401){window.location.assign("/login");return null;}
+        if(response.status===401){expireWorkspaceSession();return null;}
         if(!response.ok)throw new Error("Unable to read document checklist ("+response.status+").");
         return response.json() as Promise<Item[]>;
       }).then(data=>{if(active&&data){setItems(data);setError("");}})
@@ -52,7 +53,7 @@ export function ShipmentDocumentChecklist({shipmentId,canWrite}:{
         body:JSON.stringify({status,documentReference:status==="REPORTED_RECEIVED"?
           documentReference.trim():null,note:note.trim()||null})
       });
-      if(response.status===401){window.location.assign("/login");return;}
+      if(response.status===401){expireWorkspaceSession();return;}
       if(!response.ok){
         const body=await response.json().catch(()=>({})) as {detail?:string};
         throw new Error(body.detail||"Document update rejected ("+response.status+").");

@@ -1,4 +1,7 @@
 "use client";
+import { WorkspaceDialog } from "@/components/workspace-dialog";
+import { WorkspaceNavigation } from "@/components/workspace-navigation";
+import { expireWorkspaceSession } from "@/lib/session-client";
 
 import Link from "next/link";
 import {LandedCostPanel} from "./landed-cost-panel";
@@ -42,7 +45,7 @@ const stages: Record<Stage, { label: string; next?: Stage; action?: string }> = 
 async function json<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(path, { cache: "no-store", ...options });
   if (response.status === 401) {
-    window.location.assign("/login");
+    expireWorkspaceSession();
     throw new Error("Session expired.");
   }
   if (!response.ok) {
@@ -99,7 +102,7 @@ export function RfqWorkspace() {
       if (!live) return;
       setList(records); setStats(totals); setMessage("");
     }).catch(e => { if (live) setMessage(e instanceof Error ? e.message : "Unable to load RFQs"); })
-      .finally(() => { if (live) setLoading(false); });
+      .finally(() => { cancelAnimationFrame(frame); if (live) setLoading(false); });
     return () => { live = false; cancelAnimationFrame(frame); };
   }, [page, term, tick]);
 
@@ -118,7 +121,7 @@ export function RfqWorkspace() {
       setSelected(record); setOffers(quotes); setEvents(history); setItems(requirements);
       setLineOffers(pricedLines);
     }).catch(e => { if (live) setMessage(e instanceof Error ? e.message : "Unable to load details"); })
-      .finally(() => { if (live) setDetailLoading(false); });
+      .finally(() => { cancelAnimationFrame(frame); if (live) setDetailLoading(false); });
     return () => { live = false; cancelAnimationFrame(frame); };
   }, [selectedId, tick]);
 
@@ -276,26 +279,7 @@ export function RfqWorkspace() {
       </Link>
       <div className="desk-edition"><span className="desk-led" /> OPERATIONS OS <em>V1</em></div>
       <p className="desk-side-label">COMMAND CENTER</p>
-      <nav aria-label="Business modules" className="desk-nav">
-        <Link href="/workspace"><span>▦</span> Overview</Link>
-        <div className="desk-active"><span>◫</span> RFQ &amp; Sourcing <i>LIVE</i></div>
-        <Link href="/workspace/alerts"><span>◉</span> Due dates &amp; alerts</Link>
-        <Link href="/workspace/growth/leads"><span>✧</span> Lead pipeline</Link>
-        <Link href="/workspace/growth/projects"><span>▱</span> Projects &amp; jobs</Link>
-        <Link href="/workspace/enterprise/quotes"><span>◈</span> Customer quotations</Link>
-        <Link href="/workspace/enterprise/orders"><span>▣</span> Sales orders</Link>
-        <Link href="/workspace/enterprise/purchase-orders"><span>⬡</span> Purchase orders</Link>
-        <Link href="/workspace/enterprise/shipments"><span>⇢</span> Shipments</Link>
-        <Link href="/workspace/enterprise/invoices"><span>▥</span> Finance</Link>
-        <Link href="/workspace/costs/expenses"><span>◎</span> Expenses</Link>
-        <Link href="/workspace/enterprise/tasks"><span>☷</span> Team tasks</Link>
-        <Link href="/workspace/account"><span>◌</span> My security</Link>
-        <Link href="/workspace"><span>♙</span> Customers &amp; Suppliers</Link>
-      </nav>
-      <p className="desk-side-label desk-planned-title">COMING NEXT</p>
-      <div className="desk-nav desk-planned"><div><span>⬡</span> Procurement <i>SOON</i></div>
-        <div><span>♧</span> Shipments <i>SOON</i></div><div><span>▥</span> Finance <i>SOON</i></div>
-        <div><span>◇</span> Tasks &amp; Teams <i>SOON</i></div></div>
+      <WorkspaceNavigation variant="desk" />
       <div className="desk-side-footer"><span className="desk-lock">◈</span><div><strong>Private workspace</strong><small>Authenticated operations data</small></div></div>
     </aside>
     <main className="desk-main">
@@ -351,7 +335,7 @@ export function RfqWorkspace() {
     </main>
 
     {selectedId && <div className="desk-drawer-overlay" onMouseDown={e => { if (e.target === e.currentTarget) setSelectedId(null); }}>
-      <section className="desk-drawer" role="dialog" aria-modal="true" aria-label="RFQ details">
+      <WorkspaceDialog className="desk-drawer" aria-label="RFQ details" onClose={()=>setSelectedId(null)} busy={saving}>
         <header><div><p className="desk-eyebrow">SOURCE & COMPARE</p><h2>{selected?.reference ?? "Loading RFQ…"}</h2></div>
           <button className="desk-close" onClick={() => setSelectedId(null)} aria-label="Close RFQ details">×</button></header>
         {detailLoading || !selected ? <div className="desk-empty">Loading details…</div> : <>
@@ -466,9 +450,9 @@ export function RfqWorkspace() {
               <p>RFQ closed · Read only</p>}
           </footer>
         </>}
-      </section></div>}
+      </WorkspaceDialog></div>}
 
-    {showCreate && <div className="desk-modal-backdrop"><section className="desk-modal" role="dialog" aria-modal="true" aria-labelledby="create-title">
+    {showCreate && <div className="desk-modal-backdrop"><WorkspaceDialog className="desk-modal" aria-labelledby="create-title" onClose={()=>setShowCreate(false)} busy={saving}>
       <header><div><p className="desk-eyebrow">CUSTOMER INQUIRY</p><h2 id="create-title">Create a new RFQ</h2><p>Capture the request before sourcing suppliers.</p></div>
         <button className="desk-close" onClick={() => setShowCreate(false)} disabled={saving} aria-label="Close">×</button></header>
       <form onSubmit={createRfq} className="desk-form">
@@ -483,9 +467,9 @@ export function RfqWorkspace() {
           <label>Target deadline<input name="deadline" type="date" /></label></div>
         {message && <p className="desk-inline-error" role="alert">{message}</p>}
         <footer><button type="button" onClick={() => setShowCreate(false)} disabled={saving}>Cancel</button><button type="submit" className="desk-primary" disabled={saving}>{saving ? "Creating…" : "Create RFQ →"}</button></footer>
-      </form></section></div>}
+      </form></WorkspaceDialog></div>}
 
-    {showItem && selected && <div className="desk-modal-backdrop"><section className="desk-modal" role="dialog" aria-modal="true" aria-labelledby="rfq-item-title">
+    {showItem && selected && <div className="desk-modal-backdrop"><WorkspaceDialog className="desk-modal" aria-labelledby="rfq-item-title" onClose={()=>{setShowItem(false);setEditingItem(null);}} busy={saving}>
       <header><div><p className="desk-eyebrow">RFQ REQUIREMENT</p>
         <h2 id="rfq-item-title">{editingItem ? "Edit product item" : "Add product item"}</h2>
         <p>Product specifications, quantity, origin and destination. Maximum 50 items per RFQ.</p></div>
@@ -510,11 +494,11 @@ export function RfqWorkspace() {
         <footer><button type="button" disabled={saving} onClick={() => { setShowItem(false); setEditingItem(null); }}>Cancel</button>
           <button className="desk-primary" disabled={saving}>{saving ? "Saving…" : "Save item →"}</button></footer>
       </form>
-    </section></div>}
+    </WorkspaceDialog></div>}
 
     {showLineOffer && selected && pricingItem &&
-      <div className="desk-modal-backdrop"><section className="desk-modal" role="dialog"
-        aria-modal="true" aria-labelledby="line-offer-title">
+      <div className="desk-modal-backdrop"><WorkspaceDialog className="desk-modal"
+        aria-labelledby="line-offer-title" onClose={()=>{setShowLineOffer(false);setPricingItem(null);}} busy={saving}>
         <header><div><p className="desk-eyebrow">SUPPLIER LINE QUOTE</p>
           <h2 id="line-offer-title">Record supplier price</h2>
           <p>{pricingItem.productName} · {pricingItem.quantity} {pricingItem.unit} requested ·
@@ -555,9 +539,9 @@ export function RfqWorkspace() {
             <button className="desk-primary" disabled={saving}>
               {saving ? "Saving…" : "Record revision →"}</button></footer>
         </form>
-      </section></div>}
+      </WorkspaceDialog></div>}
 
-    {showOffer && selected && <div className="desk-modal-backdrop"><section className="desk-modal" role="dialog" aria-modal="true" aria-labelledby="offer-title">
+    {showOffer && selected && <div className="desk-modal-backdrop"><WorkspaceDialog className="desk-modal" aria-labelledby="offer-title" onClose={()=>setShowOffer(false)} busy={saving}>
       <header><div><p className="desk-eyebrow">SUPPLIER SOURCING</p><h2 id="offer-title">Record supplier quotation</h2>
         <p>{selected.reference} · Prices in {selected.currency} per {selected.unit}</p></div>
         <button className="desk-close" onClick={() => setShowOffer(false)} disabled={saving} aria-label="Close">×</button></header>
@@ -573,7 +557,7 @@ export function RfqWorkspace() {
         {message && <p className="desk-inline-error" role="alert">{message}</p>}
         <footer><button type="button" onClick={() => setShowOffer(false)} disabled={saving}>Cancel</button>
           <button className="desk-primary" type="submit" disabled={saving}>{saving ? "Saving…" : "Save supplier offer →"}</button></footer>
-      </form></section></div>}
+      </form></WorkspaceDialog></div>}
   </div>;
 }
 function Status({ stage }: { stage: Stage }) { return <span className={"desk-stage stage-" + stage.toLowerCase()}><i />{stages[stage].label}</span>; }

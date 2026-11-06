@@ -1,4 +1,5 @@
 "use client";
+import { expireWorkspaceSession } from "@/lib/session-client";
 
 import Link from "next/link";
 import {useCallback,useEffect,useState,type FormEvent} from "react";
@@ -26,7 +27,7 @@ async function json<T>(path:string,init?:RequestInit):Promise<T>
   const response=await fetch(path,{cache:"no-store",...init});
   if (response.status===401)
   {
-    window.location.assign("/login");
+    expireWorkspaceSession();
     throw new Error("Session expired.");
   }
   if (!response.ok)
@@ -49,6 +50,7 @@ export function SupplierComplianceDesk()
   const [error,setError]=useState("");
   const [notice,setNotice]=useState("");
   const [version,setVersion]=useState(0);
+  const [recordsLoading,setRecordsLoading]=useState(false);
 
   const findSuppliers=useCallback(async(q:string)=>
   {
@@ -79,11 +81,13 @@ export function SupplierComplianceDesk()
   {
     if(!selected)return;
     let current=true;
+    const frame=requestAnimationFrame(()=>setRecordsLoading(true));
     json<Page<Evidence>>("/api/supplier-compliance/suppliers/"+selected.id+
       "/evidence?"+new URLSearchParams({page:String(page),size:"20"}))
-      .then(result=>{if(current)setRecords(result);})
-      .catch(cause=>{if(current)setError(String(cause));});
-    return()=>{current=false;};
+      .then(result=>{if(current){setRecords(result);setError("");}})
+      .catch(cause=>{if(current)setError(String(cause));})
+      .finally(()=>{cancelAnimationFrame(frame);if(current)setRecordsLoading(false);});
+    return()=>{current=false;cancelAnimationFrame(frame);};
   },[selected,page,version]);
 
   const base=selected?"/api/supplier-compliance/suppliers/"+selected.id:"";
@@ -167,7 +171,8 @@ export function SupplierComplianceDesk()
       {selected&&<section className="sc-card">
         <h2>{selected.name} · Submitted references</h2>
         <p>Approval confirms an internal staff review of the reference supplied. It does not certify legal authenticity or overall vendor eligibility.</p>
-        {records.content.length===0&&<p>No reference recorded on this page.</p>}
+        {recordsLoading&&<p role="status">Loading submitted references…</p>}
+        {!recordsLoading&&!error&&records.content.length===0&&<p>No reference recorded on this page.</p>}
         <div className="sc-evidence">
           {records.content.map(item=><article key={item.id}>
             <div className="sc-evidence-head"><h3>{item.kind.replaceAll("_"," ")}</h3>
@@ -177,7 +182,7 @@ export function SupplierComplianceDesk()
             {item.notes&&<p>Notes: {item.notes}</p>}
             <small>Submitted by {item.submitted_by}</small>
             {item.reviewed_by&&<p>Reviewed by {item.reviewed_by}: {item.review_reason}</p>}
-            {canReview&&!item.decision&&<form className="sc-review" onSubmit={event=>void review(event,item.id)}>
+            {canReview&&!item.decision&&item.submitted_by!==me?.username&&<form className="sc-review" onSubmit={event=>void review(event,item.id)}>
               <label>Review outcome
                 <select name="decision" required>
                   <option value="REJECTED">Reject reference</option>

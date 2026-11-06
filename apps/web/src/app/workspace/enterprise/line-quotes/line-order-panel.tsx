@@ -1,4 +1,5 @@
 "use client";
+import { expireWorkspaceSession } from "@/lib/session-client";
 
 import {useCallback,useEffect,useState} from "react";
 import {LineShipmentPanel} from "./line-shipment-panel";
@@ -19,7 +20,7 @@ type Quote={id:string;status:string};
 const prefix="/api/enterprise/commerce/line-orders";
 async function request<T>(path:string,init?:RequestInit):Promise<T>{
   const response=await fetch(path,{...init,cache:"no-store"});
-  if(response.status===401){window.location.assign("/login");throw new Error("Session expired");}
+  if(response.status===401){expireWorkspaceSession();throw new Error("Session expired");}
   if(!response.ok){
     const payload=await response.json().catch(()=>({})) as {error?:string;detail?:string};
     if(response.status===403)throw new Error("Your staff role cannot perform this operation.");

@@ -1,4 +1,5 @@
 "use client";
+import { expireWorkspaceSession } from "@/lib/session-client";
 
 import {useEffect,useState} from "react";
 
@@ -10,7 +11,7 @@ type Event={id:string;previous_owner_name:string|null;new_owner_name:string;
 
 async function requestJson<T>(path:string,init?:RequestInit):Promise<T>{
   const response=await fetch(path,{cache:"no-store",...init});
-  if(response.status===401){window.location.assign("/login");throw new Error("Please sign in again.");}
+  if(response.status===401){expireWorkspaceSession();throw new Error("Please sign in again.");}
   if(!response.ok){
     if(response.status===403)throw new Error("Management permission is required.");
     if(response.status===409)throw new Error("The routing queue changed. Refresh and retry.");
