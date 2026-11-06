@@ -25,7 +25,7 @@ export async function PUT(request: Request, context: Context) {
       method: "PUT",
       headers: { authorization, "content-type": "application/json" },
       body: payload,
-      cache: "no-store"
+      cache: "no-store", signal: AbortSignal.timeout(15_000)
     });
     return new NextResponse(await upstream.text(), {
       status: upstream.status,

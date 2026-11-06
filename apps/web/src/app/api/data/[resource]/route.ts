@@ -19,10 +19,12 @@ async function relay(request: Request, context: Context) {
     if (value !== null) params.set(name, value.slice(0, 160));
   }
   try {
+    const body = request.method === "POST" ? await request.text() : undefined;
+    if (body && body.length > 16_384)
+      return NextResponse.json({ error: "Payload too large" }, { status: 413 });
     const upstream = await fetch(`${process.env.API_INTERNAL_URL}/api/${resource}?${params}`, {
       method: request.method, headers: { authorization, "content-type": "application/json" },
-      body: request.method === "POST" ? await request.text() : undefined,
-      cache: "no-store"
+      body, cache: "no-store", signal: AbortSignal.timeout(15_000)
     });
     return new NextResponse(await upstream.text(), {
       status: upstream.status, headers: { "content-type": "application/json", "cache-control": "no-store" }

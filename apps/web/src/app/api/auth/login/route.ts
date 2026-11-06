@@ -30,9 +30,12 @@ export async function POST(request: Request) {
     if (upstream.status === 429)
       return NextResponse.json({ error: "Too many attempts. Try again in 15 minutes." },
         { status: 429, headers: { "cache-control": "no-store" } });
-    if (!upstream.ok)
+    if (upstream.status === 401)
       return NextResponse.json({ error: "Invalid credentials" },
         { status: 401, headers: { "cache-control": "no-store" } });
+    if (!upstream.ok)
+      return NextResponse.json({ error: "Service unavailable" },
+        { status: 503, headers: { "cache-control": "no-store" } });
     const data: unknown = await upstream.json();
     if (!data || typeof data !== "object") throw new Error("Invalid authentication response");
     const auth = data as Record<string, unknown>;
