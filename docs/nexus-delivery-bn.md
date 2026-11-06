@@ -6,7 +6,7 @@
 
 Next.js BFF → Spring Boot → PostgreSQL architecture, existing business forms, session/MFA, independent approvals ও commission username allowlist রাখা হয়েছে। আগে প্রয়োগ করা migration অপরিবর্তিত রেখে additive Flyway V27 যোগ হয়েছে। Working `.env`, bootstrap credentials ও local database volume অক্ষত; local DB-তে কেবল V27 schema migration হয়েছে, কোনো synthetic product বা business row লেখা হয়নি। `IMPLEMENTED_FEATURES_BN.md`-এর আগে থেকে থাকা user edits এই delivery-তে stage/commit করা হয়নি।
 
-PR #39 ও open #31–37 audit করে duplicate integration করা হয়নি। Local NEXUS commits recover করে dedicated Phase 3 branch-এ রাখা হয়েছে; existing PR #39 অপরিবর্তিত। Phase 3 branch-এর remote draft PR/Actions ফলাফল নিচে আলাদা করে নথিভুক্ত। Production deploy করা হয়নি।
+PR #39 ও open #31–37 audit করে duplicate integration করা হয়নি। Local NEXUS commits recover করে dedicated Phase 3 branch-এ রাখা হয়েছে; existing PR #39 অপরিবর্তিত। Draft PR #40: https://github.com/niloy-datta/shl-operations/pull/40 (base: `integration/fullstack-recovery-20261106`). Production deploy করা হয়নি।
 
 ## Implemented / preserved / pending
 
@@ -95,6 +95,6 @@ Final full Chromium run: **৬৯/৬৯ pass**, প্রায় ৯৪ সে�
 
 Local `http://127.0.0.1:3000`-এ same code rebuild ও health check pass; authenticated overview HTTP 200। তিন viewport × ছয় route × দুই theme-এর ৩৬টি after screenshot নেওয়া হয়েছে। Working database-এ কোনো synthetic business row insert করা হয়নি; screenshots-এর login session শেষে revoke করা হয়েছে।
 
-Core source commits: `bcebff7` (projection/lookup), `24e0da5` (shell and connected UI), `a1129cc` (browser coverage); `1eef6ab` covers final density/mobile/modal polish; `bc7ec04` fixes lead triage deep-link loading and dark dialog focus/contrast; all commits remain local. GitHub CI was not run for these unpushed commits. Existing PR #39 baseline evidence is separate.
+Core recovered source commits: `bcebff7` (projection/lookup), `24e0da5` (shell and connected UI), `a1129cc` (browser coverage); `1eef6ab` covers final density/mobile/modal polish; `bc7ec04` fixes lead triage deep-link loading and dark dialog focus/contrast. They are included in the pushed PR #40 branch along with the local recovery documentation commits. Phase 3 source commit: `1c3e22b9c105af06afc525080aa00b0023e670c3`. GitHub Actions on this exact SHA all passed: [Checks #467](https://github.com/niloy-datta/shl-operations/actions/runs/42285016580), [Chromium Browser E2E #4](https://github.com/niloy-datta/shl-operations/actions/runs/42285016583), and [Isolated Full-Stack Auth Smoke #49](https://github.com/niloy-datta/shl-operations/actions/runs/42285016633). Existing PR #39 baseline evidence is separate.
 
 Temporary E2E Compose stack ও synthetic auth/config files cleanup করা হয়েছে। Working localhost stack চালু রাখা হয়েছে। Existing database volume, `.env` ও original local report অক্ষত।
