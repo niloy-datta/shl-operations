@@ -45,6 +45,9 @@ public class ContactController {
         @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
         return suppliers.findByNameContainingIgnoreCase(q, page(page, size));
     }
+    @GetMapping("/suppliers/{id}") public Supplier supplier(@PathVariable UUID id) {
+        return suppliers.findById(id).orElseThrow(() -> new ResponseStatusException(NOT_FOUND));
+    }
     @PostMapping("/suppliers") @Transactional public ResponseEntity<Supplier> createSupplier(@Valid @RequestBody ContactInput input) {
         Supplier saved = suppliers.save(new Supplier(input));
         audit.log("CREATED","SUPPLIER",saved.id,saved.name);
