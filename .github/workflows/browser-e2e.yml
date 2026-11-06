@@ -1,0 +1,58 @@
+name: Chromium Browser E2E
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      COMPOSE_PROJECT_NAME: shl-e2e-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install test dependencies and Chromium
+        working-directory: apps/web
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Create isolated synthetic configuration
+        run: node scripts/create-e2e-env.mjs
+      - name: Build and start real app with disposable PostgreSQL
+        run: docker compose --env-file .env.e2e -f compose.yaml -f compose.e2e.yaml up --build --wait --wait-timeout 180
+      - name: Run desktop, tablet and mobile Chromium workflows
+        working-directory: apps/web
+        run: node --env-file ../../.env.e2e node_modules/@playwright/test/cli.js test
+      - name: Collect service diagnostics
+        if: always()
+        run: |
+          mkdir -p apps/web/test-results
+          docker compose --env-file .env.e2e -f compose.yaml -f compose.e2e.yaml logs --no-color > apps/web/test-results/compose.log 2>&1 || true
+      - name: Upload synthetic test reports, failure screenshots and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-e2e-${{ github.run_id }}
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Remove disposable stack and test credentials
+        if: always()
+        run: |
+          docker compose --env-file .env.e2e -f compose.yaml -f compose.e2e.yaml down --volumes --remove-orphans
+          rm -f .env.e2e

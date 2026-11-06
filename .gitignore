@@ -4,6 +4,11 @@
 **/.next/
 **/target/
 *.tsbuildinfo
+**/playwright-report/
+**/test-results/
+**/e2e/.auth/
+/.env.e2e
+/.e2e-evidence/
 *.log
 
 

@@ -1,0 +1,17 @@
+# Only combine with compose.yaml under a unique shl-e2e-* project name.
+# PostgreSQL is disposable memory storage; no working database volume is mounted.
+services:
+  db:
+    volumes: !reset []
+    tmpfs:
+      - /var/lib/postgresql/data:rw,nosuid,size=512m
+  api:
+    environment:
+      MFA_ENFORCEMENT_ENABLED: "true"
+      SHL_DEPLOYMENT_MODE: development
+      COMMISSION_AUTHORIZED_USERS: ""
+  web:
+    ports: !override
+      - "127.0.0.1:${SHL_E2E_PORT:-3107}:3000"
+    environment:
+      SHL_PUBLIC_ORIGIN: "http://127.0.0.1:${SHL_E2E_PORT:-3107}"
