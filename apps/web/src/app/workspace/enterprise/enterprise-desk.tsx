@@ -177,7 +177,7 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
   const [notice,setNotice]=useState("");
-  const [modal,setModal]=useState<"create"|"payment"|"access"|"details"|null>(null);
+  const [modal,setModal]=useState<"create"|"payment"|"access"|"reset-password"|"details"|null>(null);
   const [active,setActive]=useState<Row|null>(null);
   const [refs,setRefs]=useState<Record<string,Row[]>>({});
   const [chosenOrder,setChosenOrder]=useState("");
@@ -310,6 +310,34 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
       setModal(null);setNotice("Staff permissions updated.");refresh();
     }catch(e){setError(e instanceof Error?e.message:"Could not change access");}
     finally{setBusy(false);}
+  }
+  async function resetStaffPassword(event:FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if(!active)return;
+    const form=new FormData(event.currentTarget);
+    const adminPassword=String(form.get("adminPassword")??"");
+    const newPassword=String(form.get("newPassword")??"");
+    const confirmPassword=String(form.get("confirmPassword")??"");
+    setError("");
+    if(newPassword.length<16||newPassword.length>128) {
+      setError("New password must have 16–128 characters.");
+      return;
+    }
+    if(newPassword!==confirmPassword) {
+      setError("New passwords do not match.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await send<Row>("staff/"+active.id+"/password-reset","POST",{adminPassword,newPassword});
+      setModal(null);
+      setNotice("Password reset for "+asText(active.username)+". Existing sessions revoked. Deliver the temporary password securely.");
+      refresh();
+    } catch(e) {
+      setError(e instanceof Error?e.message:"Unable to reset password.");
+    } finally {
+      setBusy(false);
+    }
   }
   const allowed=user && config.roles.includes(user.role);
   const canCreate=!!user && (currentModule==="tasks" ? ["ADMIN","MANAGEMENT"].includes(user.role) :
@@ -455,6 +483,7 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
                   <span className={["reference","title","username"].includes(col.key)?"en-strong":""}>{pretty(record[col.key],col.key)}</span>}</td>)}
                 <td><button className="en-action" onClick={()=>void showDetails(record)}>Details ↗</button>
                   {currentModule==="staff"&&<button className="en-action" onClick={()=>{setActive(record);setModal("access");}}>Access</button>}
+                  {currentModule==="staff"&&record.username!==user?.username&&<button className="en-action" onClick={()=>{setActive(record);setError("");setModal("reset-password");}}>Reset password</button>
                   {currentModule==="invoices"&&record.status==="ISSUED"&&<button className="en-action" onClick={()=>{setActive(record);setModal("payment");}}>Pay</button>}
                 </td></tr>)}</tbody></table>
               {loading&&<div className="en-table-empty">Loading your records…</div>}
@@ -472,9 +501,9 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
     </div>
     {modal && <div className="en-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)setModal(null);}}>
       <div className="en-modal" role="dialog" aria-modal="true" aria-labelledby="en-modal-title">
-        <header><div><p className="en-eyebrow">{modal==="details"?"RECORD DETAILS":modal==="payment"?"FINANCE ENTRY":modal==="access"?"STAFF ACCESS":"CREATE RECORD"}</p>
+        <header><div><p className="en-eyebrow">{modal==="details"?"RECORD DETAILS":modal==="payment"?"FINANCE ENTRY":modal==="access"?"STAFF ACCESS":modal==="reset-password"?"ADMINISTRATOR RECOVERY":"CREATE RECORD"}</p>
           <h2 id="en-modal-title">{modal==="details" ? asText(active?.reference??active?.title??active?.username??"Record") :
-            modal==="payment"?"Record payment":modal==="access"?"Update staff access":config.create}</h2></div>
+            modal==="payment"?"Record payment":modal==="access"?"Update staff access":modal==="reset-password"?"Reset staff password":config.create}</h2></div>
           <button className="en-modal-close" disabled={busy} aria-label="Close" onClick={()=>setModal(null)}>×</button></header>
         {modal==="create"&&<form className="en-form" onSubmit={e=>void createRecord(e)}>
           {renderFields()}<footer><button type="button" className="en-secondary" onClick={()=>setModal(null)}>Cancel</button>
@@ -494,6 +523,22 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
           <label className="en-toggle"><input type="checkbox" name="enabled" defaultChecked={active.enabled===true}/> Account enabled</label>
           <footer><button type="button" className="en-secondary" onClick={()=>setModal(null)}>Cancel</button>
             <button className="en-primary" disabled={busy}>Save access →</button></footer></form>}
+        {modal==="reset-password"&&active&&<form className="en-form" onSubmit={e=>void resetStaffPassword(e)}>
+          <p className="en-help">After verifying {asText(active.username)}'s identity, set a unique temporary password. Their sessions will be revoked. Existing authenticator MFA stays enabled.</p>
+          <FormField name="adminPassword" label="Your administrator password" required>
+            <input name="adminPassword" type="password" required autoComplete="current-password" maxLength={256}/>
+          </FormField>
+          <FormField name="newPassword" label="New temporary password (16–128 characters)" required>
+            <input name="newPassword" type="password" required autoComplete="new-password" minLength={16} maxLength={128}/>
+          </FormField>
+          <FormField name="confirmPassword" label="Confirm temporary password" required>
+            <input name="confirmPassword" type="password" required autoComplete="new-password" minLength={16} maxLength={128}/>
+          </FormField>
+          {error&&<p className="en-alert" role="alert">{error}</p>}
+          <p className="en-help">Share the new password directly using an approved private channel, never in a group chat.</p>
+          <footer><button type="button" className="en-secondary" disabled={busy} onClick={()=>setModal(null)}>Cancel</button>
+            <button className="en-primary" disabled={busy}>Confirm password reset →</button></footer>
+        </form>}
         {modal==="details"&&active&&<div className="en-details">
           <dl>{Object.entries(active).filter(([key])=>key!=="password_hash").map(([key,value])=><div key={key}>
             <dt>{key.replaceAll("_"," ")}</dt><dd>{pretty(value,key)}</dd></div>)}</dl>
@@ -505,6 +550,7 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
               onClick={()=>void changeStatus(active,status)}>{titles[status]??status} →</button>)}</div>}
           {currentModule==="invoices"&&active.status==="ISSUED"&&<button className="en-primary" onClick={()=>setModal("payment")}>Record payment →</button>}
           {currentModule==="staff"&&<button className="en-primary" onClick={()=>setModal("access")}>Edit staff access →</button>}
+          {currentModule==="staff"&&active.username!==user?.username&&<button className="en-secondary" onClick={()=>{setError("");setModal("reset-password");}}>Reset password →</button>
           <button className="en-secondary en-detail-close" onClick={()=>setModal(null)}>Close</button>
         </div>}
       </div>
