@@ -2,6 +2,8 @@
 
 Working branch: `integration/fullstack-recovery-20261106`. Baseline: `b27df0f76a1acce7d87d0d2a2563e1b9062d24c4` on latest fetched main. This is a development integration for review, not a production release. Original PRs #31–37 and #28 remain unmerged.
 
+Delivery: [draft integration PR #39](https://github.com/niloy-datta/shl-operations/pull/39). Use the PR's checks tab for the current head's CI results; local verification below is recorded separately.
+
 ## Recovery and integration
 
 - Original `frontend-only` HEAD: `8bab194`. Fifteen modified frontend files and untracked artifacts were copied outside the repository before switching branches. A named Git stash also preserves the original changes. No reset, force push, production migration, live data import, or infrastructure change was performed.
@@ -48,7 +50,7 @@ Working branch: `integration/fullstack-recovery-20261106`. Baseline: `b27df0f76a
 | Release-gate offline tests | 10 cases passed, including public/missing-protection/zero-review/missing-check failure cases |
 | Recovery Bash / launcher PowerShell / static preview JavaScript syntax | Passed |
 | Responsive browser and keyboard smoke | **Not run successfully:** browser host unavailable; native Windows browser automation stopped because URL could not be established confidently |
-| GitHub Actions for integration head | Pending initial push; final PR/check status is recorded in delivery notes |
+| GitHub Actions for integration head | [Live checks on PR #39](https://github.com/niloy-datta/shl-operations/pull/39/checks); final checked head/status is provided in the delivery response |
 
 The original MockMvc/controller suite missed a real HTTP behavior: container error redispatch converted valid 403/404 responses into 401. `SecurityConfig` now permits only `DispatcherType.ERROR`; direct requests still follow the normal deny-all chain. This follows [Spring Security's dispatch authorization guidance](https://docs.spring.io/spring-security/reference/servlet/authorization/authorize-http-requests.html#match-by-dispatcher-type). `HttpErrorStatusTest` uses a real embedded servlet container to keep this regression covered. The full-stack smoke was rerun successfully after the fix.
 
@@ -61,6 +63,7 @@ Login now reports upstream outages as unavailable rather than invalid credential
 3. Browser visual/responsive/keyboard verification remains outstanding due to the automation environment. HTTP route checks are not browser E2E tests.
 4. The larger unfinished capabilities listed above and in the [50-step roadmap](enterprise-50-step-roadmap.md) remain partial or missing. No mock data or placeholder is presented as a completed business feature.
 5. Production deployment, production migrations, external messaging and live infrastructure changes require separate authorization and were not performed.
+6. Upgrade verification starts from stable main's V20 schema. A disposable branch database that already applied V22–V26 while the shipment branch omitted V21 needs an explicit migration-history review before reuse. No automatic Flyway repair or out-of-order override is introduced.
 
 ## Local run and checks
 
