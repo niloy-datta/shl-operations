@@ -1,6 +1,7 @@
 "use client";
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 export function LoginForm() {
   const [error, setError] = useState(""); const [busy, setBusy] = useState(false);
   const [mfaRequired, setMfaRequired] = useState(false);
@@ -29,6 +30,7 @@ export function LoginForm() {
     </label>}
     {error && <p role="alert" className="error">{error}</p>}
     <button className="primary" disabled={busy}>{busy ? "Signing in…" : "Sign in →"}</button>
+    <p className="login-recovery-link"><Link href="/forgot-password">Forgot password?</Link></p>
   </form>;
 }
 
