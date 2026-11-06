@@ -99,6 +99,41 @@ class SessionLifecycleTest {
 
     @Test
     @WithMockUser(username="test-admin",roles="ADMIN")
+    void verifiedAdminCanRecoverStaffPasswordAndRevokeSessions() {
+        Person person=createPerson();
+        var existing=sessions.login(person.username(),PASSWORD);
+        staff.resetStaffPassword(person.id(),new StaffController.ResetStaffPassword(
+            "unique-test-password-123456","new-long-temporary-password-2026"));
+        assertThat(sessions.validate(existing.token())).isNull();
+        assertThatThrownBy(()->sessions.login(person.username(),PASSWORD))
+            .isInstanceOf(ResponseStatusException.class);
+        assertThat(sessions.login(person.username(),"new-long-temporary-password-2026").token())
+            .matches("[A-Za-z0-9_-]{43}");
+    }
+
+    @Test
+    @WithMockUser(username="test-admin",roles="ADMIN")
+    void resetRequiresAdminPasswordAndBlocksSelfReset() {
+        Person person=createPerson();
+        assertThatThrownBy(()->staff.resetStaffPassword(person.id(),
+            new StaffController.ResetStaffPassword("incorrect-admin-password",
+                "long-unused-replacement-password")))
+            .isInstanceOf(ResponseStatusException.class)
+            .satisfies(exception->assertThat(((ResponseStatusException)exception).getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED));
+        var adminId=db.queryForObject(
+            "SELECT id FROM staff_users WHERE username=?",UUID.class,"test-admin");
+        assertThatThrownBy(()->staff.resetStaffPassword(adminId,
+            new StaffController.ResetStaffPassword("unique-test-password-123456",
+                "long-unused-replacement-password")))
+            .isInstanceOf(ResponseStatusException.class)
+            .satisfies(exception->assertThat(((ResponseStatusException)exception).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT));
+        assertThat(sessions.login(person.username(),PASSWORD)).isNotNull();
+    }
+
+    @Test
+    @WithMockUser(username="test-admin",roles="ADMIN")
     void repeatedBadPasswordsAreThrottledPersistently() {
         Person person=createPerson();
         for (int i=0;i<7;i++) {
