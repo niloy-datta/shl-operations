@@ -280,3 +280,12 @@ body{background:radial-gradient(ellipse 65% 25% at 90% 0%,#e1f8f1 0%,transparent
 .quick-panel a.quick-action { text-decoration: none; }
 @media (max-width: 1180px) { .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 480px) { .metric-grid { grid-template-columns: 1fr; } }
+
+.login-recovery-link { margin: 0; text-align: center; font-size: 12px; }
+.login-recovery-link a, .recovery-back-link { color: #087e70; font-weight: 750; text-decoration: none; }
+.login-recovery-link a:hover, .recovery-back-link:hover { text-decoration: underline; }
+.recovery-guidance { margin: 23px 0; padding: 17px 18px; border: 1px solid #dbe9e8; background: #f4faf9; border-radius: 11px; font-size: 12px; line-height: 1.7; color: #395068; }
+.recovery-guidance strong { display: block; margin-bottom: 7px; color: #183a47; font-size: 13px; }
+.recovery-guidance p { margin: 0 0 10px; }
+.recovery-guidance p:last-child { margin-bottom: 0; }
+.recovery-back-link { display: inline-block; margin-top: 18px; font-size: 12px; }
