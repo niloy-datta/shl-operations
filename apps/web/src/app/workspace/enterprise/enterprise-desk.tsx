@@ -524,7 +524,7 @@ export function EnterpriseDesk({currentModule:moduleName}:{currentModule:string}
           <footer><button type="button" className="en-secondary" onClick={()=>setModal(null)}>Cancel</button>
             <button className="en-primary" disabled={busy}>Save access →</button></footer></form>}
         {modal==="reset-password"&&active&&<form className="en-form" onSubmit={e=>void resetStaffPassword(e)}>
-          <p className="en-help">After verifying {asText(active.username)}'s identity, set a unique temporary password. Their sessions will be revoked. Existing authenticator MFA stays enabled.</p>
+          <p className="en-help">After verifying the identity of {asText(active.username)}, set a unique temporary password. Their sessions will be revoked. Existing authenticator MFA stays enabled.</p>
           <FormField name="adminPassword" label="Your administrator password" required>
             <input name="adminPassword" type="password" required autoComplete="current-password" maxLength={256}/>
           </FormField>
