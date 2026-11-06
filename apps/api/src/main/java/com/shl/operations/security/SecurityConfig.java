@@ -1,6 +1,7 @@
 package com.shl.operations.security;
 
 import java.util.UUID;
+import jakarta.servlet.DispatcherType;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
@@ -59,6 +60,9 @@ public class SecurityConfig {
         return http.csrf(csrf -> csrf.disable())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(a -> a
+                // Preserve the original 400/403/404 on container error dispatch.
+                // A direct HTTP request to /error still follows the deny-all rules.
+                .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/sessions").permitAll()
                 // Machine-only route: a per-request raw-body HMAC is verified by the controller.
