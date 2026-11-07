@@ -6,7 +6,7 @@
 
 Next.js BFF → Spring Boot → PostgreSQL architecture, existing business forms, session/MFA, independent approvals ও commission username allowlist রাখা হয়েছে। আগে প্রয়োগ করা migration অপরিবর্তিত রেখে additive Flyway V27 যোগ হয়েছে। Working `.env`, bootstrap credentials ও local database volume অক্ষত; local DB-তে কেবল V27 schema migration হয়েছে, কোনো synthetic product বা business row লেখা হয়নি। `IMPLEMENTED_FEATURES_BN.md`-এর আগে থেকে থাকা user edits এই delivery-তে stage/commit করা হয়নি।
 
-PR #39 ও open #31–37 audit করে duplicate integration করা হয়নি। Local NEXUS commits recover করে dedicated Phase 3 branch-এ রাখা হয়েছে; existing PR #39 অপরিবর্তিত। Draft PR #40: https://github.com/niloy-datta/shl-operations/pull/40 (base: `integration/fullstack-recovery-20261106`). Production deploy করা হয়নি।
+PR #39 ও open #31–37 audit করে duplicate integration করা হয়নি। Local NEXUS commits recover করে dedicated Phase 3 branch-এ রাখা হয়েছে। User-requested fast-forward-এ PR #39-এর `d6f2d2a` head main-এ পৌঁছানোর পর GitHub PR #39-কে merged হিসেবে mark করেছে। Draft PR #40 এখনও open, base `integration/fullstack-recovery-20261106`: https://github.com/niloy-datta/shl-operations/pull/40. Production deploy করা হয়নি।
 
 ## Implemented / preserved / pending
 
@@ -40,6 +40,12 @@ PR #39 ও open #31–37 audit করে duplicate integration করা হয়�
 - Customer/supplier CSV writes use existing API validation, role permissions, same-origin protection and audit logging. There is no new unguarded bulk-write endpoint.
 - Truck catalog BFF `/api/products` allowlists collection and detail routes, requires the existing session/CSRF policy for writes, and forwards to Spring `/api/products/**`. Supported catalog roles are ADMIN, MANAGEMENT, BD and SOURCING; product drafts are created/edited by ADMIN, MANAGEMENT or SOURCING, and only a different ADMIN/MANAGEMENT actor can approve. LOGISTICS/FINANCE have no catalog visibility.
 - Product approval requires at least one entered specification. Only active products can be selected for an RFQ or comparison; RFQ linkage is nullable so old line items keep working. Catalog mutations are transactional and audited, with JSON change snapshots. V27 categories are reference seeds only; no products/specifications/certificates are fabricated.
+
+## GitHub main delivery
+
+- User-requested non-force fast-forward: `main` moved from `b27df0f76a1acce7d87d0d2a2563e1b9062d24c4` to `bdfcdca3baeb6562aab6d8463160eb769d3393b2`. This includes the 42-commit integration stack, recovered NEXUS work and Phase 3 catalog (52 commits relative to the old main tip).
+- On that exact SHA, push Checks (API/web/scripts), Windows launcher and release-gate checks passed. The Chromium and isolated-auth pull-request workflows also passed on the same SHA. Vercel's `Preview Comments` status succeeded; GitHub has no deployment record for the SHA.
+- `main` has no branch protection (GitHub API returned 404). Existing release/security sign-offs remain open blockers; no production deploy was performed.
 
 ## Checks ও evidence
 
