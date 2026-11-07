@@ -35,3 +35,15 @@ export async function PUT(request: Request, context: Context) {
     return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
   }
 }
+
+export async function GET(_request: Request, context: Context) {
+  const {resource,id}=await context.params;
+  if(resource!=="suppliers"||!uuidPattern.test(id))return NextResponse.json({error:"Not found"},{status:404});
+  const authorization=await sessionAuthorization();
+  if(!authorization)return NextResponse.json({error:"Unauthorized"},{status:401});
+  try{
+    const response=await fetch(process.env.API_INTERNAL_URL+"/api/suppliers/"+id,{
+      headers:{authorization},cache:"no-store",signal:AbortSignal.timeout(15000)});
+    return new NextResponse(await response.text(),{status:response.status,headers:{"content-type":"application/json","cache-control":"no-store"}});
+  }catch{return NextResponse.json({error:"Service unavailable"},{status:503});}
+}

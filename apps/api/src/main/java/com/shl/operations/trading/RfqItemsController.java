@@ -37,13 +37,19 @@ public class RfqItemsController {
         @NotBlank @Size(max=32) String unit,
         @Size(max=500) String toleranceNotes,
         @Size(max=100) String originCountry,
-        @Size(max=160) String targetDestination
-    ) {}
+        @Size(max=160) String targetDestination,
+        UUID truckProductId
+    ) {
+        public ItemInput(String productName,String specifications,String hsCode,BigDecimal quantity,
+            String unit,String toleranceNotes,String originCountry,String targetDestination){
+            this(productName,specifications,hsCode,quantity,unit,toleranceNotes,originCountry,targetDestination,null);
+        }
+    }
 
     public record ItemRow(
         UUID id, UUID rfqId, int lineNumber, String productName, String specifications,
         String hsCode, BigDecimal quantity, String unit, String toleranceNotes,
-        String originCountry, String targetDestination, Instant createdAt, Instant updatedAt
+        String originCountry, String targetDestination, UUID truckProductId, Instant createdAt, Instant updatedAt
     ) {}
 
     private static String clean(String text) {
@@ -63,6 +69,7 @@ public class RfqItemsController {
             rs.getString("tolerance_notes"),
             rs.getString("origin_country"),
             rs.getString("target_destination"),
+            rs.getObject("truck_product_id",UUID.class),
             rs.getTimestamp("created_at").toInstant(),
             rs.getTimestamp("updated_at").toInstant()
         );
@@ -71,6 +78,7 @@ public class RfqItemsController {
     private static final String SELECT = """
         SELECT id,rfq_id,line_number,product_name,specifications,hs_code,quantity,
           unit,tolerance_notes,origin_country,target_destination,created_at,updated_at
+          ,truck_product_id
         FROM rfq_line_items WHERE rfq_id=?
         """;
 
@@ -117,6 +125,7 @@ public class RfqItemsController {
     @Transactional
     public ItemRow add(@PathVariable UUID rfqId,@Valid @RequestBody ItemInput input) {
         requireEditable(rfqId);
+        requireActiveCatalogProduct(input.truckProductId());
         Integer position=db.query("""
             SELECT n FROM generate_series(1,50) AS n
             WHERE NOT EXISTS (
@@ -129,12 +138,12 @@ public class RfqItemsController {
         UUID id=UUID.randomUUID();
         db.update("""
             INSERT INTO rfq_line_items(id,rfq_id,line_number,product_name,specifications,
-                hs_code,quantity,unit,tolerance_notes,origin_country,target_destination)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?)
+                hs_code,quantity,unit,tolerance_notes,origin_country,target_destination,truck_product_id)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
             """,id,rfqId,position,input.productName().trim(),clean(input.specifications()),
             clean(input.hsCode()),input.quantity(),input.unit().trim(),
             clean(input.toleranceNotes()),clean(input.originCountry()),
-            clean(input.targetDestination()));
+            clean(input.targetDestination()),input.truckProductId());
         audit.log("RFQ_LINE_ADDED","RFQ",rfqId,"Requirement line "+position);
         return get(rfqId,id);
     }
@@ -144,16 +153,17 @@ public class RfqItemsController {
     public ItemRow update(@PathVariable UUID rfqId,@PathVariable UUID itemId,
         @Valid @RequestBody ItemInput input) {
         requireEditable(rfqId);
+        requireActiveCatalogProduct(input.truckProductId());
         ItemRow original=get(rfqId,itemId);
         db.update("""
             UPDATE rfq_line_items
             SET product_name=?,specifications=?,hs_code=?,quantity=?,unit=?,
-                tolerance_notes=?,origin_country=?,target_destination=?,updated_at=now()
+                tolerance_notes=?,origin_country=?,target_destination=?,truck_product_id=?,updated_at=now()
             WHERE id=? AND rfq_id=?
             """,input.productName().trim(),clean(input.specifications()),
             clean(input.hsCode()),input.quantity(),input.unit().trim(),
             clean(input.toleranceNotes()),clean(input.originCountry()),
-            clean(input.targetDestination()),itemId,rfqId);
+            clean(input.targetDestination()),input.truckProductId(),itemId,rfqId);
         audit.log("RFQ_LINE_UPDATED","RFQ",rfqId,"Requirement line "+original.lineNumber());
         return get(rfqId,itemId);
     }
@@ -166,5 +176,12 @@ public class RfqItemsController {
         ItemRow original=get(rfqId,itemId);
         db.update("DELETE FROM rfq_line_items WHERE rfq_id=? AND id=?",rfqId,itemId);
         audit.log("RFQ_LINE_REMOVED","RFQ",rfqId,"Requirement line "+original.lineNumber());
+    }
+
+    private void requireActiveCatalogProduct(UUID id) {
+        if(id==null)return;
+        Integer count=db.queryForObject("SELECT count(*) FROM truck_products WHERE id=? AND status='ACTIVE'",Integer.class,id);
+        if(count==null||count==0)throw new org.springframework.web.server.ResponseStatusException(
+            org.springframework.http.HttpStatus.BAD_REQUEST,"Only active catalog products can be selected for an RFQ");
     }
 }

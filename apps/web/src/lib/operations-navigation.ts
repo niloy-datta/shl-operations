@@ -29,13 +29,13 @@ const finance: StaffRole[] = ["ADMIN","MANAGEMENT","FINANCE"];
 
 export const OPERATIONS_NAVIGATION: readonly NavGroup[] = [
   {label:"Workspace",items:[
-    {label:"Overview",href:"/workspace",icon:"grid",symbol:"▦",
+    {label:"My Day",href:"/workspace",icon:"grid",symbol:"▦",
       description:"Your main operations dashboard",keywords:"home dashboard"},
     {label:"Customers",href:"/workspace?view=customers",icon:"users",symbol:"♙",
       description:"Customer relationships and contacts",keywords:"buyers directory"},
     {label:"Suppliers",href:"/workspace?view=suppliers",icon:"building",symbol:"◇",
       description:"Vendor relationships and contacts",keywords:"vendors directory"},
-    {label:"Executive cockpit",href:"/workspace/command-center",icon:"chart",symbol:"◈",
+    {label:"Executive Overview",href:"/workspace/command-center",icon:"chart",symbol:"◈",
       description:"Management exceptions and live KPIs",roles:exec,keywords:"ceo reports management"},
     {label:"Due dates & alerts",href:"/workspace/alerts",icon:"check",symbol:"◉",
       description:"Overdue work and reminders",keywords:"inbox notifications tasks"}
@@ -48,6 +48,9 @@ export const OPERATIONS_NAVIGATION: readonly NavGroup[] = [
     {label:"RFQ & sourcing",href:"/workspace/rfqs",icon:"layers",symbol:"▤",
       description:"RFQs, item prices and approved line quotes",roles:sourcing,
       keywords:"quotation pricing sourcing line quote"},
+    {label:"Truck product catalog",href:"/workspace/products",icon:"package",symbol:"▣",
+      description:"Truck models, sourced specifications and supplier references",roles:sourcing,
+      keywords:"truck vehicle tanker model products catalog comparison"},
     {label:"Supplier compliance",href:"/workspace/suppliers/compliance",icon:"lock",symbol:"◇",
       description:"Evidence references, independent reviews and expiry dates",roles:sourcing,
       keywords:"supplier documents compliance license"},

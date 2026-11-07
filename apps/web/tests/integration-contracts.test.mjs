@@ -141,10 +141,49 @@ test("navigation hides restricted modules before identity is known and never inf
   for (const role of ["ADMIN", "MANAGEMENT", "BD", "SOURCING", "LOGISTICS", "FINANCE"]) {
     assert.equal(links(role).includes("/workspace/costs/commissions"), false);
     assert.equal(links(role, true).includes("/workspace/costs/commissions"), true);
+    assert.equal(links(role).includes("/workspace/products"), ["ADMIN","MANAGEMENT","BD","SOURCING"].includes(role));
   }
   assert.equal(links("BD").includes("/workspace/enterprise/invoices"), false);
   assert.equal(links("FINANCE").includes("/workspace/growth/leads"), false);
   assert.equal(links("MANAGEMENT").includes("/workspace/enterprise/staff"), false);
   assert.equal(links("ADMIN").includes("/workspace/enterprise/staff"), true);
   assert.equal(navigationMatches({ label: "RFQ sourcing", description: "Supplier pricing" }, "RFQ supplier"), true);
+});
+
+test("workspace overview authenticates and preserves role-denial responses", async () => {
+ const req=new Request("http://localhost:3000/api/workspace-overview?scope=team");
+ assert.equal((await load("app/api/workspace-overview/route.ts").GET(req)).status,401);
+ const response=await load("app/api/workspace-overview/route.ts",{cookie:token,fetch:async(url,options)=>{
+  assert.equal(url,"http://backend.test/api/workspace/overview?scope=team");assert.equal(options.headers.authorization,"Bearer "+token);
+  return Response.json({error:"Management required"},{status:403});
+ }}).GET(req);assert.equal(response.status,403);assert.equal(response.headers.get("cache-control"),"no-store");
+});
+test("CSV import handles quoted multiline data, malformed rows, bounded size and validation",()=>{
+ const {parseContactCsv,contactIssues}=load("lib/contact-import.ts");
+ const rows=parseContactCsv('name,email,country\r\n"A, Trading",a@example.test,BD\r\n"B\nCompany",b@example.test,CN');
+ assert.equal(rows[1][0],"A, Trading");assert.equal(rows[2][0],"B\nCompany");
+ assert.throws(()=>parseContactCsv('name,email\n"unclosed,x'));
+ assert.throws(()=>parseContactCsv('name,email\nOnly one column'));
+ assert.throws(()=>parseContactCsv('name\n'+Array(101).fill('Company').join('\n')));
+ assert.ok(contactIssues({name:"",email:"bad-email",phone:"",country:""}).length===2);
+});
+
+test("supplier deep links authenticate and preserve upstream status",async()=>{
+ const context={params:Promise.resolve({resource:"suppliers",id:uuid})},request=new Request("http://localhost:3000/api/data/suppliers/"+uuid);
+ assert.equal((await load("app/api/data/[resource]/[id]/route.ts").GET(request,context)).status,401);
+ const response=await load("app/api/data/[resource]/[id]/route.ts",{cookie:token,fetch:async(url)=>{assert.equal(url,"http://backend.test/api/suppliers/"+uuid);return Response.json({error:"Missing"},{status:404});}}).GET(request,context);
+ assert.equal(response.status,404);assert.equal(response.headers.get("cache-control"),"no-store");
+});
+
+test("product proxy only forwards approved catalog routes and keeps CSRF, authentication and query boundaries",async()=>{
+ const file="app/api/products/[...path]/route.ts",context={params:Promise.resolve({path:["compare"]})};
+ const req=new Request(`http://localhost:3000/api/products/compare?ids=${uuid},${uuid}`,{headers:{origin:"http://localhost:3000"}});
+ assert.equal((await load(file).GET(req,context)).status,401);
+ let target="";
+ const response=await load(file,{cookie:token,fetch:async(url,options)=>{target=url;assert.equal(options.headers.authorization,"Bearer "+token);return Response.json({content:[]},{status:200});}}).GET(req,context);
+ assert.equal(response.status,200);assert.equal(target,`http://backend.test/api/products/compare?ids=${uuid}%2C${uuid}`);
+ const badWrite=await load(file,{cookie:token}).POST(new Request("http://localhost:3000/api/products",{method:"POST",headers:{origin:"https://attacker.test"},body:"{}"}),{params:Promise.resolve({path:["manufacturers"]})});
+ assert.equal(badWrite.status,403);
+ const badPath=await load(file,{cookie:token}).GET(new Request("http://localhost:3000/api/products/not-a-route"),{params:Promise.resolve({path:["not-a-route"]})});
+ assert.equal(badPath.status,404);
 });

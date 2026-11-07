@@ -23,9 +23,11 @@ class MigrationUpgradeTest {
 
             var integrated = Flyway.configure().dataSource(source).load();
             var upgrade = integrated.migrate();
-            assertThat(upgrade.migrationsExecuted).isEqualTo(6);
+            assertThat(upgrade.migrationsExecuted).isEqualTo(7);
             integrated.validate();
-            assertThat(integrated.info().applied()).hasSize(26);
+            assertThat(integrated.info().applied()).hasSize(27);
+            assertThat(db.queryForObject("SELECT count(*) FROM truck_product_categories", Integer.class)).isEqualTo(6);
+            assertThat(db.queryForObject("SELECT count(*) FROM truck_products", Integer.class)).isZero();
             assertThat(db.queryForObject("SELECT name FROM customers WHERE id=?", String.class, customer))
                 .isEqualTo("Synthetic upgrade test");
             assertThat(db.queryForObject("SELECT count(*) FROM crm_lead_contact_consents", Integer.class)).isZero();

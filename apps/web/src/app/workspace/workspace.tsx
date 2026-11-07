@@ -1,4 +1,7 @@
 "use client";
+import { NexusProfile } from "@/components/nexus-profile";
+import { ContactImport } from "@/components/contact-import";
+import { NexusOverview } from "@/components/nexus-overview";
 import { WorkspaceDialog } from "@/components/workspace-dialog";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
@@ -48,10 +51,16 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
 }
 
 export function Workspace() {
+  const params=useSearchParams();
+  return ["customers","suppliers"].includes(params.get("view")||"") ? <DirectoryWorkspace/> : <NexusOverview/>;
+}
+
+function DirectoryWorkspace() {
   const router = useRouter();
   const params = useSearchParams();
   const queryView = params.get("view");
-  const [view, setView] = useState<View>("overview");
+  const createRequested = params.get("create") === "1";
+  const [view, setView] = useState<View>(queryView === "suppliers" ? "suppliers" : "customers");
   const { staff, commissionAccess } = useWorkspaceIdentity();
   const canEdit = !!staff && ["ADMIN", "MANAGEMENT", "BD", "SOURCING"].includes(staff.role);
   const [totals, setTotals] = useState<Totals | null>(null);
@@ -63,17 +72,24 @@ export function Workspace() {
   const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
+  const [profile,setProfile]=useState<Contact|null>(null);
+  const [importOpen,setImportOpen]=useState(false);
   const [editing, setEditing] = useState<Contact | null>(null);
   const [saving, setSaving] = useState(false);
   const requestCounter = useRef(0);
+  useEffect(()=>{
+    const quick=(event:Event)=>{if(canEdit&&(event as CustomEvent).detail===view){setEditing(null);setFormError("");setFormOpen(true);}};
+    window.addEventListener("shl:quick-create",quick);return()=>window.removeEventListener("shl:quick-create",quick);
+  },[canEdit,view]);
+
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
       setView(queryView === "customers" || queryView === "suppliers" ? queryView : "overview");
-      setPage(0); setQuery(""); setSearch(""); setFormOpen(false); setData(emptyPage);
+      setPage(0); setQuery(""); setSearch(""); setFormOpen(createRequested); setData(emptyPage);
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [queryView]);
+  }, [queryView, createRequested]);
 
   const load = useCallback(async () => {
     const requestNumber = ++requestCounter.current;
@@ -263,6 +279,7 @@ export function Workspace() {
           <section className="surface directory-panel" aria-label={title + " directory"}>
             <div className="table-toolbar"><div><h2>{title} directory</h2><p className="muted">{loading ? "Loading records…" : data.totalElements.toLocaleString() + " matching records"}</p></div>
               <div className="toolbar-actions">
+                {canEdit&&<button className="nx-button" onClick={()=>setImportOpen(true)}>Import CSV</button>}
                 <form className="search-form" onSubmit={event => { event.preventDefault(); if (search === query && page === 0) void load(); else { setPage(0); setSearch(query); } }}>
                   <Icon name="search" size={17} /><input aria-label={"Search " + title.toLowerCase()} placeholder="Search by name" value={query} onChange={event => setQuery(event.target.value)} />
                   <button type="submit">Search</button></form>
@@ -270,7 +287,7 @@ export function Workspace() {
                 <button className="outline-icon" aria-label="Export current page to CSV" title="Export current page to CSV" disabled={loading || data.content.length === 0} onClick={exportPage}><Icon name="download" size={17} /></button>
               </div></div>
             <div className="table-wrap" aria-busy={loading}><table><thead><tr><th>NAME</th><th>EMAIL</th><th>PHONE</th><th>COUNTRY</th><th>ADDED</th><th>ACTION</th></tr></thead>
-              <tbody>{!loading && data.content.map(item => <tr key={item.id}><td><div className="person"><span className="initial">{item.name.slice(0, 1).toUpperCase()}</span><strong>{item.name}</strong></div></td>
+              <tbody>{!loading && data.content.map(item => <tr key={item.id}><td><div className="person"><span className="initial">{item.name.slice(0, 1).toUpperCase()}</span><button className="nx-record-name" onClick={()=>setProfile(item)} aria-label={"Open "+item.name+" profile"}>{item.name}</button></div></td>
                 <td>{item.email ? <a className="data-link" href={"mailto:" + item.email}>{item.email}</a> : "—"}</td>
                 <td>{item.phone || "—"}</td><td>{item.country || "—"}</td>
                 <td>{new Date(item.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
@@ -289,6 +306,8 @@ export function Workspace() {
       </div>
     </main>
 
+    {profile&&view!=="overview"&&<NexusProfile record={profile} kind={view} onClose={()=>setProfile(null)}/>}
+    {importOpen&&canEdit&&view!=="overview"&&<ContactImport kind={view} onClose={()=>setImportOpen(false)} onSaved={()=>void load()}/>}
     {formOpen && canEdit && <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !saving) setFormOpen(false); }}>
       <WorkspaceDialog className="modal" aria-labelledby="form-title" onClose={()=>setFormOpen(false)} busy={saving}>
         <div className="modal-head"><div><p className="section-overline">{editing ? "UPDATE RECORD" : "NEW RELATIONSHIP"}</p><h2 id="form-title">{editing ? "Edit" : "Add"} {view === "customers" ? "customer" : "supplier"}</h2>
