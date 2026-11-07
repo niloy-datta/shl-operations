@@ -6,7 +6,7 @@ A private operations workspace for SHL INTERNATIONAL GROUP. Decisions and accoun
 
 The codebase uses Next.js 16 / React 19 / TypeScript and plain CSS, a BFF proxy layer, Java 25 / Spring Boot and PostgreSQL/Flyway. Tailwind and shadcn were not installed; migrating frameworks would add churn without improving this delivery. Lucide React is the single new production dependency, justified by the requested shared icon language. No remote fonts, paid APIs, analytics or AI service were added.
 
-No verified standalone SHL logo asset was found in the repository. The existing SHL wordmark is retained in a proposed NEXUS lockup; the compass is a new interface mark, not a claim to be the company's official logo.
+No verified standalone SHL logo asset was found in the repository. The sidebar uses a typographic SHL wordmark with a NEXUS label; it does not claim to be an approved logo asset.
 
 ## Tokens
 
@@ -14,18 +14,22 @@ Source: `apps/web/src/app/nexus.css`; scoped under `.nx-shell` to avoid changing
 
 | Token | Light | Dark | Purpose |
 |---|---|---|---|
-| `--nx-bg` | `#f5f7fb` | `#0e1624` | Application canvas |
-| `--nx-surface` | `#ffffff` | `#172233` | Panels and forms |
-| `--nx-subtle` | `#f8fafc` | `#1c293c` | Secondary surfaces |
-| `--nx-ink` | `#162338` | `#e7edf7` | Main text |
-| `--nx-muted` | `#56677e` | `#a9b8ce` | Secondary text |
-| `--nx-primary` | `#2858d5` | `#9bb9ff` | Navigation and interaction |
-| `--nx-success` | `#167353` | `#7fd6b0` | Confirmed internal success |
-| `--nx-warning` | `#965500` | `#f2c779` | Attention |
-| `--nx-danger` | `#bb3544` | `#ff9aa7` | Urgent/error |
-| `--nx-line` | `#e2e8f0` | `#2c3b50` | Borders |
+| `--nx-bg` | `#f4f7fb` | `#080d16` | Application canvas |
+| `--nx-surface` | `#ffffff` | `#111e30` | Panels and forms |
+| `--nx-subtle` | `#f3f6fa` | `#18283d` | Secondary surfaces |
+| `--nx-ink` | `#162338` | `#eff5ff` | Main text |
+| `--nx-muted` | `#42546b` | `#afc1d9` | Secondary text |
+| `--nx-primary` | `#2858d5` | `#75adff` | Navigation and interaction |
+| `--nx-success` | `#167353` | `#41c9a5` | Confirmed internal success |
+| `--nx-warning` | `#965500` | `#f2be65` | Attention |
+| `--nx-danger` | `#bb3544` | `#f18796` | Urgent/error |
+| `--nx-line` | `#dce4ee` | `#29394f` | Borders |
 
-Base rhythm: 8px, with 16/24/32px panel gaps; 12px surfaces, 7–10px controls, restrained shadows and 140ms hover transitions. Typography uses the existing Inter/system sans-serif stack, with no font download. Main headings are 26–30px; data density favors compact rows and bounded lists. Priority lists initially show five records with an explicit expand control; order snapshots show the four latest source rows. Lower cards do not stretch to fill unrelated empty space. Reduced-motion settings disable motion. Status always has text; color is supplementary.
+Base rhythm: 8px, with 16/24/32px panel gaps; 12px surfaces, 7–10px controls, restrained shadows and 140ms hover transitions. Typography uses the existing Inter/system sans-serif stack, with no font download. Main headings are 26–30px; data density favors compact rows and bounded lists. Priority lists initially show five records with an explicit expand control; order snapshots show the four latest source rows. Lower cards do not stretch to fill unrelated empty space. Reduced-motion settings disable motion. Status always has text; color is supplementary. The authenticated workspace defaults to Executive Black; an explicit light preference persists in the existing theme cookie. Login and MFA enrollment stay outside this theme scope.
+
+## Executive Black V3
+
+`/workspace/command-center` uses the existing management-only team projection. Its six KPI cards are open team tasks, active leads, open RFQs, independent reviews awaiting the current reviewer, active line shipments, and overdue entries in the bounded alert feed. It does not project revenue, margin, cash exposure, or commissions. The priority table uses the existing bounded record snapshot; approvals continue through their original independent-action routes. At mobile widths it reduces to the matter and due date columns, while the pipeline keeps its own horizontal scroll region. Five disposable-browser viewport captures and axe results live under the ignored `.nexus-evidence/after/` directory.
 
 ## Reusable structure
 

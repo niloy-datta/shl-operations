@@ -2,6 +2,10 @@
 
 তারিখ: ৭ নভেম্বর ২০২৬। Baseline: `d6f2d2af04294875cebb892851635339c927e994`, integration branch / Draft PR #39। ৬ নভেম্বরের NEXUS increment-এর ওপর Phase 3 truck product catalog যোগ হয়েছে; এটি সম্পূর্ণ enterprise roadmap বা production readiness-এর ঘোষণা নয়।
 
+## Executive Black V3 — review branch
+
+Authenticated workspace dark-first SHL wordmark, compact 64px topbar ও theme-aware shared surfaces ব্যবহার করে; saved light preference এবং login/MFA boundary অক্ষত। `/workspace/command-center` management team projection থেকে ছয়টি বাস্তব operational KPI, searchable priority table, independent review queue, pipeline, order/workload ও staff-reported shipment watch দেখায়। Revenue/margin/exposure বা reference screenshot-এর sample record/identity যোগ হয়নি। Mobile priority row-তে business matter ও due date রাখা হয়; desktop/tablet-এ পুরো context থাকে। পাঁচটি target viewport-এর actual Chromium capture ও axe JSON ignored `.nexus-evidence/after/`-এ। Feature branch tests/PR status এই section final delivery-র আগে update হবে।
+
 ## কী preserve ও কী বদলেছে
 
 Next.js BFF → Spring Boot → PostgreSQL architecture, existing business forms, session/MFA, independent approvals ও commission username allowlist রাখা হয়েছে। আগে প্রয়োগ করা migration অপরিবর্তিত রেখে additive Flyway V27 যোগ হয়েছে। Working `.env`, bootstrap credentials ও local database volume অক্ষত; local DB-তে কেবল V27 schema migration হয়েছে, কোনো synthetic product বা business row লেখা হয়নি। `IMPLEMENTED_FEATURES_BN.md`-এর আগে থেকে থাকা user edits এই delivery-তে stage/commit করা হয়নি।

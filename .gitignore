@@ -27,3 +27,5 @@
 !.env.staging.example
 
 /.nexus-evidence/
+# Local Claude data stores can contain private workspace records.
+/.claude/data/

@@ -6,5 +6,6 @@ import { WorkspaceIdentity } from "@/components/workspace-identity";
 
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   if (!await sessionAuthorization()) redirect("/login");
-  return <WorkspaceIdentity><NexusShell initialTheme={(await cookies()).get("shl_nexus_theme")?.value==="dark"?"dark":"light"}>{children}</NexusShell></WorkspaceIdentity>;
+  const theme=(await cookies()).get("shl_nexus_theme")?.value;
+  return <WorkspaceIdentity><NexusShell initialTheme={theme==="light"?"light":"dark"}>{children}</NexusShell></WorkspaceIdentity>;
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import {usePathname,useSearchParams,useRouter} from "next/navigation";
 import {useEffect,useRef,useState,type ReactNode} from "react";
 import {ArrowUpRight,Plus,Bell,Sun,Moon,Menu,LogOut,ChevronDown,ShieldCheck,
-  LayoutDashboard,Users,Building2,Layers,Package,Ship,ChartNoAxesCombined,ListTodo,Lock,Settings,Compass} from "lucide-react";
+  LayoutDashboard,Users,Building2,Layers,Package,Ship,ChartNoAxesCombined,ListTodo,Lock,Settings} from "lucide-react";
 import {useWorkspaceIdentity} from "./workspace-identity";
 import {OperationsCommand} from "./operations-command";
 import {visibleNavigation} from "@/lib/operations-navigation";
@@ -30,7 +30,7 @@ export function NexusShell({children,initialTheme}:{children:ReactNode;initialTh
  function theme(){const next=!dark;setDark(next);document.cookie="shl_nexus_theme="+(next?"dark":"light")+"; Path=/; Max-Age=31536000; SameSite=Lax"+(location.protocol==="https:"?"; Secure":"");}
  return <div className="nx-shell" data-nexus-theme={dark?"dark":"light"}>
   <aside id="nexus-sidebar" className={"nx-sidebar"+(menu?" nx-open":"")} aria-label="Workspace sidebar">
-   <Link href="/workspace" className="nx-brand" onClick={()=>setMenu(false)}><span className="nx-brand-mark"><Compass size={24}/></span><span><strong>SHL NEXUS</strong><small>INTERNATIONAL GROUP</small></span></Link>
+   <Link href="/workspace" className="nx-brand" onClick={()=>setMenu(false)}><span className="nx-brand-mark" aria-hidden="true">SHL</span><span><strong>NEXUS</strong><small>OPERATIONS WORKSPACE</small></span></Link>
    <div className="nx-space"><span className="nx-space-icon">S</span><div><strong>Operations workspace</strong><small>Private · Internal access</small></div><ChevronDown size={14}/></div>
    <nav aria-label="Business modules">
     {nav.map(group=><div className="nx-nav-group" key={group.label}><p>{group.label}</p>{group.items.map(item=>{

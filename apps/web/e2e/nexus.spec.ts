@@ -1,13 +1,15 @@
 import {test,expect} from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import {accounts,apiFor,json,useRole,unique,noPageOverflow} from "./support";
+import {mkdir} from "node:fs/promises";
+import {resolve} from "node:path";
 
 test("Nexus quick create, profile drawer and persisted theme use existing directory APIs",async({page},testInfo)=>{
- await useRole(page);await page.goto("/workspace");await expect(page.getByRole("button",{name:"Switch to dark theme"})).toBeVisible();
- await page.getByRole("button",{name:"Switch to dark theme"}).click();await page.reload();
- await expect(page.locator(".nx-shell")).toHaveAttribute("data-nexus-theme","dark");
+ await useRole(page);await page.goto("/workspace");await expect(page.getByRole("button",{name:"Switch to light theme"})).toBeVisible();
+ await page.getByRole("button",{name:"Switch to light theme"}).click();await page.reload();
+ await expect(page.locator(".nx-shell")).toHaveAttribute("data-nexus-theme","light");
  const menu=page.getByRole("button",{name:"Workspace modules"});if(await menu.isVisible()){await menu.click();await expect(page.getByRole("navigation",{name:"Business modules"})).toBeVisible();await page.keyboard.press("Escape");await expect(menu).toBeFocused();await expect(page.getByRole("navigation",{name:"Business modules"})).toHaveCount(0);}
- await page.getByRole("button",{name:"Switch to light theme"}).click();
+ await page.getByRole("button",{name:"Switch to dark theme"}).click();
  await page.locator(".nx-create summary").click();await page.locator(".nx-create").getByRole("link",{name:"Customer",exact:true}).click();
  const dialog=page.getByRole("dialog",{name:"Add customer"});await expect(dialog).toBeVisible();
  const name=unique("Nexus customer");await dialog.getByLabel("Name *",{exact:true}).fill(name);await dialog.getByRole("button",{name:"Create record"}).click();await expect(dialog).toHaveCount(0);
@@ -136,4 +138,32 @@ test("My Day unavailable data remains unavailable until a real retry succeeds",a
  await expect(page.getByText("Shipment data unavailable",{exact:true})).toBeVisible();
  await page.unroute("**/api/workspace-overview?scope=personal");await page.getByRole("button",{name:"Retry overview"}).click();
  await expect(page.getByRole("alert").filter({hasText:/\S/})).toHaveCount(0);await expect(page.locator(".nx-kpi strong").first()).not.toHaveText("—");
+});
+
+test("Executive Black V3 matches five target viewports with source-backed team data",async({page},testInfo)=>{
+ test.skip(testInfo.project.name!=="desktop","Capture the five named viewports once in the desktop project");
+ test.setTimeout(120_000);
+ const manager=await apiFor("MANAGEMENT");
+ const staff=await json<{id:string;username:string}[]>(manager,"/api/enterprise/staff/options");
+ const owner=staff.find(person=>person.username===accounts().MANAGEMENT.username);
+ expect(owner).toBeTruthy();
+ const task=unique("executive attention item");
+ await json(manager,"/api/enterprise/tasks","POST",{title:task,assigneeId:owner!.id,priority:"HIGH",dueDate:new Date().toISOString().slice(0,10)});
+ await manager.dispose();
+ await useRole(page,"MANAGEMENT");
+ const widths=[[1920,1080],[1600,900],[1440,1000],[820,1180],[390,844]] as const;
+ const evidence=resolve(process.cwd(),"../../.nexus-evidence/after");await mkdir(evidence,{recursive:true});
+ for(const [width,height] of widths){
+  await page.setViewportSize({width,height});await page.goto("/workspace/command-center");
+  await expect(page.getByRole("heading",{name:/Good (morning|afternoon|evening),/})).toBeVisible();
+  await expect(page.locator(".nx-kpis .nx-kpi")).toHaveCount(6);
+  await expect(page.locator(".nx-priority-table")).toContainText(task);
+  await noPageOverflow(page);
+  const axe=await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa","wcag22aa"]).analyze();
+  expect(axe.violations.filter(v=>["critical","serious"].includes(v.impact||"")),`${width}x${height}`).toEqual([]);
+  const name=`executive-black-v3-${width}x${height}.png`;
+  const image=await page.screenshot({path:resolve(evidence,name),fullPage:true});
+  await testInfo.attach(name,{body:image,contentType:"image/png"});
+  await testInfo.attach(`executive-black-v3-${width}x${height}-axe.json`,{body:JSON.stringify(axe.violations),contentType:"application/json"});
+ }
 });
