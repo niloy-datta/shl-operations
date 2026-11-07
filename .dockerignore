@@ -1,0 +1,15 @@
+*
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!turbo.json
+!tsconfig.base.json
+!apps/
+!apps/api-ts/
+!apps/api-ts/**
+!packages/
+!packages/**
+**/node_modules/
+**/dist/
+**/.env*
+**/.turbo/

@@ -29,3 +29,8 @@
 /.nexus-evidence/
 # Local Claude data stores can contain private workspace records.
 /.claude/data/
+
+# TypeScript sidecar build artifacts
+/apps/api-ts/dist/
+/packages/*/dist/
+.turbo/

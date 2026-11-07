@@ -1,0 +1,14 @@
+# Optional overlay; the existing database and legacy services are unchanged.
+services:
+  api-ts:
+    profiles: ["ts-sidecar"]
+    build:
+      context: .
+      dockerfile: apps/api-ts/Dockerfile
+    environment:
+      PORT: "8081"
+    # Internal only: no database credentials and no host port.
+  redis-ts:
+    profiles: ["ts-sidecar"]
+    image: redis:8.2.9-alpine
+    # Placeholder only; no published port or application data.
