@@ -1,0 +1,14 @@
+{
+  "name": "shl-nexus-workspace",
+  "private": true,
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "2.11.7",
+    "typescript": "5.9.3"
+  }
+}
