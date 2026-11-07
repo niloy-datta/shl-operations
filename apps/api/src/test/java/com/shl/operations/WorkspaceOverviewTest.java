@@ -30,12 +30,17 @@ class WorkspaceOverviewTest {
   var result=overview.overview("personal");assertThat(result.toString()).doesNotContain("gross_contribution","unit_price","commission","outstanding");
   @SuppressWarnings("unchecked") var stages=(List<WorkspaceOverviewController.Stage>)result.get("pipeline");
   assertThat(stages).extracting(WorkspaceOverviewController.Stage::key).containsExactly("shipment","delivery");
+  @SuppressWarnings("unchecked") var logistics=(Map<String,Object>)result.get("logistics");
+  assertThat(logistics).containsEntry("active",0L).containsEntry("delayed",0L).containsEntry("missingEta",0L).containsEntry("openExceptions",0L);
   assertThat(items(result,"approvals")).isEmpty();assertThatThrownBy(()->overview.overview("team")).isInstanceOf(ResponseStatusException.class);
  }
  @Test @WithMockUser(username="nexus-manager",roles="MANAGEMENT") void managersMustRequestTeamScopeAndCannotReviewTheirOwnQuote(){
   UUID user=staff("nexus-team-owner"),id=task(user,"Team synthetic task");
   assertThat(items(overview.overview("personal"),"priorities")).extracting(WorkspaceOverviewController.Item::id).doesNotContain(id.toString());
   assertThat(items(overview.overview("team"),"priorities")).extracting(WorkspaceOverviewController.Item::id).contains(id.toString());
+  UUID office=UUID.randomUUID();db.update("INSERT INTO business_entities(id,reference,kind,legal_name,country_code,created_by) VALUES (?,'ENT-NEXUS-OFF','OFFICE','Nexus synthetic office','BD','nexus-manager')",office);
+  @SuppressWarnings("unchecked") var offices=(List<Map<String,Object>>)overview.overview("team").get("offices");
+  assertThat(offices).extracting(row->row.get("name")).contains("Nexus synthetic office");
   UUID customer=UUID.randomUUID(),rfq=UUID.randomUUID();db.update("INSERT INTO customers(id,name) VALUES (?,'Nexus buyer')",customer);
   db.update("INSERT INTO rfqs(id,reference,customer_id,subject,quantity,unit,currency) VALUES (?, ?, ?, 'Nexus request',1,'PCS','USD')",rfq,"RFQ-"+rfq.toString().substring(0,8),customer);
   for(String author:List.of("nexus-manager","independent-author"))db.update("INSERT INTO customer_line_quotes(id,rfq_id,version,currency,status,total_cost,total_sell,gross_contribution,created_by) VALUES (?,?,?,'USD','SUBMITTED',10,12,2,?)",UUID.randomUUID(),rfq,author.equals("nexus-manager")?1:2,author);
